@@ -13,7 +13,7 @@ Require Import OrderedType.
 Require Import Ensembles.
 
 Definition tid : Type := nat.
-Definition all_tid := 0.
+Definition all_tid := 0. (* XXX probably needs to change *)
 Inductive action : Type :=
 | ActInv (tid : tid) : action
 | ActResp (tid : tid) : action
@@ -39,14 +39,12 @@ Function history_of_trace (tr: trace) : history :=
              end
   end.
     
-Definition sim_commutes (tr : trace) : Prop.
-Admitted.
 Definition swappable (a1 a2 : action) :=
   match a1, a2 with
   | ActInv t, ActInv t'
   | ActInv t, ActResp t'
   | ActResp t, ActInv t'
-  | ActResp t, ActResp t' => (t =? t' = false)
+  | ActResp t, ActResp t' => t <> t'
   | _, _ => False
   end.
 Inductive reordered : relation history :=
@@ -85,15 +83,55 @@ Function trace_conflict_free (tr : trace) : Prop :=
     /\ trace_conflict_free tl
   end.
                                                                           
+Definition sim_commutes (h : history) : Prop. Admitted.
+
 Parameter ref_impl : (refstate * action) -> (refstate * action).
 Parameter spec : list history.
-Hypothesis ref_impl_correct : forall tr : trace,
+
+Inductive ref_impl_generated_trace : trace -> state -> state -> Prop :=
+| RINil : forall s, ref_impl_generated_trace [] s s
+| RICons : forall rs a rs' r tr rs0 th tc, 
+    ref_impl (rs, a) = (rs', r) ->
+    ref_impl_generated_trace tr (State rs0 th tc) (State rs th tc) ->
+    ref_impl_generated_trace ((Event all_tid (State rs th tc) (State rs' th tc) a r) :: tr)
+                             (State rs0 th tc) (State rs' th tc).
+Hypothesis ref_impl_correct : forall (tr : trace) (s1 s2 : state),
+    ref_impl_generated_trace tr s1 s2 ->
     List.In (history_of_trace tr) spec.
-Hypothesis SIM_reordered_histories_correct : forall tr tr0 tr1 tr2 tr1' : trace,
-    tr = tr0 ++ tr1 ++ tr2 ->
-    sim_commutes tr1 ->
-    reordered tr1 tr1' ->
+Hypothesis SIM_reordered_histories_correct : forall tr0 tr1 tr2 tr1' : trace,
+    List.In (history_of_trace (tr0 ++ tr1 ++ tr2)) spec ->
+    sim_commutes (history_of_trace tr1) ->
+    reordered (history_of_trace tr1) (history_of_trace tr1') ->
     List.In (history_of_trace (tr0 ++ tr1' ++ tr2)) spec.
 
-(* show that SIM-commutative region in constructive(?) implementation has no pair of  
- * events in the trace that have an access conflict *)
+
+Definition emulator_trace (hbase hrun : history) : trace. Admitted.
+
+(* if we have a correct trace whose corresponding history is SIM-comm,
+ * then the emulator produces a conflict-free trace for that history *)
+Lemma emulator_impl_conflict_free : forall tr s0 s1,
+    ref_impl_generated_trace tr s0 s1 ->
+    sim_commutes (history_of_trace tr) ->
+    trace_conflict_free (emulator_trace (history_of_trace tr) (history_of_trace tr)).
+Proof.
+Admitted.
+
+(* if we have the emulator instantiated with a SIM-comm history,
+ * and the emulator acts on some input sequence, then the emulator
+ * produces a correct trace for the spec *)
+Lemma emulator_impl_correct : forall tr s0 s1 h,
+    ref_impl_generated_trace tr s0 s1 ->
+    sim_commutes (history_of_trace tr) ->
+    List.In (history_of_trace (emulator_trace (history_of_trace tr) h)) spec.
+Proof.
+Admitted.
+
+Theorem scalable_commutativity_rule : forall tr s0 s1 h,
+    ref_impl_generated_trace tr s0 s1 ->
+    sim_commutes (history_of_trace tr) ->
+    trace_conflict_free (emulator_trace (history_of_trace tr) (history_of_trace tr))
+    /\
+    List.In (history_of_trace (emulator_trace (history_of_trace tr) h)) spec.
+Proof.
+  intros; split; [eapply emulator_impl_conflict_free | eapply emulator_impl_correct]; eauto.
+Qed.
