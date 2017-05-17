@@ -12,49 +12,44 @@ Import ListNotations.
 Require Import OrderedType.
 
 Definition tid : Type := nat.
-
 Inductive action : Type :=
-| Nat : nat -> action
-| Continue : action.
-Definition taction : Type := tid * action.
-Definition history : Type := list taction.
+| ActInv (tid : tid) : action
+| ActResp (tid : tid) : action
+| Continue (tid: tid) : action.
+Definition history : Type := list action.
 
-(* Does this work in place of memory? could also be a map *)
 Definition thread_history_state : Type := tid -> nat.
 Definition thread_commute_state : Type := tid -> bool.
 Definition refstate : Type := nat.
-Inductive state := 
-| srefstate : refstate -> state
-| sht : thread_history_state -> state
-| scommutet : thread_commute_state -> state.
+Inductive state := striple : refstate -> thread_history_state -> thread_commute_state -> state.
 
-Parameter ref_impl : (refstate * taction) -> (refstate * taction).
-Parameter spec : list history.
-
-(* Definition history_wf *)
-(* Definition history_reorder *)
-
-Definition trace : Type := list ((state * taction) * (state * taction)).
+Inductive event : Type := Event (t: tid) (s1 s2 : state) (a r : action) : event.
+Definition trace : Type := list event.
 Function history_of_trace (tr: trace) : history :=
   match tr with
   | [] => []
-  | ((s1, a), (s2, r)) :: tl =>
-             match a,r with
-             | (t, Continue), (t', Continue) => history_of_trace tl
-             | (t, Continue), _ => r :: history_of_trace tl
-             | _, (t, Continue) => a :: history_of_trace tl
+  | Event t s1 s2 a r :: tl =>
+    match a,r with
+             | Continue t, Continue t' => history_of_trace tl
+             | Continue t, _ => r :: history_of_trace tl
+             | _, Continue t => a :: history_of_trace tl
              | _,_ => a :: r :: history_of_trace tl
              end
   end.
-
+    
 Definition sim_commutes (tr : trace) : Prop.
 Admitted.
 Definition reordered (tr tr' : trace) : Prop.
 Admitted.
-  
-Axiom ref_impl_correct : forall tr : trace,
+Definition conflict_free (tr : trace) : Prop :=
+  history_of_trace tr.
+Admitted.
+                                                                          
+Parameter ref_impl : (refstate * action) -> (refstate * action).
+Parameter spec : list history.
+Hypothesis ref_impl_correct : forall tr : trace,
     In (history_of_trace tr) spec.
-Axiom SIM_reordered_histories_correct : forall tr tr0 tr1 tr2 tr1' : trace,
+Hypothesis SIM_reordered_histories_correct : forall tr tr0 tr1 tr2 tr1' : trace,
     tr = tr0 ++ tr1 ++ tr2 ->
     sim_commutes tr1 ->
     reordered tr1 tr1' ->
