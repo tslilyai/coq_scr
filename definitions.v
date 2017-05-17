@@ -41,12 +41,29 @@ Function history_of_trace (tr: trace) : history :=
     
 Definition sim_commutes (tr : trace) : Prop.
 Admitted.
-Definition reordered (tr tr' : trace) : Prop.
-Admitted.
+Definition swappable (a1 a2 : action) :=
+  match a1, a2 with
+  | ActInv t, ActInv t'
+  | ActInv t, ActResp t'
+  | ActResp t, ActInv t'
+  | ActResp t, ActResp t' => (t =? t' = false)
+  | _, _ => False
+  end.
+Inductive reordered : relation history :=
+| ro_perm_nil : reordered [] []
+| ro_perm_skip : forall x t1 t2,
+    reordered t1 t2 ->
+    reordered (x::t1) (x::t2)
+| ro_perm_swap : forall a2 a1 t,
+    swappable a2 a1 ->
+    reordered (a2 :: a1 :: t) (a1 :: a2 :: t)
+| ro_perm_trans : forall t1 t2 t3,
+    reordered t1 t2 ->
+    reordered t2 t3 ->
+    reordered t1 t3.
 
-Definition write_tid (ts1 ts2 : tid -> nat) (t : tid) := ts1 t <> ts2 t.
-Definition write_tid_set ts1 ts2 : Ensemble tid :=
-  fun tid => write_tid ts1 ts2 tid.
+Definition write_tid_set (ts1 ts2 : tid -> nat) : Ensemble tid :=
+  fun tid => ts1 tid <> ts2 tid.
 Definition step_writes (s1 s2 : state) : Ensemble tid :=
   match s1, s2 with
   | State rs1 th1 tc1, State rs2 th2 tc2 =>
