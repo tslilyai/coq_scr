@@ -71,12 +71,12 @@ Function trace_conflict_free (tr : trace) : Prop :=
 Parameter ref_impl : (refstate * action) -> (refstate * action).
 Parameter spec : list history.
 Hypothesis ref_impl_correct : forall tr : trace,
-    In (history_of_trace tr) spec.
+    List.In (history_of_trace tr) spec.
 Hypothesis SIM_reordered_histories_correct : forall tr tr0 tr1 tr2 tr1' : trace,
     tr = tr0 ++ tr1 ++ tr2 ->
     sim_commutes tr1 ->
     reordered tr1 tr1' ->
-    In (history_of_trace (tr0 ++ tr1' ++ tr2)) spec.
+    List.In (history_of_trace (tr0 ++ tr1' ++ tr2)) spec.
 
 (* show that SIM-commutative region in constructive(?) implementation has no pair of  
  * events in the trace that have an access conflict *)
