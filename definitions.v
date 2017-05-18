@@ -154,8 +154,9 @@ Definition emulator_act
     let th' := if emulate_switch then fun tid => (length hbase) + 1  (* always return Emulate *)
                else th in
     let rs' := if emulate_switch then rs (* TODO process H' or something*)
-              else rs in
+               else rs in
     (* actually emulate this step if we're emulating *)
+    let hd := nth (th' t) hbase (Emulate t) in
     if action_eq hd (Emulate t) then
       let (rs'', r) := ref_impl (rs', a) in
       (State rs'' th' tc, r)
