@@ -135,40 +135,38 @@ Definition enter_conflict_free_mode (hbase: history) (s: state) (t: tid) : state
     let th' := if action_eq hd (Commute t) then inc_index th t else th in
     State rs th' tc'
   end.
-Definition should_switch_to_emulate (s : state) (hd a : action) (t : tid) : bool :=
+Definition switch_to_emulate (hbase : history) (s : state) (a : action) (t : tid) : state :=
   match s with
-  | State rs th tc => 
-    eqb (action_eq hd a) false
-    && (eqb (action_eq a (Continue t)) false || eqb (action_eq hd (ActResp t)) false)
-    && eqb (action_eq hd (Emulate t)) false
+  | State rs th tc => let hd := nth (th t) hbase (Emulate t) in
+                      if  eqb (action_eq hd a) false
+                              && (eqb (action_eq a (Continue t)) false || eqb (action_eq hd (ActResp t)) false)
+                              && eqb (action_eq hd (Emulate t)) false
+                      then let th' := fun tid => (length hbase) + 1 in (* always return Emulate *)
+                           let rs' := rs in(* TODO process H' or something*)
+                           State rs' th' tc
+                      else s
   end.
 Definition emulator_act
            (hbase : history) (s : state) (a : action) : (state * action) :=
   let t := thread_of_action a in
   let s' := enter_conflict_free_mode hbase s t in
-  match s' with
+  let s'' := switch_to_emulate hbase s' a t in
+  match s'' with
   | State rs th tc => 
-    let hd := nth (th t) hbase (Emulate t) in
-    (* do we need to switch to emulation mode? *)
-    let emulate_switch := should_switch_to_emulate s hd a t in
-    let th' := if emulate_switch then fun tid => (length hbase) + 1  (* always return Emulate *)
-               else th in
-    let rs' := if emulate_switch then rs (* TODO process H' or something*)
-               else rs in
     (* actually emulate this step if we're emulating *)
-    let hd := nth (th' t) hbase (Emulate t) in
+    let hd := nth (th t) hbase (Emulate t) in
     if action_eq hd (Emulate t) then
-      let (rs'', r) := ref_impl (rs', a) in
-      (State rs'' th' tc, r)
+      let (rs', r) := ref_impl (rs, a) in
+      (State rs' th tc, r)
     (* if not, either in conflict-free mode or replaying *)
     else let r := if action_eq hd a then Continue t
                   else if action_eq a (Continue t) && action_eq hd (ActResp t)
                        then hd
                        else Continue t in (* XXX what if r is never set? need to prove that
                                            * one of the conditions is always met? *)
-         let th'' := if tc t =? 1 then inc_index th' t (* conflict-free mode *)
-                    else fun tid => (th' tid) + 1 in (* replay *)
-         (State rs' th'' tc, r)
+         let th' := if tc t =? 1 then inc_index th t (* conflict-free mode *)
+                    else fun tid => (th tid) + 1 in (* replay *)
+         (State rs th' tc, r)
   end.
 Function emulator_trace (hbase hrun : history) (s0 : state) (tr : trace) : trace :=
   match hrun with
