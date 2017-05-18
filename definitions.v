@@ -158,10 +158,10 @@ Definition emulator_act
     let (rs', r) := if action_eq hd a then (rs, Continue t)
                     else if action_eq a (Continue t) && action_eq hd (ActResp t)
                          then (rs, hd)
-                         else ref_impl (rs, a) in (* we know we must be in emulate mode *)
-    if action_eq hd (Emulate t) then (State rs' th tc, r)
+                         else ref_impl (rs, a) in (* XXX we know we must be in emulate mode *)
+    if action_eq hd (Emulate t) then (State rs' th tc, r) (* emulate mode *)
     else let th' := if tc t =? 1 then inc_index th t (* conflict-free mode *)
-                    else fun tid => (th tid) + 1 in (* replay *)
+                    else fun tid => (th tid) + 1 in (* replay mode *)
          (State rs th' tc, r)
   end.
 Function emulator_trace (hbase hrun : history) (s0 : state) (tr : trace) : trace :=
