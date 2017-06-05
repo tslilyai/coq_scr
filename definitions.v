@@ -106,13 +106,13 @@ Section Commutativity.
     end.
   Function trace_conflict_free (tr : trace) : Prop :=
     match tr with
-      | [] => False
+      | [] => True
       | Event t s1 s2 a r :: tl =>
         Intersection tid (step_writes s1 s2) (trace_writes tl) = Empty_set tid
         /\ trace_conflict_free tl
     end.
 
-  Definition sim_commutes (h : history) : Prop. Admitted.
+  Definition sim_commutes (h : history) (s : state) : Prop. Admitted.
 End Commutativity.
 
 Section Emulator.
@@ -133,17 +133,18 @@ Section Emulator.
                                   List.In (history_of_trace tr) spec.
 
   Hypothesis comm_region_ref_impl_produces_same_results : 
-    forall tr tr' s0 sf sf', sim_commutes (history_of_trace tr) ->
+    forall tr tr' s0 sf sf', sim_commutes (history_of_trace tr) s0 ->
                              ref_impl_generated_trace tr s0 sf ->
                              ref_impl_generated_trace tr' s0 sf' ->
                              invocations_of_trace tr = invocations_of_trace tr' ->
                              reordered (history_of_trace tr') (history_of_trace tr).
               
   Hypothesis SIM_reordered_histories_correct :
-    forall tr0 tr1 tr2 tr1' : trace,
+    forall tr0 tr1 tr2 tr1' s0 s0f,
       List.In (history_of_trace (tr0 ++ tr1 ++ tr2)) spec ->
-      sim_commutes (history_of_trace tr1) ->
       reordered (history_of_trace tr1) (history_of_trace tr1') ->
+      ref_impl_generated_trace tr0 s0 s0f ->
+      sim_commutes (history_of_trace tr1) s0f ->
       List.In (history_of_trace (tr0 ++ tr1' ++ tr2)) spec.
   
   Definition inc_index (th : tid -> nat) (t: tid) :=
@@ -214,16 +215,39 @@ Section Emulator.
 End Emulator.
 
 Section Theorems.
+  Lemma sim_commutes_cons : forall a h s t s' r,
+                              sim_commutes (a :: h) s ->
+                              emulator_act (Commute t :: a :: h) s a = (s', r) ->
+                              sim_commutes h s'.
+  Admitted.
+
+  Lemma emulator_trace_cons : forall t a h s0, exists s r,
+                                emulator_trace (Commute t :: a :: h) (a::h) s0 [] =
+                                (Event t s0 s a r) :: (emulator_trace (Commute t :: h) h s []).
+  Admitted.
+
+  Lemma trace_conflict_free_cons : forall e tr,
+    trace_conflict_free (e :: tr) -> trace_conflict_free tr.
+  Admitted.
+    
   (* if we have a correct trace whose corresponding history is SIM-comm,
    * then the emulator produces a conflict-free trace for that history *)
   Lemma emulator_impl_conflict_free :
     forall t tr s0 s1,
       ref_impl_generated_trace tr s0 s1 ->
-      sim_commutes (history_of_trace tr) ->
+      sim_commutes (history_of_trace tr) s0 ->
       trace_conflict_free (emulator_trace (Commute t :: (history_of_trace tr))
                                           (history_of_trace tr)
                                           s0 []).
   Proof.
+    intros t tr s0 s1 Hrigt Hsi.
+    remember (history_of_trace tr) as h.
+    generalize dependent s0. generalize dependent tr. 
+    induction h; subst; intros.
+    simpl; auto.
+    pose (emulator_trace_cons t a h s0). destruct e as [s [r e]]. rewrite e.
+    simpl; split.
+    
   Admitted.
 
   (* if we have the emulator instantiated with a SIM-comm history,
