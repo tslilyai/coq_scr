@@ -12,19 +12,12 @@ Import ListNotations.
 Require Import OrderedType.
 Require Import Ensembles.
 
-Section State.
-
+Section Histories.
   Definition tid : Type := nat.
   Definition all_tid := 0. (* XXX probably needs to change *)
 
-  Definition thread_history_state : Type := tid -> nat.
-  Definition thread_commute_state : Type := tid -> nat. (* 0 or 1 *)
-  Definition refstate : Type := nat.
-  Inductive state := State : refstate -> thread_history_state -> thread_commute_state -> state.
-
-End State.
-
-Section Histories.
+  Parameter num_threads : nat.
+  Hypothesis tid_le_num_threads : forall tid, tid <= num_threads.
   
   Inductive action : Type :=
   | ActInv (tid : tid) : action
@@ -47,8 +40,20 @@ Section Histories.
       | Continue t, Continue t' => t =? t'
       | _, _ => false
     end.
+  Definition is_response (a : action) :=
+    match a with
+      | ActResp _ => true
+      | _ => false
+    end.
 
   Definition history : Type := list action.
+
+  Definition base_history_pos_state : Type := tid -> nat.
+  Definition current_history_state : Type := tid -> history.
+  Definition commute_state : Type := tid -> bool.
+  Inductive state : Type :=
+  | State : base_history_pos_state -> current_history_state -> commute_state
+            -> state.
 
   Inductive event : Type := | NoEvent | Event (t: tid) (s1 s2 : state) (a r : action) : event.
   Definition trace : Type := list event.
@@ -98,16 +103,14 @@ Section Histories.
 End Histories.
 
 Section Commutativity.
-  Definition write_tid_set (ts1 ts2 : tid -> nat) : Ensemble tid :=
+  Definition write_tid_set {A : Type} (ts1 ts2 : tid -> A) : Ensemble tid :=
     fun tid => ts1 tid <> ts2 tid.
   Definition step_writes (s1 s2 : state) : Ensemble tid :=
     match s1, s2 with
-      | State rs1 th1 tc1, State rs2 th2 tc2 =>
-        let writes_tid := Union tid (write_tid_set th1 th2) (write_tid_set tc1 tc2) in
-        if rs1 =? rs2 then writes_tid
-        else Add tid writes_tid all_tid
+      | State bh1 ch1 _, State bh2 ch2 _ =>
+        Union tid (write_tid_set bh1 bh2) (write_tid_set ch1 ch2)
     end.
-  Function trace_writes (tr : trace) : Ensemble tid :=
+ Function trace_writes (tr : trace) : Ensemble tid :=
     match tr with
       | Event t s1 s2 a r :: tl =>
         Union tid (step_writes s1 s2) (trace_writes tl)
@@ -121,88 +124,74 @@ Section Commutativity.
       | _ => True
   end.
 
-  Definition sim_commutes (h pasth : history) : Prop. Admitted.
+  Definition sim_commutes (h past : history) : Prop. Admitted.
   Lemma sim_commutes_cons :
-    forall h1 h2 pasth, sim_commutes (h1 ++ h2) pasth -> sim_commutes h1 pasth.
+    forall h1 h2 past, sim_commutes (h1 ++ h2) past -> sim_commutes h1 past.
   Admitted.
 End Commutativity.
 
 Section Emulator.
-  Parameter ref_impl : (refstate * action) -> (refstate * action).
   Parameter spec : list history.
-  Parameter num_threads : nat.
-  Hypothesis tid_le_num_threads : forall tid, tid <= num_threads.
+  Parameter spec_oracle : history -> bool.
+  Parameter base_history : history.
 
-  Inductive ref_impl_generated_trace : trace -> state -> state -> Prop :=
-  | RINil : forall s, ref_impl_generated_trace [] s s
-  | RICons : forall rs a rs' r tr rs0 th tc, 
-               ref_impl (rs, a) = (rs', r) ->
-               ref_impl_generated_trace tr (State rs0 th tc) (State rs th tc) ->
-               ref_impl_generated_trace ((Event all_tid (State rs th tc)
-                                                (State rs' th tc) a r)
-                                           :: tr)
-                                        (State rs0 th tc) (State rs' th tc).
-  Hypothesis ref_impl_correct : forall (tr : trace) (s1 s2 : state),
-                                  ref_impl_generated_trace tr s1 s2 ->
-                                  List.In (history_of_trace tr) spec.
+  Hypothesis spec_oracle_correct :
+    forall history, List.In history spec <-> spec_oracle history = true.
 
-  Parameter ref_impl_replay_state : history -> state -> state.
+  Hypothesis base_history_well_formed :
+    exists x y t, base_history = x ++ Commute t :: y /\
+                  sim_commutes y x.
 
-  (* captures idea that responses never change, also that *some* order of continues exist 
-   * for every reordering *)
-  Hypothesis ref_impl_generates_all_SIM_reordered_histories :
-    forall tr0 tr1 tr1' s0 s1f,
-      sim_commutes (history_of_trace tr1) (history_of_trace tr0) ->
-      ref_impl_generated_trace (tr0 ++ tr1) s0 s1f ->
-      reordered (history_of_trace tr1) (history_of_trace tr1') ->
-      ref_impl_generated_trace (tr0 ++ tr1') s0
-                               (ref_impl_replay_state (history_of_trace (tr0 ++ tr1)) s0).
-  
-  Definition inc_index (th : tid -> nat) (t: tid) :=
-    fun tid => if tid =? t then th tid + 1 else th tid.
-  Definition set_index (tc : tid -> nat) (t : tid) :=
-    fun tid => if tid =? t then 1 else tc t.
-  Definition try_enter_conflict_free_mode (hbase: history) (s: state) (t: tid) : state :=
-    match s with
-      | State rs th tc =>
-        let hd := nth (th t) hbase (Emulate t) in
-        let tc' := if action_eq hd (Commute t) then set_index tc t else tc in
-        let th' := if action_eq hd (Commute t) then inc_index th t else th in
-        State rs th' tc'
+  Definition inc_tid_base_history_pos (bh : tid -> nat) (t: tid) :=
+    fun tid => if tid =? t then bh tid + 1 else bh tid.
+  Definition set_tid_commute (tc : commute_state) (t : tid) :=
+    fun tid => if tid =? t then true else tc t.
+  Definition add_to_current_history (ch : current_history_state) (a: action) :=
+    fun tid => a :: ch tid. (* note that history goes backward for ease of proof *)
+  Definition try_enter_conflict_free_mode (s: state) (t: tid) : state :=
+    match s with | State bh ch comm =>
+                   let hd := nth (bh t) base_history (Emulate t) in
+                   let comm' := if action_eq hd (Commute t)
+                              then set_tid_commute comm t else comm in
+                   let bh' := if action_eq hd (Commute t)
+                              then inc_tid_base_history_pos bh t else bh in
+                   State bh' ch comm'
     end.
-
-  Definition try_switch_to_emulate (hbase : history) (s : state) (a : action) (t : tid) : state :=
-    match s with
-      | State rs th tc =>
-        let hd := nth (th t) hbase (Emulate t) in
-        if eqb (action_eq hd a) false
-                && (eqb (action_eq a (Continue t)) false || eqb (action_eq hd (ActResp t)) false)
-                && eqb (action_eq hd (Emulate t)) false
-        then let th' := fun tid => (length hbase) + 1 in (* always return Emulate *)
-             ref_impl_replay_state hbase (State rs th' tc)
-        else s
+  Definition get_emulate_response (s : state) : state * action. Admitted.
+  Definition get_and_set_combined_history (s : state) : state. Admitted.
+  Definition switch_and_perform_emulation (s : state) (a : action) (t : tid) : state * action :=
+    match s with | State bh ch comm =>
+                   let hd := nth (bh t) base_history (Emulate t) in
+                   if eqb (action_eq hd (Emulate t)) false
+                   then let s' := get_and_set_combined_history s in
+                        get_emulate_response s'
+                   else get_emulate_response s
     end.
-  Definition emulator_act
-             (hbase : history) (s : state) (a : action) : (state * action) :=
+  Definition emulator_act (s : state) (a : action) : (state * action) :=
     let t := thread_of_action a in
-    let s' := try_enter_conflict_free_mode hbase s t in
-    let s'' := try_switch_to_emulate hbase s' a t in
-    match s'' with
-      | State rs th tc => 
-        let hd := nth (th t) hbase (Emulate t) in
-        let (rs', r) := if action_eq hd a then (rs, Continue t)
-                        else if action_eq a (Continue t) && action_eq hd (ActResp t)
-                             then (rs, hd)
-                             else ref_impl (rs, a) in (* XXX we know we must be in emulate mode *)
-        if action_eq hd (Emulate t) then (State rs' th tc, r) (* emulate mode *)
-        else let th' := if tc t =? 1 then inc_index th t (* conflict-free mode *)
-                        else fun tid => (th tid) + 1 in (* replay mode *)
-             (State rs th' tc, r)
+    let s' := try_enter_conflict_free_mode s t in
+    match s' with
+      | State bh ch comm =>
+        let hd := nth (bh t) base_history (Emulate t) in 
+        (* get the response and perform emulation if necessary *)
+        let (s_new, r) := if action_eq hd a
+                        then (s', Continue t)
+                        else if action_eq (Continue t) a &&
+                                          is_response hd &&
+                                          (thread_of_action hd =? t)
+                             then (s', hd)
+                             else switch_and_perform_emulation s' hd t in
+        match s_new with
+          | State bh_new ch_new comm_new =>
+            let final_bh := if comm_new t then inc_tid_base_history_pos bh_new t (* conflict-free mode *)
+                        else fun tid => (bh_new tid) + 1 in (* replay mode *) 
+                (State final_bh ch_new comm_new, r)
+        end
     end.
   Function emulator_trace_helper (hbase hrun : history) (s0: state) (tr : trace) :=
     match hrun with
       | [] => tr
-      | a :: rest => let (s', r) := emulator_act hbase s0 a in
+      | a :: rest => let (s', r) := emulator_act s0 a in
                      let t := thread_of_action a in
                      emulator_trace_helper hbase rest s' (Event t s0 s' a r :: tr)
     end.
@@ -212,11 +201,6 @@ Section Emulator.
 End Emulator.
 
 Section Theorems.
-  Lemma emulator_trace_cons : forall t a h s0, exists s r,
-                                emulator_trace (Commute t :: a :: h) (a::h) s0 =
-                                (Event t s0 s a r) :: (emulator_trace (Commute t :: h) h s).
-  Admitted.
-
   Lemma trace_conflict_free_cons : forall e tr,
     trace_conflict_free (e :: tr) -> trace_conflict_free tr.
   Admitted.
@@ -224,10 +208,10 @@ Section Theorems.
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_impl_conflict_free :
-    forall x y trX trY s0 sf sx t,
+    forall x y trX trY s0 sy sx t,
       x = history_of_trace trX ->
       y = history_of_trace trY ->
-      ref_impl_generated_trace (trX ++ trY) s0 sf -> (* history is correct *)
+      ref_impl_generated_trace (trX ++ trY) s0 sy -> (* history is correct *)
       sim_commutes y x ->
       Some sx = trace_end_state (emulator_trace (x ++ (Commute t :: y)) x s0) ->
       trace_conflict_free (emulator_trace (x ++ (Commute t :: y)) y sx).
@@ -235,9 +219,6 @@ Section Theorems.
     intros h t.
     induction h; subst; intros tr tr0 s0 s1 Hhist Href Hsim.
     simpl; auto.
-    pose (emulator_trace_cons t a h s0). destruct e as [s [r e]]. rewrite e.
-    simpl; split.
-    (* need to relate history_of_trace with emulator_trace / histories with traces *)
   Admitted.
 
   (* if we have the emulator instantiated with a SIM-comm history,
@@ -245,11 +226,17 @@ Section Theorems.
    * produces a trace that the ref_impl could have produced, i.e. a trace
    * that is in the spec *)
   Lemma emulator_impl_correct :
-    forall t tr tr0 s0 s1 h,
-      ref_impl_generated_trace (tr0 ++ tr) s0 s1 ->
-      sim_commutes (history_of_trace tr) (history_of_trace tr0) ->
-      List.In (history_of_trace (emulator_trace (Commute t :: history_of_trace tr)
-                                                h s0 []))
+    forall x y trX trY s0 sy tr srand srand' t,
+      (* set up the base commutative history for the emulator *)
+      x = history_of_trace trX ->
+      y = history_of_trace trY ->
+      ref_impl_generated_trace (trX ++ trY) s0 sy ->
+      sim_commutes y x ->
+      (* running the emulator on any valid history is correct *)
+      (* XXX todo invocations vs history *)
+      ref_impl_generated_trace tr srand srand' ->
+      List.In (history_of_trace (emulator_trace (x ++ Commute t :: y)
+                                                (invocations_of_trace tr) srand))
               spec.
   Proof.
   Admitted.
