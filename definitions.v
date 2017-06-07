@@ -14,35 +14,31 @@ Require Import Ensembles.
 
 Section Histories.
   Definition tid : Type := nat.
-  Definition all_tid := 0. (* XXX probably needs to change *)
-
-  Parameter num_threads : nat.
-  Hypothesis tid_le_num_threads : forall tid, tid <= num_threads.
   
   Inductive action : Type :=
-  | ActInv (tid : tid) : action
-  | ActResp (tid : tid) : action
+  | ActInv (tid : tid) : nat -> action
+  | ActResp (tid : tid) : nat -> action
   | Continue (tid: tid) : action
   | Emulate (tid: tid) : action
   | Commute (tid: tid) : action.
 
   Definition thread_of_action (a: action) :=
     match a with 
-      | ActInv t | ActResp t | Continue t
-      | Emulate t | Commute t => t
+      | ActInv t n | ActResp t n => t
+      | Continue t | Emulate t | Commute t => t
     end.
   Definition action_eq (a1 a2: action) :=
     match a1, a2 with
       | Commute t, Commute t'
       | Emulate t, Emulate t'
-      | ActInv t, ActInv t'
-      | ActResp t, ActResp t'
       | Continue t, Continue t' => t =? t'
+      | ActInv n t, ActInv n' t'
+      | ActResp t n, ActResp t' n' => (t =? t') && (n =? n')
       | _, _ => false
     end.
   Definition is_response (a : action) :=
     match a with
-      | ActResp _ => true
+      | ActResp _ _ => true
       | _ => false
     end.
 
@@ -54,6 +50,9 @@ Section Histories.
   Inductive state : Type :=
   | State : base_history_pos_state -> current_history_state -> commute_state
             -> state.
+  Definition get_base_history_pos_state s := match s with | State bh _ _ => bh end.
+  Definition get_current_history_state s := match s with | State _ ch _ => ch end.
+  Definition get_commute_state s := match s with | State _ _ comm => comm end.
 
   Inductive event : Type := | NoEvent | Event (t: tid) (s1 s2 : state) (a r : action) : event.
   Definition trace : Type := list event.
@@ -69,10 +68,16 @@ Section Histories.
         end
       | _ :: tl => history_of_trace tl
     end.
+  Function history_of_thread (h : history) (t : tid) : history :=
+    match h with
+      | [] => []
+      | a :: tl => if thread_of_action a =? t then a :: history_of_thread tl t
+                   else history_of_thread tl t
+    end.
   Definition invocations_of_trace (tr:trace) : list action :=
-    filter (fun a => match a with | ActInv _ => true | _ => false end) (history_of_trace tr).
+    filter (fun a => match a with | ActInv _ _ => true | _ => false end) (history_of_trace tr).
   Definition responses_of_trace (tr:trace) : list action :=
-    filter (fun a => match a with | ActResp _ => true | _ => false end) (history_of_trace tr).
+    filter (fun a => match a with | ActResp _ _ => true | _ => false end) (history_of_trace tr).
   Definition trace_end_state (tr:trace) : option state :=
     match last tr NoEvent with
       | Event t s1 s2 a r => Some s2
@@ -81,10 +86,10 @@ Section Histories.
     
   Definition swappable (a1 a2 : action) :=
     match a1, a2 with
-      | ActInv t, ActInv t'
-      | ActInv t, ActResp t'
-      | ActResp t, ActInv t'
-      | ActResp t, ActResp t' => t <> t'
+      | ActInv t _, ActInv t' _
+      | ActInv t _, ActResp t' _
+      | ActResp t _, ActInv t' _
+      | ActResp t _, ActResp t' _ => t <> t'
       | _, _ => False
     end.
   Inductive reordered : relation history :=
@@ -130,18 +135,34 @@ Section Commutativity.
   Admitted.
 End Commutativity.
 
-Section Emulator.
+Section Emulator_Hypotheses.
   Parameter spec : list history.
   Parameter spec_oracle : history -> bool.
-  Parameter base_history : history.
+  Parameter base_history : tid -> history.
+
+  Parameter num_threads : nat.
+  Hypothesis tid_le_num_threads : forall tid, tid < num_threads.
+  Parameter num_invocations : nat.
+  Parameter num_responses : nat.
+  Hypothesis inv_types_le_num_invocations :
+    forall a t n, a = ActInv t n -> n < num_invocations.
+  Hypothesis resp_types_le_num_resp :
+    forall r t n, r = ActResp t n -> n < num_responses.
+(*  Hypothesis response_always_exists :
+    forall a ch, spec_oracle ch = true ->
+                 t = thread_of_action a ->
+                 exists rt, spec_oracle ((ActResp t rt) :: (a :: ch)) = true.*)
 
   Hypothesis spec_oracle_correct :
     forall history, List.In history spec <-> spec_oracle history = true.
 
   Hypothesis base_history_well_formed :
-    exists x y t, base_history = x ++ Commute t :: y /\
+    exists x y, forall t,
+                  base_history t = x ++ (history_of_thread y t) /\
                   sim_commutes y x.
+End Emulator_Hypotheses.
 
+Section Emulator.  
   Definition inc_tid_base_history_pos (bh : tid -> nat) (t: tid) :=
     fun tid => if tid =? t then bh tid + 1 else bh tid.
   Definition set_tid_commute (tc : commute_state) (t : tid) :=
@@ -149,43 +170,65 @@ Section Emulator.
   Definition add_to_current_history (ch : current_history_state) (a: action) :=
     fun tid => a :: ch tid. (* note that history goes backward for ease of proof *)
   Definition try_enter_conflict_free_mode (s: state) (t: tid) : state :=
-    match s with | State bh ch comm =>
-                   let hd := nth (bh t) base_history (Emulate t) in
-                   let comm' := if action_eq hd (Commute t)
-                              then set_tid_commute comm t else comm in
-                   let bh' := if action_eq hd (Commute t)
-                              then inc_tid_base_history_pos bh t else bh in
-                   State bh' ch comm'
-    end.
-  Definition get_emulate_response (s : state) : state * action. Admitted.
-  Definition get_and_set_combined_history (s : state) : state. Admitted.
+    let bh := get_base_history_pos_state s in
+    let comm := get_commute_state s in
+    let ch := get_current_history_state s in
+    let hd := nth (bh t) (base_history t) (Emulate t) in
+    let comm' := if action_eq hd (Commute t)
+                 then set_tid_commute comm t else comm in
+    let bh' := if action_eq hd (Commute t)
+               then inc_tid_base_history_pos bh t else bh in
+    State bh' ch comm'.
+
+  Function get_emulate_response_helper (s : state) (a: action) (rt : nat) : state * action :=
+    let bh := get_base_history_pos_state s in
+    let comm := get_commute_state s in
+    let ch := get_current_history_state s in
+    let t := thread_of_action a in
+    let new_history := ActResp t rt :: a :: (ch t) in
+    let new_state := State bh (fun tid => if tid =? t then new_history else ch tid) comm in
+    if spec_oracle new_history then (new_state, ActResp t rt)
+    else match rt with
+           | 0 => (s, Continue t) (* XXX we could just spin forever? *)
+           | S rt' => get_emulate_response_helper s a rt'
+         end.
+  Function get_emulate_response (s : state) (a : action) : state * action :=
+    get_emulate_response_helper s a num_responses.
+  
+  Definition get_and_set_combined_history (s : state) : state.
+    let bh := get_base_history_pos_state s in
+    let comm := get_commute_state s in
+    let ch := get_current_history_state s in
+    
+  Admitted.
   Definition switch_and_perform_emulation (s : state) (a : action) (t : tid) : state * action :=
-    match s with | State bh ch comm =>
-                   let hd := nth (bh t) base_history (Emulate t) in
-                   if eqb (action_eq hd (Emulate t)) false
-                   then let s' := get_and_set_combined_history s in
-                        get_emulate_response s'
-                   else get_emulate_response s
-    end.
+    let bh := get_base_history_pos_state s in
+    let hd := nth (bh t) (base_history t) (Emulate t) in
+    if eqb (action_eq hd (Emulate t)) false
+    then let s' := get_and_set_combined_history s in
+         get_emulate_response s' a
+    else get_emulate_response s a.
+    
   Definition emulator_act (s : state) (a : action) : (state * action) :=
     let t := thread_of_action a in
     let s' := try_enter_conflict_free_mode s t in
     match s' with
       | State bh ch comm =>
-        let hd := nth (bh t) base_history (Emulate t) in 
+        let hd := nth (bh t) (base_history t) (Emulate t) in 
         (* get the response and perform emulation if necessary *)
-        let (s_new, r) := if action_eq hd a
+        let (s_response, r) := if action_eq hd a
                         then (s', Continue t)
                         else if action_eq (Continue t) a &&
                                           is_response hd &&
                                           (thread_of_action hd =? t)
                              then (s', hd)
                              else switch_and_perform_emulation s' hd t in
-        match s_new with
+        match s_response with
           | State bh_new ch_new comm_new =>
-            let final_bh := if comm_new t then inc_tid_base_history_pos bh_new t (* conflict-free mode *)
-                        else fun tid => (bh_new tid) + 1 in (* replay mode *) 
-                (State final_bh ch_new comm_new, r)
+            let final_bh := if comm_new t
+                            then inc_tid_base_history_pos bh_new t (* conflict-free mode *)
+                            else fun tid => (bh_new tid) + 1 in (* replay mode *) 
+            (State final_bh ch_new comm_new, r)
         end
     end.
   Function emulator_trace_helper (hbase hrun : history) (s0: state) (tr : trace) :=
