@@ -138,6 +138,8 @@ End Commutativity.
 Section Emulator_Hypotheses.
   Parameter spec : list history.
   Parameter spec_oracle : history -> bool.
+  Parameter X : history.
+  Parameter Y : history.
   Parameter base_history : tid -> history.
 
   Parameter num_threads : nat.
@@ -157,9 +159,9 @@ Section Emulator_Hypotheses.
     forall history, List.In history spec <-> spec_oracle history = true.
 
   Hypothesis base_history_well_formed :
-    exists x y, forall t,
-                  base_history t = x ++ (history_of_thread y t) /\
-                  sim_commutes y x.
+    forall t,
+      base_history t = X ++ Commute t :: (history_of_thread Y t)
+      /\ sim_commutes Y X.
 End Emulator_Hypotheses.
 
 Section Emulator.  
@@ -186,7 +188,7 @@ Section Emulator.
     let ch := get_current_history_state s in
     let t := thread_of_action a in
     let new_history := ActResp t rt :: a :: (ch t) in
-    let new_state := State bh (fun tid => if tid =? t then new_history else ch tid) comm in
+    let new_state := State bh (fun tid => new_history) comm in
     if spec_oracle new_history then (new_state, ActResp t rt)
     else match rt with
            | 0 => (s, Continue t) (* XXX we could just spin forever? *)
@@ -194,18 +196,30 @@ Section Emulator.
          end.
   Function get_emulate_response (s : state) (a : action) : state * action :=
     get_emulate_response_helper s a num_responses.
-  
-  Definition get_and_set_combined_history (s : state) : state.
+
+  Function combine_histories (ch : current_history_state)
+           (tid : tid) (combined : history) : history :=
+    match tid with
+      | 0 => combined
+      | S n => combine_histories ch n ((firstn (length (ch tid) - length X) (ch tid)) ++ combined)
+                                 (* note that we can just stick it on because Y is
+                                  * sim-commutative! *)
+    end.
+  Definition get_and_set_combined_history (s : state) (combined : history) : state :=
     let bh := get_base_history_pos_state s in
     let comm := get_commute_state s in
     let ch := get_current_history_state s in
+    let hcombined := combine_histories ch num_threads combined in
+    State bh (fun tid => hcombined) comm.
     
-  Admitted.
   Definition switch_and_perform_emulation (s : state) (a : action) (t : tid) : state * action :=
     let bh := get_base_history_pos_state s in
+    let ch := get_current_history_state s in 
     let hd := nth (bh t) (base_history t) (Emulate t) in
     if eqb (action_eq hd (Emulate t)) false
-    then let s' := get_and_set_combined_history s in
+    then let s' := if bh t <=? length X then s
+                   (* if we're in the commutative region *)
+                   else get_and_set_combined_history s (ch 0) in
          get_emulate_response s' a
     else get_emulate_response s a.
     
