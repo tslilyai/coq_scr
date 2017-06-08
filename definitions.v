@@ -135,22 +135,23 @@ Section Commutativity.
   Admitted.
 End Commutativity.
 
-Section Emulator_Hypotheses.
+Section Emulator_Components.
   Parameter spec : list history.
   Parameter spec_oracle : history -> bool.
   Parameter X : history.
   Parameter Y : history.
   Parameter base_history : tid -> history.
-
   Parameter num_threads : nat.
-  Variable tid_le_num_threads : forall tid, tid < num_threads.
   Parameter num_invocations : nat.
   Parameter num_responses : nat.
-  Hypothesis inv_types_le_num_invocations :
+
+  Parameter tid_le_num_threads : forall tid, tid < num_threads.
+  Parameter inv_types_le_num_invocations :
     forall a t n, a = ActInv t n -> n < num_invocations.
-  Hypothesis resp_types_le_num_resp :
+  Parameter resp_types_le_num_resp :
     forall r t n, r = ActResp t n -> n < num_responses.
-(*  Hypothesis response_always_exists :
+
+  (*  Hypothesis response_always_exists :
     forall a ch, spec_oracle ch = true ->
                  t = thread_of_action a ->
                  exists rt, spec_oracle ((ActResp t rt) :: (a :: ch)) = true.*)
@@ -161,13 +162,15 @@ Section Emulator_Hypotheses.
   Parameter base_history_well_formed :
     forall t,
       base_history t = X ++ Commute t :: (history_of_thread Y t)
+      /\ spec_oracle (rev (X ++ Y)) = true
       /\ sim_commutes Y X.
+
   Definition Y_invocations := (* Note that we add from the front *)
     let fix f h acc := match h with
                          | [] => acc
                          | hd :: tl => f tl (Continue (thread_of_action hd) :: hd :: acc)
                        end in f Y [].
-End Emulator_Hypotheses.
+End Emulator_Components.
 
 Section Emulator.  
   Definition inc_tid_base_history_pos (bh : tid -> nat) (t: tid) :=
@@ -176,6 +179,7 @@ Section Emulator.
     fun tid => if tid =? t then true else tc t.
   Definition add_to_current_history (ch : current_history_state) (a: action) :=
     fun tid => a :: ch tid. (* note that history goes backward for ease of proof *)
+  
   Definition try_enter_conflict_free_mode (s: state) (t: tid) : state :=
     let '(bh, ch, comm) := get_state_components s in
     let hd := nth (bh t) (base_history t) (Emulate t) in
@@ -185,7 +189,8 @@ Section Emulator.
                then inc_tid_base_history_pos bh t else bh in
     State bh' ch comm'.
 
-  Function combine_histories (ch : current_history_state) (tid : tid) (combined : history) : history :=
+  Function combine_histories (ch : current_history_state) (tid : tid)
+           (combined : history) : history :=
     match tid with
       | 0 => combined
       | S n => combine_histories ch n ((firstn (length (ch tid) - length X) (ch tid)) ++ combined)
@@ -207,10 +212,11 @@ Section Emulator.
            | 0 => (s, Continue t) (* XXX we could just spin forever? *)
            | S rt' => get_emulate_response_helper s a rt'
          end.
-  Function get_emulate_response (s : state) (a : action) : state * action :=
+  Definition get_emulate_response (s : state) (a : action) : state * action :=
     get_emulate_response_helper s a num_responses.
     
-  Definition switch_and_perform_emulation (s : state) (a : action) (t : tid) : state * action :=
+  Definition emulate_mode_and_perform_emulation (s : state) (a : action) (t : tid) :
+    state * action :=
     let '(bh, ch, _) := get_state_components s in
     let hd := nth (bh t) (base_history t) (Emulate t) in
     if eqb (action_eq hd (Emulate t)) false
@@ -223,25 +229,21 @@ Section Emulator.
   Definition emulator_act (s : state) (a : action) : (state * action) :=
     let t := thread_of_action a in
     let s' := try_enter_conflict_free_mode s t in
-    match s' with
-      | State bh ch comm =>
-        let hd := nth (bh t) (base_history t) (Emulate t) in 
-        (* get the response and perform emulation if necessary *)
-        let (s_response, r) := if action_eq hd a
-                        then (s', Continue t)
-                        else if action_eq (Continue t) a &&
-                                          is_response hd &&
-                                          (thread_of_action hd =? t)
-                             then (s', hd)
-                             else switch_and_perform_emulation s' hd t in
-        match s_response with
-          | State bh_new ch_new comm_new =>
-            let final_bh := if comm_new t
-                            then inc_tid_base_history_pos bh_new t (* conflict-free mode *)
-                            else fun tid => (bh_new tid) + 1 in (* replay mode *) 
-            (State final_bh ch_new comm_new, r)
-        end
-    end.
+    let '(bh, ch, _) := get_state_components s' in
+    let hd := nth (bh t) (base_history t) (Emulate t) in 
+    (* get the response and perform emulation if necessary *)
+    let (s_response, r) := if action_eq hd a
+                           then (s', Continue t)
+                           else if action_eq (Continue t) a &&
+                                             is_response hd &&
+                                             (thread_of_action hd =? t)
+                                then (s', hd)
+                                else emulate_mode_and_perform_emulation s' hd t in
+    let '(bh_new, ch_new, comm_new) := get_state_components s_response in
+    let final_bh := if comm_new t
+                    then inc_tid_base_history_pos bh_new t (* conflict-free mode *)
+                    else fun tid => (bh_new tid) + 1 in (* replay mode *) 
+    (State final_bh ch_new comm_new, r).
   Function emulator_trace_helper (hrun : history) (s0: state) (tr : trace) :=
     match hrun with
       | [] => tr
@@ -290,9 +292,8 @@ Section Theorems.
     forall s0 sComm invocations,
       (Some sComm = trace_end_state (emulator_trace X s0) ->
       trace_conflict_free (emulator_trace Y_invocations sComm))
-      /\
-      (only_has_invocations invocations ->
-       spec_oracle (history_of_trace (emulator_trace invocations s0)) = true).
+      /\ (only_has_invocations invocations ->
+          spec_oracle (history_of_trace (emulator_trace invocations s0)) = true).
   Proof.
     intros; split; [eapply emulator_impl_conflict_free | eapply emulator_impl_correct]; eauto.
   Qed.
