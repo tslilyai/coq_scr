@@ -165,11 +165,14 @@ Section Emulator_Components.
       /\ spec_oracle (rev (X ++ Y)) = true
       /\ sim_commutes Y X.
 
-  Definition Y_invocations := (* Note that we add from the front *)
-    let fix f h acc := match h with
-                         | [] => acc
-                         | hd :: tl => f tl (Continue (thread_of_action hd) :: hd :: acc)
-                       end in f Y [].
+  Function get_invocations h acc := (* Note that we add from the front *)
+    match h with
+      | [] => acc
+      | hd :: tl => get_invocations tl (Continue (thread_of_action hd) :: hd :: acc) (*XXX*)
+    end.
+  Definition X_invocations := get_invocations X [].
+  Definition Y_invocations := get_invocations Y [].
+  Definition start_state : state := State (fun tid => 0) (fun tid => []) (fun tid => false).
 End Emulator_Components.
 
 Section Emulator.  
@@ -257,6 +260,16 @@ Section Emulator.
 End Emulator.
 
 Section Theorems.
+  Lemma state_after_X_invocations :
+    forall bh ch comm,
+      Some (State bh ch comm) = trace_end_state (emulator_trace X_invocations start_state) ->
+      forall t,
+        nth (bh t) (base_history t) (Emulate t) = Commute t /\
+        ch t = X.
+  Proof.
+  Admitted.
+
+  
   Lemma trace_conflict_free_cons : forall e tr,
     trace_conflict_free (e :: tr) -> trace_conflict_free tr.
   Admitted.
@@ -264,8 +277,8 @@ Section Theorems.
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_impl_conflict_free :
-    forall s0 sComm,
-      Some sComm = trace_end_state (emulator_trace X s0) ->
+    forall sComm,
+      Some sComm = trace_end_state (emulator_trace X_invocations start_state) ->
       trace_conflict_free (emulator_trace Y_invocations sComm).
   Proof.
     intros s0 sComm Hs0.
@@ -282,18 +295,18 @@ Section Theorems.
    * and the emulator acts on some input sequence, then the emulator
    * produces a trace whose corresponding history is correct *)
   Lemma emulator_impl_correct :
-    forall invocations s0,
+    forall invocations,
       only_has_invocations invocations ->
-      spec_oracle (history_of_trace (emulator_trace invocations s0)) = true.
+      spec_oracle (history_of_trace (emulator_trace invocations start_state)) = true.
   Proof.
   Admitted.
 
   Theorem scalable_commutativity_rule :
-    forall s0 sComm invocations,
-      (Some sComm = trace_end_state (emulator_trace X s0) ->
+    forall sComm invocations,
+      (Some sComm = trace_end_state (emulator_trace X start_state) ->
       trace_conflict_free (emulator_trace Y_invocations sComm))
       /\ (only_has_invocations invocations ->
-          spec_oracle (history_of_trace (emulator_trace invocations s0)) = true).
+          spec_oracle (history_of_trace (emulator_trace invocations start_state)) = true).
   Proof.
     intros; split; [eapply emulator_impl_conflict_free | eapply emulator_impl_correct]; eauto.
   Qed.
