@@ -143,7 +143,7 @@ Section Emulator_Hypotheses.
   Parameter base_history : tid -> history.
 
   Parameter num_threads : nat.
-  Hypothesis tid_le_num_threads : forall tid, tid < num_threads.
+  Variable tid_le_num_threads : forall tid, tid < num_threads.
   Parameter num_invocations : nat.
   Parameter num_responses : nat.
   Hypothesis inv_types_le_num_invocations :
@@ -155,10 +155,10 @@ Section Emulator_Hypotheses.
                  t = thread_of_action a ->
                  exists rt, spec_oracle ((ActResp t rt) :: (a :: ch)) = true.*)
 
-  Hypothesis spec_oracle_correct :
+  Parameter spec_oracle_correct :
     forall history, List.In history spec <-> spec_oracle history = true.
 
-  Hypothesis base_history_well_formed :
+  Parameter base_history_well_formed :
     forall t,
       base_history t = X ++ Commute t :: (history_of_thread Y t)
       /\ sim_commutes Y X.
@@ -262,17 +262,23 @@ Section Theorems.
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_impl_conflict_free :
-    forall s0 tr sComm,
-      tr = emulator_trace X s0 ->
-      Some sComm = trace_end_state tr ->
+    forall s0 sComm,
+      Some sComm = trace_end_state (emulator_trace X s0) ->
       trace_conflict_free (emulator_trace Y_invocations sComm).
   Proof.
+    intros s0 sComm Hs0.
+    pose base_history_well_formed as Hwf.
+    pose spec_oracle_correct as Hspec.
+    remember Y_invocations as yi.
+    unfold Y_invocations in *.
+    induction yi.
+    simpl; auto.
+    
   Admitted.
 
   (* if we have the emulator instantiated with a SIM-comm history,
    * and the emulator acts on some input sequence, then the emulator
-   * produces a trace that the ref_impl could have produced, i.e. a trace
-   * that is in the spec *)
+   * produces a trace whose corresponding history is correct *)
   Lemma emulator_impl_correct :
     forall invocations s0,
       only_has_invocations invocations ->
@@ -281,9 +287,8 @@ Section Theorems.
   Admitted.
 
   Theorem scalable_commutativity_rule :
-    forall s0 tr sComm invocations,
-      (tr = emulator_trace X s0 ->
-      Some sComm = trace_end_state tr ->
+    forall s0 sComm invocations,
+      (Some sComm = trace_end_state (emulator_trace X s0) ->
       trace_conflict_free (emulator_trace Y_invocations sComm))
       /\
       (only_has_invocations invocations ->
