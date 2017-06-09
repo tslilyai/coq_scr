@@ -168,9 +168,11 @@ Section Emulator_Components.
   Function get_invocations h acc := (* Note that we add from the front *)
     match h with
       | [] => acc
-      | hd :: tl => get_invocations tl (Continue (thread_of_action hd) :: hd :: acc) (*XXX*)
+      | hd :: tl => match hd with
+                      | ActInv _ _ => get_invocations tl
+                                                      hd :: acc) (*XXX*)
     end.
-  Definition X_invocations := get_invocations X [].
+  Definition X_invocations := get_invocations X []. (* XXX *)
   Definition Y_invocations := get_invocations Y [].
   Definition start_state : state := State (fun tid => 0) (fun tid => []) (fun tid => false).
 End Emulator_Components.
@@ -268,6 +270,8 @@ Section Theorems.
         ch t = X.
   Proof.
   Admitted.
+
+  Lemma state_
 
   
   Lemma trace_conflict_free_cons : forall e tr,
