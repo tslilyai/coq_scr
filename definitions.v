@@ -43,8 +43,10 @@ Section Histories.
     end.
 
   Definition history : Type := list action.
-  Definition only_has_invocations (h : history) :=
-    fold_left (fun acc a => exists t n, (a = ActInv t n \/ a = Continue t) /\ acc) h True.
+  Definition is_implementation_history (h : history) :=
+    fold_left (fun acc a => exists t n, (a = ActInv t n \/ a = Continue t \/ a = ActResp t n) /\ acc) h True.
+  Definition is_interface_history (h : history) :=
+    fold_left (fun acc a => exists t n, (a = ActInv t n \/ a = ActResp t n) /\ acc) h True.
 
   Definition base_history_pos_state : Type := tid -> nat.
   Definition current_history_state : Type := tid -> history.
