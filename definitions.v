@@ -232,35 +232,53 @@ Section Theorems.
       a' = (t,i,r) /\ spec ((t,i,r) :: h2).
   Proof.
     intros h1 h2 s s' a' t i r HX Hgen Hact.
-    pose Hact as Hact'. 
-    generalize dependent t.
-    generalize dependent i.
-    generalize dependent r.
-    generalize dependent h1.
-    remember (length h2) as Hlen.
-    generalize dependent h2.
+    assert (spec X) as HspecX.
+    eapply (spec_prefix_closed (Y++X) X Y); eauto. apply X_and_Y_in_spec.
+    
+    generalize dependent t. generalize dependent i. generalize dependent r.
+    generalize dependent h1. generalize dependent s. generalize dependent s'.
+    generalize dependent a'.
+    remember (length h2) as Hlen. generalize dependent h2.
     induction (Hlen); intros.
     - destruct h2; try discriminate.
       inversion Hgen; subst.
-      unfold emulator_act in Hact'. 
+      unfold emulator_act in Hact.
       unfold start_state in Hact; simpl in *.
-      unfold get_replay_response in Hact'. simpl in *.
-      rewrite <- HX in Hact'; simpl in *.
-      rewrite rev_unit in Hact'.
-      rewrite (inv_of_action_eq (t,i,r) t i r) in Hact'.
+      unfold get_replay_response in Hact. simpl in *.
+      rewrite <- HX in Hact; simpl in *.
+      rewrite rev_unit in Hact.
+      rewrite (inv_of_action_eq (t,i,r) t i r) in Hact.
 
-      repeat (split; auto); inversion Hact'; auto; simpl.
+      repeat (split; auto); inversion Hact; auto; simpl.
       apply rev_involutive.
-      assert (spec X) as HspecX.
-      eapply (spec_prefix_closed (Y++X) X Y); eauto. apply X_and_Y_in_spec. 
       eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
       auto.
 
-    - 
+    - assert (exists a h, h2 = a :: h) as Hnotnil.
+      { destruct h2. inversion HeqHlen. exists p; exists h2; auto. }
+      destruct Hnotnil as [a [h Hnotnil]].
+      rewrite Hnotnil in Hgen. inversion Hgen; subst.
+      assert (generated s1 h) as Hgenprefix by auto.
+      assert (n = length h) as Hlenh by now inversion HeqHlen.
+      assert ((h1 ++ [(t, i, r)]) ++ (t0, i0, r0) :: h = X) as HX' by
+            now rewrite <- app_assoc. 
+      pose (IHn h Hlenh (t0, i0, r0) s s1 Hgenprefix (h1 ++ [(t,i,r)]) r0 i0 t0 HX' H2)
+        as Hhyp.
+      destruct Hhyp as [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre [Hscpy [Dumb Hspec]]]]]]].
+      unfold emulator_act in Hact.
+      rewrite Hsmd in Hact.
+      unfold get_replay_response in Hact. simpl in *.
+      rewrite Hscpy in Hact; simpl in *.
+      rewrite rev_unit in Hact.
+      rewrite (inv_of_action_eq (t,i,r) t i r) in Hact.
 
+      repeat (split; auto); inversion Hact; auto; simpl.
+      rewrite Hspre. auto.
+      apply rev_involutive.
+      eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
+      auto.
+  Qed.
 
-    
-  Admitted.
   (* TODO: lemmas about transitions *)
   
   Lemma get_emulate_response_correct :
@@ -273,7 +291,7 @@ Section Theorems.
     /\ spec (a' :: h)
     /\ s'.(md) = Emulate.
   Proof.
-    intros s h t i s' a' Hgen Hmd Hspec Hact.
+    intros s h t i s' a' Hgen Hmd Hspec Hact.rewrite 
     pose Hact as Hact'.
     split. eapply response_always_exists; eauto.
     split;
