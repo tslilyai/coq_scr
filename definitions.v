@@ -279,8 +279,28 @@ Section Theorems.
       auto.
   Qed.
 
-  (* TODO: lemmas about transitions *)
-  
+  Lemma diverge_correct :
+    forall h1 h2 t t' i i' r s s' a',
+      h1 ++ (t,i,r) :: h2 = X ->
+      generated s h2 ->
+      (t <> t' \/ i <> i') ->
+      spec ((t',i',NoResp) :: h2) ->
+      emulator_act s t' i' = (s', a') ->
+      s'.(md) = Emulate ->
+      (exists rtyp, a' = (t',i',Resp rtyp))
+      /\ spec (a' :: h2).
+  Admitted.
+
+  Lemma replay_done_correct :
+    forall t i s s' a',
+      generated s X ->
+      spec ((t,i,NoResp) :: X) ->
+      emulator_act s t i = (s', a') ->
+      s'.(md) = Emulate ->
+      (exists rtyp, a' = (t,i,Resp rtyp))
+      /\ spec (a' :: X).
+  Admitted.
+    
   Lemma get_emulate_response_correct :
     forall s h t i s' a',
     generated s h ->
@@ -291,7 +311,7 @@ Section Theorems.
     /\ spec (a' :: h)
     /\ s'.(md) = Emulate.
   Proof.
-    intros s h t i s' a' Hgen Hmd Hspec Hact.rewrite 
+    intros s h t i s' a' Hgen Hmd Hspec Hact.
     pose Hact as Hact'.
     split. eapply response_always_exists; eauto.
     split;
