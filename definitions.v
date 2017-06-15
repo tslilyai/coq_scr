@@ -220,30 +220,35 @@ Section Theorems.
     intros. unfold action_invocation_eq; subst. destruct i. apply Nat.eqb_refl.
   Qed.
 
-  Definition action_eq (a b : action) : Prop :=
-    match a, b with
-      | (t,i,r), (t',i',r') => t = t' /\ i = i' /\ r = r'
-    end.
-
-  Lemma action_eq_dec : forall a b, {action_eq a b} + {~action_eq a b}.
+  Lemma action_eq_dec : forall (a b : action), {a = b} + {a <> b}.
   Proof.
-    intros [[t [i]] r] [[t' [i']] r']; unfold action_eq.
+    intros [[t [i]] r] [[t' [i']] r'].
     destruct r, r', (Nat.eq_dec t t'), (Nat.eq_dec i i'); try destruct (Nat.eq_dec n n0); subst.
-    all: try (right; intuition; auto; try apply n; try apply n1;
-              inversion H2; inversion H; auto; fail).
+    all : try (right; intuition; try apply n; try apply n1;
+              try inversion H2; try inversion H; auto; fail).
     all : now left.
   Qed.
-      
+
+  Lemma history_eq_dec : forall (h1 h2 : history), {h1 = h2} + {h1 <> h2}.
+  Proof.
+    apply (list_eq_dec action_eq_dec).
+  Qed.
+    
   Lemma next_invocation_dec :
-    forall a h,
-      {exists h1, h1 ++ a :: h = X}
-      + {exists h1 b, b <> a /\ h1 :: a :: h = X}
-      + {exists h1, h = h1 ++ X}
+    forall h,
+      {exists h1, h1 ++ h = X}
+      + {exists a b h0 h1, action_eq b a /\ h = b :: h0 /\ h1 :: a :: h0 = X}
+      + {exists h1 h2, h = h1 ++ h2 /\ h2 = X}
+      + {exists h1 h2, h = h1 ++ h2 /\ length h2 = length X /\ h2 <> X}.
   Proof.
     intros.
-    induction h. destruct X; simpl in *.
-    left; right. exists []. auto.
-    destruct (action_eq a b).
+    destruct h; destruct X; subst; simpl in *.
+    - left; right. exists [], []. auto.
+    - left; left; left; exists (a :: h). rewrite app_nil_r; auto.
+    - left; right. exists (a :: h), []. split; simpl; auto. rewrite app_nil_r; auto.
+    - destruct (action_eq_dec a a0).
+      left; left; left. 
+      right. 
     
     
   Lemma get_commute_response_correct : Prop. Admitted.
