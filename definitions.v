@@ -33,7 +33,7 @@ Section Histories.
 
   Parameter num_threads : nat.
   Parameter tid_le_num_threads : forall tid, tid < num_threads.
-
+  
   Definition action : Type := tid * invocation * response.
   Definition action_invocation_eq (a : action) (i : invocation) :=
     match a, i with
@@ -220,6 +220,32 @@ Section Theorems.
     intros. unfold action_invocation_eq; subst. destruct i. apply Nat.eqb_refl.
   Qed.
 
+  Definition action_eq (a b : action) : Prop :=
+    match a, b with
+      | (t,i,r), (t',i',r') => t = t' /\ i = i' /\ r = r'
+    end.
+
+  Lemma action_eq_dec : forall a b, {action_eq a b} + {~action_eq a b}.
+  Proof.
+    intros [[t [i]] r] [[t' [i']] r']; unfold action_eq.
+    destruct r, r', (Nat.eq_dec t t'), (Nat.eq_dec i i'); try destruct (Nat.eq_dec n n0); subst.
+    all: try (right; intuition; auto; try apply n; try apply n1;
+              inversion H2; inversion H; auto; fail).
+    all : now left.
+  Qed.
+      
+  Lemma next_invocation_dec :
+    forall a h,
+      {exists h1, h1 ++ a :: h = X}
+      + {exists h1 b, b <> a /\ h1 :: a :: h = X}
+      + {exists h1, h = h1 ++ X}
+  Proof.
+    intros.
+    induction h. destruct X; simpl in *.
+    left; right. exists []. auto.
+    destruct (action_eq a b).
+    
+    
   Lemma get_commute_response_correct : Prop. Admitted.
 
   Lemma get_replay_response_correct :
@@ -231,10 +257,9 @@ Section Theorems.
       s'.(md) = Replay /\ s'.(preH) = (t,i,r)::h2 /\ s'.(X_copy) = h1 /\
       a' = (t,i,r) /\ spec ((t,i,r) :: h2).
   Proof.
-    intros h1 h2 s s' a' t i r HX Hgen Hact.
     assert (spec X) as HspecX.
-    eapply (spec_prefix_closed (Y++X) X Y); eauto. apply X_and_Y_in_spec.
-    
+    { eapply (spec_prefix_closed (Y++X) X Y); eauto. apply X_and_Y_in_spec. }
+    intros h1 h2 s s' a' t i r HX Hgen Hact.
     generalize dependent t. generalize dependent i. generalize dependent r.
     generalize dependent h1. generalize dependent s. generalize dependent s'.
     generalize dependent a'.
@@ -265,9 +290,8 @@ Section Theorems.
       pose (IHn h Hlenh (t0, i0, r0) s s1 Hgenprefix (h1 ++ [(t,i,r)]) r0 i0 t0 HX' H2)
         as Hhyp.
       destruct Hhyp as [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre [Hscpy [Dumb Hspec]]]]]]].
-      unfold emulator_act in Hact.
-      rewrite Hsmd in Hact.
-      unfold get_replay_response in Hact. simpl in *.
+      unfold emulator_act in Hact. rewrite Hsmd in Hact.
+      unfold get_replay_response in Hact; simpl in *.
       rewrite Hscpy in Hact; simpl in *.
       rewrite rev_unit in Hact.
       rewrite (inv_of_action_eq (t,i,r) t i r) in Hact.
