@@ -35,9 +35,9 @@ Section Histories.
   Parameter tid_le_num_threads : forall tid, tid < num_threads.
   
   Definition action : Type := tid * invocation * response.
-  Definition action_invocation_eq (a : action) (i : invocation) :=
+  Definition action_invocation_eq (a : action) (t : tid) (i : invocation) :=
     match a, i with
-      | (_, Inv i1, _), Inv i2 => i1 =? i2
+      | (tid, Inv i1, _), Inv i2 => (i1 =? i2) && (t =? tid)
     end.
   Definition thread_of_action (a : action) := let '(t, _, _) := a in t.
 
@@ -134,7 +134,7 @@ Section Emulator.
       | 0 => newacc
       | S t' => combine_tid_commH s t' newacc
     end.
-  Definition get_state_history (s : state) := s.(preH) ++ s.(postH). (*
+  Definition get_state_history (s : state) := s.(postH) ++ s.(preH). (*
     s.(preH) ++ (combine_tid_commH s num_threads []) ++ s.(postH).*)
   Function get_emulate_response_helper (s : state) (t: tid) (i : invocation)
            (rtyp : nat) (fuel : nat) :
@@ -146,7 +146,8 @@ Section Emulator.
       (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Emulate,
        (t, i, Resp rtyp))
     else match fuel with
-           | 0 => (s, (t, i, NoResp)) (* should never reach this *)
+           | 0 => (mkState s.(X_copy) s.(Y_copy) s.(preH)
+                   s.(commH) s.(postH) Emulate, (t, i, NoResp)) (* should never reach this *)
            | S n' => get_emulate_response_helper s t i (S rtyp) n'
          end.
   Definition get_emulate_response (s : state) (t: tid) (i : invocation) : state * action :=
@@ -154,7 +155,7 @@ Section Emulator.
   Definition get_commute_response (s : state) (t: tid) (i: invocation) : state * action :=
     match rev (s.(Y_copy) t) with
       | [] => get_emulate_response s t i
-      | hd::tl => if action_invocation_eq hd i
+      | hd::tl => if action_invocation_eq hd t i
                   then (mkState s.(X_copy) (fun tid => if tid =? t
                                                        then (rev tl)
                                                        else s.(Y_copy) t)
@@ -167,7 +168,7 @@ Section Emulator.
   Definition get_replay_response (s : state) (t: tid) (i : invocation) : state * action :=
     match rev s.(X_copy) with
       | [] => get_commute_response s t i (* will change to Commute... *)
-      | hd::tl => if action_invocation_eq hd i
+      | hd::tl => if action_invocation_eq hd t i
                   then (mkState (rev tl) s.(Y_copy) (hd::s.(preH))
                                                     s.(commH) s.(postH) Replay, hd)
                           else get_emulate_response s t i
@@ -194,7 +195,7 @@ Section Theorems.
       generated s h ->
 (*      reordered combined_commH (combine_tid_commH s num_threads []) ->
       s.(preH) ++ combined_commH ++ s.(postH) = h.*)
-      s.(preH) ++ s.(postH) = h.
+      s.(postH) ++ s.(preH) = h.
   Admitted.
   
   Lemma response_always_exists :
@@ -207,7 +208,7 @@ Section Theorems.
 
   Ltac discriminate_noresp :=
     match goal with
-    | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] =>
+    | [ H : (_, (?t, ?i, NoResp)) = (_, ?a') |- _ ] =>
       let M := fresh "SO" in
       assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
           now eapply response_always_exists; eauto | 
@@ -215,9 +216,9 @@ Section Theorems.
 
   Lemma inv_of_action_eq : forall a t i r,
     a = (t, i, r) ->
-    action_invocation_eq a i = true.
+    action_invocation_eq a t i = true.
   Proof.
-    intros. unfold action_invocation_eq; subst. destruct i. apply Nat.eqb_refl.
+    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
   Qed.
 
   Lemma action_eq_dec : forall (a b : action), {a = b} + {a <> b}.
@@ -237,19 +238,17 @@ Section Theorems.
   Lemma next_invocation_dec :
     forall h,
       {exists h1, h1 ++ h = X}
-      + {exists a b h0 h1, action_eq b a /\ h = b :: h0 /\ h1 :: a :: h0 = X}
+      + {exists a b h0 h1, b = a /\ h = b :: h0 /\ h1 :: a :: h0 = X}
       + {exists h1 h2, h = h1 ++ h2 /\ h2 = X}
       + {exists h1 h2, h = h1 ++ h2 /\ length h2 = length X /\ h2 <> X}.
   Proof.
     intros.
-    destruct h; destruct X; subst; simpl in *.
+    induction h; destruct X; subst; simpl in *.
     - left; right. exists [], []. auto.
     - left; left; left; exists (a :: h). rewrite app_nil_r; auto.
     - left; right. exists (a :: h), []. split; simpl; auto. rewrite app_nil_r; auto.
-    - destruct (action_eq_dec a a0).
-      left; left; left. 
-      right. 
-    
+    -
+  Admitted.
     
   Lemma get_commute_response_correct : Prop. Admitted.
 
@@ -260,7 +259,8 @@ Section Theorems.
       emulator_act s t i = (s', a') ->
       s.(md) = Replay /\ s.(preH) = h2 /\ s.(X_copy) = h1 ++ [(t,i,r)] /\
       s'.(md) = Replay /\ s'.(preH) = (t,i,r)::h2 /\ s'.(X_copy) = h1 /\
-      a' = (t,i,r) /\ spec ((t,i,r) :: h2).
+      a' = (t,i,r) /\ spec ((t,i,r) :: h2)
+     /\ s'.(postH) = [] /\ s.(postH) = [].
   Proof.
     assert (spec X) as HspecX.
     { eapply (spec_prefix_closed (Y++X) X Y); eauto. apply X_and_Y_in_spec. }
@@ -294,7 +294,8 @@ Section Theorems.
             now rewrite <- app_assoc. 
       pose (IHn h Hlenh (t0, i0, r0) s s1 Hgenprefix (h1 ++ [(t,i,r)]) r0 i0 t0 HX' H2)
         as Hhyp.
-      destruct Hhyp as [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre [Hscpy [Dumb Hspec]]]]]]].
+      destruct Hhyp as [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre
+                                                       [Hscpy [Dumb [Hspec [Hnils Hnils1]]]]]]]]].
       unfold emulator_act in Hact. rewrite Hsmd in Hact.
       unfold get_replay_response in Hact; simpl in *.
       rewrite Hscpy in Hact; simpl in *.
@@ -305,7 +306,7 @@ Section Theorems.
       rewrite Hspre. auto.
       apply rev_involutive.
       eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
-      auto.
+      auto. 
   Qed.
 
   Lemma diverge_correct :
@@ -315,19 +316,145 @@ Section Theorems.
       (t <> t' \/ i <> i') ->
       spec ((t',i',NoResp) :: h2) ->
       emulator_act s t' i' = (s', a') ->
-      s'.(md) = Emulate ->
-      (exists rtyp, a' = (t',i',Resp rtyp))
+      s.(md) = Replay /\ s.(preH) = h2
+      /\ s.(X_copy) = h1 ++ [(t,i,r)]
+      /\ s'.(md) = Emulate
+      /\ s'.(preH) = s.(preH)
+      /\ (exists rtyp, a' = (t',i',Resp rtyp))
       /\ spec (a' :: h2).
-  Admitted.
+  Proof.
+    intros h1 h2 t t' i i' r s s' a' HX Hgen Hdiff Hspec Hact.
+    pose Hact as Hact'.
+    destruct Hdiff, h2; inversion Hgen; subst;
+    unfold emulator_act in Hact'; simpl in Hact'; unfold get_replay_response in Hact';
+    simpl in *;
+
+    assert (action_invocation_eq (t,i,r) t' i' = false) as Hneq;
+    unfold action_invocation_eq;
+    repeat (rewrite <- Nat.eqb_neq, Nat.eqb_sym in H); try rewrite H;
+    destruct i, i'; try rewrite andb_false_r; try rewrite andb_false_l; auto.
+
+    3,5: destruct (Nat.eq_dec n n0);
+      [ rewrite e in H; contradiction | 
+        rewrite <- (Nat.eqb_neq n n0) in n1; rewrite n1; apply andb_false_l].
+
+    1,3 : rewrite <- HX in Hact'; rewrite rev_unit in Hact';
+      rewrite Hneq in Hact'; unfold get_emulate_response in Hact';
+      functional induction (get_emulate_response_helper
+                              start_state t' (Inv n0) 0 max_response_number);
+        repeat (split; auto); inversion Hact'; subst; auto;
+        [ exists rtyp; auto
+               | unfold get_state_history in e; simpl in e; apply spec_oracle_correct; auto
+               | discriminate_noresp | | | | ]; apply (IHp H1).
+
+    all: assert ((h1 ++ [(t, Inv n, r)]) ++ (t0, i0, r0) :: h2 = X) as HX' by
+            now rewrite <- app_assoc.
+    all: pose (get_replay_response_correct (h1 ++ [(t, Inv n, r)])
+                                        h2 s1 s (t0, i0, r0) t0
+                                        i0 r0 HX' H4 H3) as Hprevstep;
+      destruct Hprevstep as
+          [Hmds1 [Hpres1 [Hxcpys1 [Hmds [Hpres [Hxcpys [Dumb [Hspecs [Hposts Hposts2]]]]]]]]].
+    all: subst; rewrite Hmds in Hact'; rewrite Hxcpys in Hact'; rewrite rev_unit in Hact';
+    rewrite Hneq in Hact'; unfold get_emulate_response in Hact'.
+
+    (* TODO: don't repeat the following bit twice... *)
+    functional induction (get_emulate_response_helper s t' (Inv n0) 0 max_response_number);
+        repeat (split; auto); inversion Hact'; subst; auto.
+    exists rtyp; auto.
+    unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
+    apply spec_oracle_correct; auto.
+    match goal with
+        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
+          let M := fresh "SO" in
+          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
+    eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
+    destruct SO as [rtyp_new SO]; subst; discriminate.
+    1-4: try apply (IHp H1).
+
+    functional induction (get_emulate_response_helper s t' (Inv n0) 0 max_response_number);
+      repeat (split; auto); inversion Hact'; subst; auto.
+    exists rtyp; auto.
+    unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
+    apply spec_oracle_correct; auto.
+    match goal with
+        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
+          let M := fresh "SO" in
+          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
+    eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
+    destruct SO as [rtyp_new SO]; subst; discriminate.
+    1-4: try apply (IHp H1).
+  Qed.
 
   Lemma replay_done_correct :
     forall t i s s' a',
       generated s X ->
       spec ((t,i,NoResp) :: X) ->
       emulator_act s t i = (s', a') ->
-      s'.(md) = Emulate ->
-      (exists rtyp, a' = (t,i,Resp rtyp))
-      /\ spec (a' :: X).
+      s.(md) = Replay /\
+      s.(preH) = X /\
+      s.(postH) = [] /\
+      s'.(md) = Emulate /\
+      s'.(preH) = X /\
+      s'.(postH) = [a'] /\
+      (exists rtyp, a' = (t,i,Resp rtyp)) /\
+      spec (a' :: X).
+  Proof.
+    intros t i s s' a' Hgen Hspec Hact.
+    pose Hact as Hact'.
+    remember X as X'. 
+    destruct X'; intros.
+    - inversion Hgen; subst; auto.
+      unfold start_state in Hact'; subst; auto.
+      unfold emulator_act in Hact'; subst; simpl in *.
+      unfold get_replay_response in Hact'; simpl in *.
+      rewrite <- HeqX' in *; simpl in *.
+      unfold get_commute_response in Hact'; simpl in *.
+      unfold get_emulate_response in Hact'; simpl in *.
+      repeat (split; auto);
+        functional induction (get_emulate_response_helper  {|
+                                  X_copy := [];
+                                  Y_copy := fun _ : tid => [];
+                                  preH := [];
+                                  commH := fun _ : tid => [];
+                                  postH := [];
+                                  md := Replay |} t i 0 max_response_number); simpl in *;
+        inversion Hact'; subst; simpl in *; auto; try discriminate_noresp.
+      exists rtyp; auto.
+      apply spec_oracle_correct; auto.
+      
+    - unfold emulator_act in Hact'; subst; auto.
+      inversion Hgen; subst; auto.
+      pose (get_replay_response_correct [] X' s1 s (t0, i0, r) t0
+                                        i0 r HeqX' H3 H2) as Hprevstep;
+      destruct Hprevstep as
+          [Hmds1 [Hpres1 [Hxcpys1 [Hmds [Hpres [Hxcpys [Dumb [Hspecs [Hposts Hposts2]]]]]]]]].
+      subst; rewrite Hmds in Hact'.
+      unfold get_replay_response in Hact'. rewrite Hxcpys in Hact'; simpl in *.
+      unfold get_commute_response in Hact'; simpl in *.
+      assert (Y_copy s t = []) as Hycpys by admit; rewrite Hycpys in *; simpl in *.
+      unfold get_emulate_response in Hact'.
+
+      functional induction (get_emulate_response_helper s t i 0 max_response_number);
+        repeat (split; auto); inversion Hact'; subst; simpl in *; auto.
+      rewrite Hposts; auto.
+      exists rtyp; auto.
+      unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
+      apply spec_oracle_correct; auto.
+      (* TODO: don't repeat the following bit twice... *)
+      match goal with
+        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
+          let M := fresh "SO" in
+          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
+      eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
+      destruct SO as [rtyp_new SO]; subst; discriminate.
+
+      match goal with
+        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
+          let M := fresh "SO" in
+          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
+      eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
+      destruct SO as [rtyp_new SO]; subst; discriminate.
+      all: try apply (IHp H0).
   Admitted.
     
   Lemma get_emulate_response_correct :
