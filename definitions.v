@@ -208,11 +208,14 @@ Section Theorems.
 
   Ltac discriminate_noresp :=
     match goal with
-    | [ H : (_, (?t, ?i, NoResp)) = (_, ?a') |- _ ] =>
+      | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
+              Hgen : generated ?s ?h,
+                     Hspec : spec _,
+                           Hact : emulator_act ?s ?t ?i = (?s', ?a') |- _ ] =>
       let M := fresh "SO" in
       assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
-          now eapply response_always_exists; eauto | 
-          destruct M as [rtyp_new M] ; subst; discriminate] end.
+           now apply (response_always_exists s h t i s' a') |
+          destruct M as [rtyp_new M] ; subst; discriminate ] end.
 
   Lemma inv_of_action_eq : forall a t i r,
     a = (t, i, r) ->
@@ -342,10 +345,10 @@ Section Theorems.
       rewrite Hneq in Hact'; unfold get_emulate_response in Hact';
       functional induction (get_emulate_response_helper
                               start_state t' (Inv n0) 0 max_response_number);
-        repeat (split; auto); inversion Hact'; subst; auto;
-        [ exists rtyp; auto
-               | unfold get_state_history in e; simpl in e; apply spec_oracle_correct; auto
-               | discriminate_noresp | | | | ]; apply (IHp H1).
+      repeat (split; auto); inversion Hact'; subst; auto; try discriminate_noresp;
+      try apply (IHp H1);
+      [ exists rtyp; auto | unfold get_state_history in e; simpl in e;
+                            now apply spec_oracle_correct].
 
     all: assert ((h1 ++ [(t, Inv n, r)]) ++ (t0, i0, r0) :: h2 = X) as HX' by
             now rewrite <- app_assoc.
@@ -354,35 +357,16 @@ Section Theorems.
                                         i0 r0 HX' H4 H3) as Hprevstep;
       destruct Hprevstep as
           [Hmds1 [Hpres1 [Hxcpys1 [Hmds [Hpres [Hxcpys [Dumb [Hspecs [Hposts Hposts2]]]]]]]]].
+
     all: subst; rewrite Hmds in Hact'; rewrite Hxcpys in Hact'; rewrite rev_unit in Hact';
     rewrite Hneq in Hact'; unfold get_emulate_response in Hact'.
 
-    (* TODO: don't repeat the following bit twice... *)
-    functional induction (get_emulate_response_helper s t' (Inv n0) 0 max_response_number);
-        repeat (split; auto); inversion Hact'; subst; auto.
-    exists rtyp; auto.
-    unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
-    apply spec_oracle_correct; auto.
-    match goal with
-        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
-          let M := fresh "SO" in
-          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
-    eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
-    destruct SO as [rtyp_new SO]; subst; discriminate.
-    1-4: try apply (IHp H1).
-
-    functional induction (get_emulate_response_helper s t' (Inv n0) 0 max_response_number);
-      repeat (split; auto); inversion Hact'; subst; auto.
-    exists rtyp; auto.
-    unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
-    apply spec_oracle_correct; auto.
-    match goal with
-        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
-          let M := fresh "SO" in
-          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
-    eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
-    destruct SO as [rtyp_new SO]; subst; discriminate.
-    1-4: try apply (IHp H1).
+    all: functional induction (get_emulate_response_helper s t' (Inv n0) 0 max_response_number);
+      repeat (split; auto); inversion Hact'; subst; auto; try discriminate_noresp;
+      try apply (IHp H1);
+      [ exists rtyp; auto | unfold get_state_history in e;
+                 rewrite Hposts in e; simpl in e; rewrite Hpres in e;
+                 now apply spec_oracle_correct].
   Qed.
 
   Lemma replay_done_correct :
@@ -435,26 +419,11 @@ Section Theorems.
       unfold get_emulate_response in Hact'.
 
       functional induction (get_emulate_response_helper s t i 0 max_response_number);
-        repeat (split; auto); inversion Hact'; subst; simpl in *; auto.
-      rewrite Hposts; auto.
-      exists rtyp; auto.
+        repeat (split; auto); inversion Hact'; subst; simpl in *; auto; try discriminate_noresp;
+        try apply (IHp H0).
+      rewrite Hposts; auto. exists rtyp; auto.
       unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e.
-      apply spec_oracle_correct; auto.
-      (* TODO: don't repeat the following bit twice... *)
-      match goal with
-        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
-          let M := fresh "SO" in
-          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
-      eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
-      destruct SO as [rtyp_new SO]; subst; discriminate.
-
-      match goal with
-        | [ H : (?s, (?t, ?i, NoResp)) = (?s', ?a') |- _ ] => 
-          let M := fresh "SO" in
-          assert (exists rtyp, a' = (t, i, Resp rtyp)) as M end.
-      eapply response_always_exists. apply Hgen; eauto. apply Hspec. apply Hact.
-      destruct SO as [rtyp_new SO]; subst; discriminate.
-      all: try apply (IHp H0).
+      now apply spec_oracle_correct.
   Admitted.
     
   Lemma get_emulate_response_correct :
