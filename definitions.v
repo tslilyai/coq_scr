@@ -237,20 +237,53 @@ Section Theorems.
   Proof.
     apply (list_eq_dec action_eq_dec).
   Qed.
-    
-  Lemma next_invocation_dec :
-    forall h,
-      {exists h1, h1 ++ h = X}
-      + {exists a b h0 h1, b = a /\ h = b :: h0 /\ h1 :: a :: h0 = X}
-      + {exists h1 h2, h = h1 ++ h2 /\ h2 = X}
-      + {exists h1 h2, h = h1 ++ h2 /\ length h2 = length X /\ h2 <> X}.
+
+  Lemma emulator_act_replay :
+    forall s0 t i s a,
+      emulator_act s0 t i = (s, a) ->
+      s.(md) = Replay ->
+      s0.(md) = Replay.
   Proof.
-    intros.
-    induction h; destruct X; subst; simpl in *.
-    - left; right. exists [], []. auto.
-    - left; left; left; exists (a :: h). rewrite app_nil_r; auto.
-    - left; right. exists (a :: h), []. split; simpl; auto. rewrite app_nil_r; auto.
-    -
+    intros s0 t i s a Hact Hmd.
+    unfold emulator_act in Hact.
+    destruct (md s0).
+    - unfold get_commute_response in Hact. admit.
+    - unfold get_emulate_response in Hact.
+      functional induction (get_emulate_response_helper s0 t i 0 max_response_number);
+        inversion Hact; subst; simpl in *; try discriminate.
+      apply IHp in H0; auto.
+    - auto.
+  Admitted.
+
+  Lemma replay_state_correct : forall s h,
+    generated s h ->
+    md s = Replay ->
+    s.(preH) = h /\
+    s.(postH) = [] /\
+    exists h', h' ++ h = X /\
+               s.(X_copy) = h'.
+  Proof.
+    intros s h Hgen Hmd. generalize dependent s.
+    induction h; intros; inversion Hgen; subst; auto.
+    - unfold start_state; simpl; repeat (split; auto).
+      exists X; split; [apply app_nil_r | ]; auto.
+    - assert (md s1 = Replay) as Hmds1 by now eapply emulator_act_replay; eauto.
+      pose (IHh s1 H3 Hmds1) as IH; destruct IH as [Hpres1 [Hposts1 [h' [HeqX Hxcpys1]]]].
+      unfold emulator_act in H2. rewrite Hmds1 in H2.
+      unfold get_replay_response in H2; simpl in *.
+      rewrite Hxcpys1 in H2; simpl in *.
+      induction h' using rev_ind; subst; simpl in *.
+      admit.
+
+      rewrite rev_unit in H2.
+      destruct (action_invocation_eq x t i); subst; auto.
+      inversion H2; simpl in *; repeat (split; auto).
+      exists h'; rewrite <- H1; rewrite <- app_assoc in HeqX; split; auto.
+      now rewrite rev_involutive.
+      unfold get_emulate_response in H2.
+      functional induction (get_emulate_response_helper s1 t i 0 max_response_number);
+        inversion H2; subst; simpl in *; try discriminate.
+      apply (IHp H0).
   Admitted.
     
   Lemma get_commute_response_correct : Prop. Admitted.
@@ -415,6 +448,7 @@ Section Theorems.
       subst; rewrite Hmds in Hact'.
       unfold get_replay_response in Hact'. rewrite Hxcpys in Hact'; simpl in *.
       unfold get_commute_response in Hact'; simpl in *.
+      (* TODO *)
       assert (Y_copy s t = []) as Hycpys by admit; rewrite Hycpys in *; simpl in *.
       unfold get_emulate_response in Hact'.
 
@@ -460,6 +494,7 @@ Section Theorems.
       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h).
   Proof.
     intros s h t i s' a' Hgen Hspec Hact.
+    destruct (history_types_dec h).
     split.
     - eapply emulate_response_always_exists; eauto.
     - unfold emulator_act in Hact.
