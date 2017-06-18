@@ -79,10 +79,10 @@ Section MachineState.
   Parameter spec_last_inv : forall t i r h,
                                spec ((t,i,r) :: h) ->
                                spec ((t, i, NoResp) :: h).
-  Hypothesis spec_responses: forall x h1 t i r h2,
+  Parameter spec_responses: forall x h1 t i r h2,
                                spec ((x :: h1) ++ (t,i,r) :: h2) ->
                                r <> NoResp.
-  Hypothesis spec_resp_exists : forall t i h,
+  Parameter spec_resp_exists : forall t i h,
                                   spec ((t,i,NoResp) :: h) ->
                                   exists rtyp, rtyp < max_response_number
                                                /\ spec ((t,i,Resp rtyp) :: h).
@@ -100,6 +100,8 @@ Section MachineState.
   Definition X_invocations := get_invocations X [].
   Definition Y_invocations := get_invocations Y [].
   Parameter X_and_Y_in_spec : spec (Y ++ X).
+  Parameter X_and_Y_wf : forall t i r, List.In (t,i,r) (Y++X) ->
+                                       exists rtyp, r = Resp rtyp.
   
   Record state := mkState { X_copy : history;
                             Y_copy : tid -> history;
@@ -345,7 +347,7 @@ Section Theorems.
       auto. 
   Qed.
 
-  Lemma diverge_correct :
+  Lemma get_diverge_response_correct :
     forall h1 h2 t t' i i' r s s' a',
       h1 ++ (t,i,r) :: h2 = X ->
       generated s h2 ->
@@ -493,13 +495,62 @@ Section Theorems.
       emulator_act s t i = (s', a') ->
       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h).
   Proof.
-    intros s h t i s' a' Hgen Hspec Hact.
-    destruct (history_types_dec h).
-    split.
-    - eapply emulate_response_always_exists; eauto.
-    - unfold emulator_act in Hact.
-      destruct (md s); subst.
-      unfold get_commute_response in Hact.
+    intros s h t i s' a' Hgen Hspec Hact. pose Hact as Hact'.
+    remember (md s) as mds.
+    unfold emulator_act in Hact'.
+    destruct (mds); rewrite <- Heqmds in *; simpl in *.
+    - admit.
+    - split; eapply get_emulate_response_correct; eauto.
+    - symmetry in Heqmds; pose (replay_state_correct s h Hgen Heqmds) as temp;
+      destruct temp as [Hpres [Hposts [h' [Hresp Hxcpys]]]].
+      induction h using rev_ind; induction h' using rev_ind; simpl in *; subst; auto.
+      
+      + pose (replay_done_correct t i s s' a') as Hdone. rewrite <- Hresp in *.
+        eapply Hdone; eauto.
+      + unfold get_replay_response in Hact'. rewrite Hxcpys in Hact'.
+        rewrite rev_unit in Hact'.
+        remember (action_invocation_eq x t i) as Hacteq.
+
+        destruct (Hacteq); destruct x as [[t' [i']] r']; destruct i as [i].
+        * assert (t = t' /\ i = i') as Heq. {
+            unfold action_invocation_eq in HeqHacteq. symmetry in HeqHacteq.
+            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt].
+            rewrite Nat.eqb_eq in Heqi, Heqt; auto.
+          } destruct Heq as [Heqi Heqt].
+          rewrite Heqt, Heqi in *; rewrite app_nil_r in Hresp; auto.
+          destruct r'.
+          split. exists n.
+          eapply (get_replay_response_correct h' [] s s' a' t' (Inv i') (Resp n)); eauto.
+
+          inversion Hact'; subst; auto.
+          assert (spec X) as HspecX by now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec).
+          eapply (spec_prefix_closed (h' ++ [(t', Inv i', Resp n)]) [(t', Inv i', Resp n)] h');
+            eauto.
+          now rewrite <- Hresp in HspecX.
+
+          pose (X_and_Y_wf t' (Inv i') NoResp).
+          assert (List.In (t', Inv i', NoResp) (Y++X)) as Hin. {
+            rewrite <- Hresp.
+            Search (List.In).
+            repeat (apply List.in_app_iff; right). apply List.in_eq.
+          } apply e in Hin; destruct Hin as [rtyp Hin]; discriminate.
+        * rewrite app_nil_r in Hresp.
+          assert (t <> t' \/ i' <> i) as Hneq. {
+            unfold action_invocation_eq in HeqHacteq.
+            symmetry in HeqHacteq.
+            rewrite andb_false_iff in HeqHacteq. destruct HeqHacteq;
+              rewrite Nat.eqb_neq in H; [now right | now left].
+          } destruct Hneq as [Hneqt | Hneqi];
+            eapply get_diverge_response_correct; eauto.
+          right. intuition. inversion H; auto.
+      +           
+      
+
+      Search (spec).
+      symmetry in Heqmds; pose (replay_state_correct s h Hgen Heqmds) as temp;
+      destruct temp as [Hpres [Hposts [h' [Hresp Hxcpys]]]]. 
+      split.
+      pose get_replay_response_correct.
       
   Admitted.
 
