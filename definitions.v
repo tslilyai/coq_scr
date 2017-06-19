@@ -206,6 +206,10 @@ Section Theorems.
       spec ((t,i,NoResp) :: h) ->
       emulator_act s t i = (s', a') ->
       exists rtyp, a' = (t,i,Resp rtyp).
+  Proof.
+    intros s h t i s' a' Hgen Hspec Hact.
+    pose (spec_resp_exists t i h Hspec) as Hrtyp;
+      destruct Hrtyp as [rty [Hrtyp Hspec2]].
   Admitted.
   
   Lemma inv_of_action_eq : forall a t i r,
