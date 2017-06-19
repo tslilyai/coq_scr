@@ -192,7 +192,6 @@ Section Emulator.
 End Emulator.
 
 Section Theorems.
-  
   Lemma generated_history_corresponds_state_history :
     forall s h, (*combined_commH*)
       generated s h ->
@@ -208,6 +207,13 @@ Section Theorems.
       emulator_act s t i = (s', a') ->
       exists rtyp, a' = (t,i,Resp rtyp).
   Admitted.
+  
+  Lemma inv_of_action_eq : forall a t i r,
+    a = (t, i, r) ->
+    action_invocation_eq a t i = true.
+  Proof.
+    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
+  Qed.
 
   Ltac discriminate_noresp :=
     match goal with
@@ -229,21 +235,25 @@ Section Theorems.
       end.
 
   Ltac simpl_actions :=
+    (* pose "spec X" *)
     match goal with
       | [ _: spec X |- _ ] => idtac
       | _ => let HspecX := fresh "HspecX" in
              assert (spec X) as HspecX by
                    now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec)
     end;
+    (* factor out pair equalities *)
     match goal with
       | [ Hact' : (?s, ?a) = (?s', ?a') |- _ ] =>
         inversion Hact'; clear Hact'; simpl; auto
       | _ => idtac
     end;
+    (* get rid of weird associativity *)
     repeat match goal with
       | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
         rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
-     end;
+           end;
+    (* solve for prefix spec cases *)
     match goal with
       | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] = X, HspecX : spec X |-
           spec [(?t, ?i, ?r)] ] =>
@@ -255,6 +265,7 @@ Section Theorems.
         rewrite <- Hresp in HspecX; auto
       | _ => idtac
     end;
+    (* solve for silly exists cases *)
     match goal with
       | [ H : (?t', Inv ?i', Resp ?n) = ?a' |- 
           exists _, (?t', Inv ?i', Resp ?n) = (?t', Inv ?i', Resp _)] =>
@@ -264,27 +275,6 @@ Section Theorems.
         discriminate_noresp
       | _ => idtac
     end.
-  
-  Lemma inv_of_action_eq : forall a t i r,
-    a = (t, i, r) ->
-    action_invocation_eq a t i = true.
-  Proof.
-    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
-  Qed.
-
-  Lemma action_eq_dec : forall (a b : action), {a = b} + {a <> b}.
-  Proof.
-    intros [[t [i]] r] [[t' [i']] r'].
-    destruct r, r', (Nat.eq_dec t t'), (Nat.eq_dec i i'); try destruct (Nat.eq_dec n n0); subst.
-    all : try (right; intuition; try apply n; try apply n1;
-              try inversion H2; try inversion H; auto; fail).
-    all : now left.
-  Qed.
-
-  Lemma history_eq_dec : forall (h1 h2 : history), {h1 = h2} + {h1 <> h2}.
-  Proof.
-    apply (list_eq_dec action_eq_dec).
-  Qed.
 
   Lemma emulator_act_replay :
     forall s0 t i s a,
