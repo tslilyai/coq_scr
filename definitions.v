@@ -64,8 +64,6 @@ Section Histories.
                       reordered t1 t2 ->
                       reordered t2 t3 ->
                       reordered t1 t3.
-
-  Definition sim_commutes (h past : history) : Prop. Admitted.
 End Histories.
 
 Section MachineState.
@@ -91,7 +89,7 @@ Section MachineState.
     forall history, spec history <-> spec_oracle history = true.
 
   Parameter X : history.
-  Definition Y : history := [].
+  Parameter Y : history.
   Function get_invocations (h : history) (acc : list (tid * invocation)) :=
     match h with
       | [] => acc
@@ -112,6 +110,15 @@ Section MachineState.
                           }.
 
   Definition start_state : state := mkState X (history_of_thread Y) [] (fun tid => []) [] Replay.
+
+  Definition sim_commutes : Prop :=
+    forall n h h' Y' Z,
+      h = skipn n Y' ->
+      reordered Y' Y ->
+      reordered h' h ->
+      spec (Z++h++X) ->
+      spec (Z++h'++X).
+
 End MachineState.
   
 Section Conflict.
@@ -137,8 +144,7 @@ Section Emulator.
       | S t' => combine_tid_commH s t' newacc
     end.
   Definition combined_commH (s : state) := combine_tid_commH s num_threads [].
-  Definition get_state_history (s : state) := s.(postH) ++ s.(preH). (*
-    s.(preH) ++ combined_commH s ++ s.(postH).*)
+  Definition get_state_history (s : state) := s.(postH) ++ combined_commH s ++ s.(preH).
   Function get_emulate_response_helper (s : state) (t: tid) (i : invocation)
            (rtyp : nat) (fuel : nat) :
     state * action :=
@@ -193,11 +199,10 @@ End Emulator.
 
 Section Theorems.
   Lemma generated_history_corresponds_state_history :
-    forall s h, (*combined_commH*)
+    forall s h combined,
       generated s h ->
-(*      reordered combined_commH (combine_tid_commH s num_threads []) ->
-      s.(preH) ++ combined_commH ++ s.(postH) = h.*)
-      s.(postH) ++ s.(preH) = h.
+      reordered combined (combined_commH s) ->
+      s.(postH) ++ combined ++ s.(preH) = h.
   Admitted.
   
   Lemma response_always_exists :
@@ -239,6 +244,14 @@ Section Theorems.
       end.
 
   Ltac simpl_actions :=
+    (* get rid of weird associativity and rev stuff *)
+    repeat (match goal with
+      | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
+        rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
+      | [ H : context[rev (_ ++ [_]) ] |- _ ] => rewrite rev_unit in H
+      | [ H : context[rev []] |- _ ] => simpl in *
+      | _ => idtac
+    end);
     (* pose "spec X" *)
     match goal with
       | [ _: spec X |- _ ] => idtac
@@ -252,11 +265,6 @@ Section Theorems.
         inversion Hact'; clear Hact'; simpl; auto
       | _ => idtac
     end;
-    (* get rid of weird associativity *)
-    repeat match goal with
-      | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
-        rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
-           end;
     (* solve for prefix spec cases *)
     match goal with
       | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] = X, HspecX : spec X |-
@@ -278,6 +286,18 @@ Section Theorems.
           exists _ : nat, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _)] =>
         discriminate_noresp
       | _ => idtac
+    end;
+  (* when we want to solve for emulate cases *)
+    let M := fresh "H" in
+    let IHp := fresh "IHp" in
+    match goal with
+      | [ Hact : get_emulate_response ?s ?t ?i = (?s', ?a) |- _ ] =>
+        unfold get_emulate_response in Hact;
+          functional induction (get_emulate_response_helper s t i 0 max_response_number)
+          as [ | | IHp];
+          inversion Hact as [M]; subst; simpl in *; try discriminate;
+          try apply IHp in M; auto
+      | _ => idtac
     end.
 
   Lemma emulator_act_replay :
@@ -288,14 +308,13 @@ Section Theorems.
   Proof.
     intros s0 t i s a Hact Hmd.
     unfold emulator_act in Hact.
-    destruct (md s0).
-    - unfold get_commute_response in Hact. admit.
-    - unfold get_emulate_response in Hact.
-      functional induction (get_emulate_response_helper s0 t i 0 max_response_number);
-        inversion Hact; subst; simpl in *; try discriminate.
-      apply IHp in H0; auto.
-    - auto.
-  Admitted.
+    destruct (md s0); auto.
+    - unfold get_commute_response in Hact.
+      induction (Y_copy s0 t) using rev_ind; simpl in *; simpl_actions.
+      remember (action_invocation_eq x t i) as Heq.
+      destruct Heq; simpl_actions; subst; simpl in *. discriminate.
+    - simpl_actions.
+  Qed.
 
   Lemma replay_state_correct : forall s h,
     generated s h ->
@@ -315,18 +334,14 @@ Section Theorems.
       unfold get_replay_response in H2; simpl in *.
       rewrite Hxcpys1 in H2; simpl in *.
       induction h' using rev_ind; subst; simpl in *.
-      admit.
-
-      rewrite rev_unit in H2.
-      destruct (action_invocation_eq x t i); subst; auto.
-      inversion H2; simpl in *; repeat (split; auto).
-      exists h'; rewrite <- H1; rewrite <- app_assoc in HeqX; split; auto.
-      now rewrite rev_involutive.
-      unfold get_emulate_response in H2.
-      functional induction (get_emulate_response_helper s1 t i 0 max_response_number);
-        inversion H2; subst; simpl in *; try discriminate.
-      apply (IHp H0).
-  Admitted.
+      + unfold get_commute_response in H2.
+        induction (Y_copy s1 t) using rev_ind; simpl in *; simpl_actions.
+        remember (action_invocation_eq x t i) as Heq.
+        destruct Heq; simpl_actions; subst; simpl in *. discriminate.
+      + simpl_actions. destruct (action_invocation_eq x t i); subst; auto; simpl_actions.
+        repeat (split; auto). exists h'; rewrite <- H1; split; auto.
+        now rewrite rev_involutive.
+  Qed.
     
   Lemma get_commute_response_correct : Prop. Admitted.
 
