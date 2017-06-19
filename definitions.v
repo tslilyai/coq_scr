@@ -136,8 +136,9 @@ Section Emulator.
       | 0 => newacc
       | S t' => combine_tid_commH s t' newacc
     end.
+  Definition combined_commH (s : state) := combine_tid_commH s num_threads [].
   Definition get_state_history (s : state) := s.(postH) ++ s.(preH). (*
-    s.(preH) ++ (combine_tid_commH s num_threads []) ++ s.(postH).*)
+    s.(preH) ++ combined_commH s ++ s.(postH).*)
   Function get_emulate_response_helper (s : state) (t: tid) (i : invocation)
            (rtyp : nat) (fuel : nat) :
     state * action :=
@@ -555,13 +556,13 @@ Section Theorems.
     end.
       
   Lemma emulator_correct :
-    forall s h t i s' a',
+    forall s s' h t i a',
       generated s h ->
       spec ((t,i,NoResp) :: h) ->
       emulator_act s t i = (s', a') ->
       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h).
   Proof.
-    intros s h t i s' a' Hgen Hspec Hact. pose Hact as Hact'.
+    intros s s' h t i a' Hgen Hspec Hact. pose Hact as Hact'.
     remember (md s) as mds.
     unfold emulator_act in Hact'.
     destruct (mds); rewrite <- Heqmds in *; simpl in *.
@@ -583,19 +584,31 @@ Section Theorems.
 
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
-  Lemma emulator_impl_conflict_free :
-    forall sComm,
-      Some sComm = trace_end_state (emulator_trace X_invocations start_state) ->
-      trace_conflict_free (emulator_trace Y_invocations sComm).
+  Lemma emulator_conflict_free :
+    forall Y' n s s' h t i a',
+       generated s (h ++ X) ->
+       spec ((t,i,NoResp) :: h ++ X) ->
+       h = skipn n Y' ->
+       reordered Y' Y ->
+       emulator_act s t i = (s', a') ->
+       conflict_free_step t s s'.
   Proof.
   Admitted.
 
   Theorem scalable_commutativity_rule :
-    forall sComm ils,
-      (Some sComm = trace_end_state (emulator_trace X_invocations start_state) ->
-      trace_conflict_free (emulator_trace Y_invocations sComm))
-      /\ spec_oracle (history_of_trace (emulator_trace ils start_state)) = true.
+    (forall s s' h t i a',
+       generated s h ->
+       spec ((t,i,NoResp) :: h) ->
+       emulator_act s t i = (s', a') ->
+       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h)) /\
+    (forall Y' n s s' h t i a',
+       generated s (h ++ X) ->
+       spec ((t,i,NoResp) :: h ++ X) ->
+       h = skipn n Y' ->
+       reordered Y' Y ->
+       emulator_act s t i = (s', a') ->
+       conflict_free_step t s s').
   Proof.
-    intros; split; [eapply emulator_impl_conflict_free | eapply emulator_impl_correct]; eauto.
+    intros; split; [eapply emulator_correct | eapply emulator_conflict_free]; eauto.
   Qed.
 End Theorems.
