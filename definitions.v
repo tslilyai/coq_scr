@@ -217,8 +217,53 @@ Section Theorems.
       let M := fresh "SO" in
       assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
            now apply (response_always_exists s h t i s' a') |
-          destruct M as [rtyp_new M] ; subst; discriminate ] end.
+           destruct M as [rtyp_new M] ; subst; discriminate ]
+      | [ Hresp : _ = X |-
+          exists _, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _) ] =>
+        let M := fresh "SO" in pose (X_and_Y_wf t' (Inv i') NoResp) as M;
+          assert (List.In (t', Inv i', NoResp) (Y++X)) as Hin; [
+            rewrite <- Hresp; apply List.in_app_iff; right;
+            apply List.in_app_iff; right; apply List.in_eq | ];
+          apply M in Hin; destruct Hin as [rtyp Hin]; discriminate
+      end.
 
+  Ltac simpl_actions :=
+    match goal with
+      | [ _: spec X |- _ ] => idtac
+      | _ => let HspecX := fresh "HspecX" in
+             assert (spec X) as HspecX by
+                   now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec)
+    end;
+    match goal with
+      | [ Hact' : (?s, ?a) = (?s', ?a') |- _ ] =>
+        inversion Hact'; clear Hact'; simpl; auto
+      | _ => idtac
+    end;
+    repeat match goal with
+      | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
+        rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
+     end;
+    match goal with
+      | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] = X, HspecX : spec X |-
+          spec [(?t, ?i, ?r)] ] =>
+        eapply (spec_prefix_closed (h1 ++ [(t, i, r)]) ([(t,i,r)]) h1); eauto;
+        rewrite <- Hresp in HspecX; auto
+      | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] ++ ?h2 = X, HspecX : spec X |-
+          spec ((?t, ?i, ?r) :: ?h2) ] =>
+        eapply (spec_prefix_closed (h1 ++ [(t, i, r)] ++ h2) ([(t,i,r)] ++ h2) h1); eauto;
+        rewrite <- Hresp in HspecX; auto
+      | _ => idtac
+    end;
+    match goal with
+      | [ H : (?t', Inv ?i', Resp ?n) = ?a' |- 
+          exists _, (?t', Inv ?i', Resp ?n) = (?t', Inv ?i', Resp _)] =>
+        exists n; auto
+      | [ H : (?t', Inv ?i', NoResp) = ?a' |-
+          exists _ : nat, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _)] =>
+        discriminate_noresp
+      | _ => idtac
+    end.
+  
   Lemma inv_of_action_eq : forall a t i r,
     a = (t, i, r) ->
     action_invocation_eq a t i = true.
@@ -487,6 +532,27 @@ Section Theorems.
     unfold get_state_history in e. rewrite Hh in e.
     now rewrite (spec_oracle_correct ((t,i,Resp rtyp) :: h)).
   Qed.
+
+  Ltac unfold_replay_response :=
+    match goal with
+      | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+        assert (t = t' /\ i = i') as Heq; [
+            unfold action_invocation_eq in HeqHacteq; symmetry in HeqHacteq;
+            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt];
+            now rewrite Nat.eqb_eq in Heqi, Heqt |
+            destruct Heq as [Heqi Heqt]; rewrite Heqt, Heqi in *; auto];
+        clear HeqHacteq 
+      | [ HeqHacteq : false = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+        assert (t <> t' \/ i' <> i) as Hneq; [
+            unfold action_invocation_eq in HeqHacteq;
+            symmetry in HeqHacteq;
+            rewrite andb_false_iff in HeqHacteq; destruct HeqHacteq as [H|H];
+            rewrite Nat.eqb_neq in H; [now right | now left]
+          | destruct Hneq as [Hneqt | Hneqi];
+            eapply get_diverge_response_correct; eauto;
+            right; intuition; inversion H; auto] 
+      | _ => idtac
+    end.
       
   Lemma emulator_correct :
     forall s h t i s' a',
@@ -499,59 +565,20 @@ Section Theorems.
     remember (md s) as mds.
     unfold emulator_act in Hact'.
     destruct (mds); rewrite <- Heqmds in *; simpl in *.
-    - admit.
+    - admit. (* TODO commute mode *)
     - split; eapply get_emulate_response_correct; eauto.
     - symmetry in Heqmds; pose (replay_state_correct s h Hgen Heqmds) as temp;
       destruct temp as [Hpres [Hposts [h' [Hresp Hxcpys]]]].
-      induction h using rev_ind; induction h' using rev_ind; simpl in *; subst; auto.
-      
-      + pose (replay_done_correct t i s s' a') as Hdone. rewrite <- Hresp in *.
+      induction h as [ | a h0] using rev_ind; induction h' as [ | b h0'] using rev_ind;
+      simpl in *; subst; auto; simpl_actions.
+      1,3: pose (replay_done_correct t i s s' a') as Hdone; rewrite <- Hresp in *;
         eapply Hdone; eauto.
-      + unfold get_replay_response in Hact'. rewrite Hxcpys in Hact'.
-        rewrite rev_unit in Hact'.
-        remember (action_invocation_eq x t i) as Hacteq.
-
-        destruct (Hacteq); destruct x as [[t' [i']] r']; destruct i as [i].
-        * assert (t = t' /\ i = i') as Heq. {
-            unfold action_invocation_eq in HeqHacteq. symmetry in HeqHacteq.
-            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt].
-            rewrite Nat.eqb_eq in Heqi, Heqt; auto.
-          } destruct Heq as [Heqi Heqt].
-          rewrite Heqt, Heqi in *; rewrite app_nil_r in Hresp; auto.
-          destruct r'.
-          split. exists n.
-          eapply (get_replay_response_correct h' [] s s' a' t' (Inv i') (Resp n)); eauto.
-
-          inversion Hact'; subst; auto.
-          assert (spec X) as HspecX by now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec).
-          eapply (spec_prefix_closed (h' ++ [(t', Inv i', Resp n)]) [(t', Inv i', Resp n)] h');
-            eauto.
-          now rewrite <- Hresp in HspecX.
-
-          pose (X_and_Y_wf t' (Inv i') NoResp).
-          assert (List.In (t', Inv i', NoResp) (Y++X)) as Hin. {
-            rewrite <- Hresp.
-            Search (List.In).
-            repeat (apply List.in_app_iff; right). apply List.in_eq.
-          } apply e in Hin; destruct Hin as [rtyp Hin]; discriminate.
-        * rewrite app_nil_r in Hresp.
-          assert (t <> t' \/ i' <> i) as Hneq. {
-            unfold action_invocation_eq in HeqHacteq.
-            symmetry in HeqHacteq.
-            rewrite andb_false_iff in HeqHacteq. destruct HeqHacteq;
-              rewrite Nat.eqb_neq in H; [now right | now left].
-          } destruct Hneq as [Hneqt | Hneqi];
-            eapply get_diverge_response_correct; eauto.
-          right. intuition. inversion H; auto.
-      +           
-      
-
-      Search (spec).
-      symmetry in Heqmds; pose (replay_state_correct s h Hgen Heqmds) as temp;
-      destruct temp as [Hpres [Hposts [h' [Hresp Hxcpys]]]]. 
-      split.
-      pose get_replay_response_correct.
-      
+      1,2: unfold get_replay_response in Hact';
+        rewrite Hxcpys in Hact';
+        rewrite rev_unit in Hact';
+        remember (action_invocation_eq b t i) as Hacteq;
+          destruct (Hacteq); destruct b as [[t' [i']] r']; destruct i as [i];
+          unfold_replay_response; split; destruct r'; simpl_actions.
   Admitted.
 
   (* if we have a SIM-comm region of history, then the emulator produces a
