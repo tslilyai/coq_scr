@@ -198,13 +198,53 @@ Section Emulator.
 End Emulator.
 
 Section Theorems.
+
+    Ltac unfold_action_inv_eq :=
+    match goal with
+      | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+        assert (t = t' /\ i = i') as Heq; [
+            unfold action_invocation_eq in HeqHacteq; symmetry in HeqHacteq;
+            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt];
+            now rewrite Nat.eqb_eq in Heqi, Heqt |
+            destruct Heq as [Heqi Heqt]; rewrite Heqt, Heqi in *; auto];
+        clear HeqHacteq 
+      | [ HeqHacteq : false = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+        assert (t <> t' \/ i' <> i) as Hneq; [
+            unfold action_invocation_eq in HeqHacteq;
+            symmetry in HeqHacteq;
+            rewrite andb_false_iff in HeqHacteq; destruct HeqHacteq as [H|H];
+            rewrite Nat.eqb_neq in H; [now right | now left]
+          | destruct Hneq as [Hneqt | Hneqi]]
+      | _ => idtac
+    end.
+
   Lemma generated_history_corresponds_state_history :
     forall s h combined,
       generated s h ->
       reordered combined (combined_commH s) ->
       s.(postH) ++ combined ++ s.(preH) = h.
   Admitted.
-  
+
+  Lemma emulate_response_always_exists :
+    forall s h t i s' a',
+      generated s h ->
+      spec ((t,i,NoResp) :: h) ->
+      get_emulate_response s t i = (s', a') ->
+      exists rtyp, a' = (t,i,Resp rtyp).
+  Proof.
+    intros s h t i s' a' Hgen Hspec Hact.
+    unfold emulator_act in Hact. unfold get_emulate_response in Hact;
+      unfold get_emulate_response_helper in Hact.
+    remember max_response_number as fuel.
+      functional induction (get_emulate_response_helper s t i 0 max_response_number);
+      pose (spec_resp_exists t i h Hspec) as Hrtyp;
+      destruct Hrtyp as [rty [Hrtyp Hspec2]].
+    - destruct fuel; simpl in *; rewrite e in Hact;
+      inversion Hact; subst; exists rtyp; auto.
+    - rewrite Heqfuel in Hact. rewrite e in Hact. admit.
+    - Search (spec).
+  Admitted.
+
   Lemma response_always_exists :
     forall s h t i s' a',
       generated s h ->
@@ -215,6 +255,20 @@ Section Theorems.
     intros s h t i s' a' Hgen Hspec Hact.
     pose (spec_resp_exists t i h Hspec) as Hrtyp;
       destruct Hrtyp as [rty [Hrtyp Hspec2]].
+    unfold emulator_act in Hact. unfold get_emulate_response in Hact;
+      functional induction (get_emulate_response_helper s t i 0 max_response_number)
+                                   as [ | | IHp].
+    - destruct (md s).
+      + unfold get_commute_response in *.
+        induction (Y_copy s t) using rev_ind; simpl in *.
+        * eapply emulate_response_always_exists; eauto.
+        * rewrite rev_unit in Hact.
+          remember (action_invocation_eq x t i) as Heq.
+          destruct x as [[t' [i']] r]; destruct i as [i]; destruct Heq; subst;
+          unfold_action_inv_eq.
+          destruct r; inversion Hact; subst.
+          exists n; auto.
+          
   Admitted.
   
   Lemma inv_of_action_eq : forall a t i r,
@@ -543,27 +597,6 @@ Section Theorems.
     now rewrite (spec_oracle_correct ((t,i,Resp rtyp) :: h)).
   Qed.
 
-  Ltac unfold_replay_response :=
-    match goal with
-      | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
-        assert (t = t' /\ i = i') as Heq; [
-            unfold action_invocation_eq in HeqHacteq; symmetry in HeqHacteq;
-            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt];
-            now rewrite Nat.eqb_eq in Heqi, Heqt |
-            destruct Heq as [Heqi Heqt]; rewrite Heqt, Heqi in *; auto];
-        clear HeqHacteq 
-      | [ HeqHacteq : false = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
-        assert (t <> t' \/ i' <> i) as Hneq; [
-            unfold action_invocation_eq in HeqHacteq;
-            symmetry in HeqHacteq;
-            rewrite andb_false_iff in HeqHacteq; destruct HeqHacteq as [H|H];
-            rewrite Nat.eqb_neq in H; [now right | now left]
-          | destruct Hneq as [Hneqt | Hneqi];
-            eapply get_diverge_response_correct; eauto;
-            right; intuition; inversion H; auto] 
-      | _ => idtac
-    end.
-      
   Lemma emulator_correct :
     forall s s' h t i a',
       generated s h ->
@@ -584,11 +617,15 @@ Section Theorems.
       1,3: pose (replay_done_correct t i s s' a') as Hdone; rewrite <- Hresp in *;
         eapply Hdone; eauto.
       1,2: unfold get_replay_response in Hact';
+        
         rewrite Hxcpys in Hact';
         rewrite rev_unit in Hact';
         remember (action_invocation_eq b t i) as Hacteq;
           destruct (Hacteq); destruct b as [[t' [i']] r']; destruct i as [i];
           unfold_replay_response; split; destruct r'; simpl_actions.
+                  eapply get_diverge_response_correct; eauto;
+            right; intuition; inversion H; auto] 
+
   Admitted.
 
   (* if we have a SIM-comm region of history, then the emulator produces a
