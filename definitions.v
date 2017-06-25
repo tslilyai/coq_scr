@@ -193,20 +193,20 @@ Section Emulator.
       | Replay => get_replay_response s t i
     end.
 
-  Inductive generated : state -> history -> Prop :=
+  Inductive generated : state -> history -> Prop := (* XXX: not sure about this *)
   | GenNil : generated start_state []
   | GenCons : forall s1 s2 t i r h,
       emulator_act s1 t i = (s2, (t,i,r)) ->
       generated s1 h ->
       generated s2 ((t,i,r)::h)
-  | GenEmulate : forall s h, generated s h -> generated (state_with_md s Emulate) h
+  | GenEmulate : forall s h, generated s h ->
+                             generated (state_with_md s Emulate) h
   | GenCommute : forall s h,
                    generated s h ->
                    s.(md) = Replay ->
+                   s.(X_copy) = [] ->
                    generated (state_with_md s Commute) h.
 End Emulator.
-
-Section Theorems.
     Ltac unfold_action_inv_eq :=
     match goal with
       | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
@@ -226,43 +226,51 @@ Section Theorems.
       | _ => idtac
     end.
 
-    Lemma state_with_md_has_md :
-      forall s s' mode,
-        s' = state_with_md s mode ->
-        s'.(md) = mode.
-    Proof.
-      intros. unfold state_with_md in *. rewrite H in *; simpl; auto.
-    Qed.
+Section Helpers.
     
-    Lemma generated_history_corresponds_state_history :
+  Lemma inv_of_action_eq : forall a t i r,
+                             a = (t, i, r) ->
+                             action_invocation_eq a t i = true.
+  Proof.
+    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
+  Qed.
+
+  Lemma state_with_md_has_md :
+    forall s s' mode,
+      s' = state_with_md s mode ->
+      s'.(md) = mode.
+  Proof.
+    intros. unfold state_with_md in *. rewrite H in *; simpl; auto.
+  Qed.
+
+  Lemma state_with_md_comp_eq :
+    forall s s' mode,
+      s' = state_with_md s mode ->
+      s'.(X_copy) = s.(X_copy) /\
+      s'.(Y_copy) = s.(Y_copy) /\
+      s'.(preH) = s.(preH) /\
+      s'.(postH) = s.(postH) /\
+      s'.(commH) = s.(commH).
+  Proof.
+    intros. unfold state_with_md in *; rewrite H; simpl; auto.
+  Qed.
+
+  Lemma generated_history_corresponds_state_history :
     forall s h,
       generated s h ->
       exists gencommH,
         reordered gencommH (combined_commH s) /\
         s.(postH) ++ gencommH ++ s.(preH) = h.
-    Admitted.
+  Admitted.
 
-    Lemma sim_commutative_prefix_in_spec :
-      forall s h gencommH,
-        generated s h->
-        s.(postH) ++ gencommH ++ s.(preH) = h ->
-        reordered gencommH (combined_commH s) ->
-        spec h -> spec (s.(postH) ++ (combined_commH s) ++ s.(preH)).
-    Admitted.
-    
-    Lemma mode_unimportant_emulate_response :
-      forall s t i md,
-        get_emulate_response (state_with_md s md) t i = get_emulate_response s t i.
-    Proof.
-    Admitted.
-
-    Lemma mode_unimportant_state_history :
-      forall s md,
-        get_state_history s = get_state_history
-                             (mkState s.(X_copy) s.(Y_copy) s.(preH)s.(commH) s.(postH) md).
-    Proof.
-    Admitted.
-    
+  Lemma sim_commutative_prefix_in_spec :
+    forall s h gencommH,
+      generated s h->
+      s.(postH) ++ gencommH ++ s.(preH) = h ->
+      reordered gencommH (combined_commH s) ->
+      spec h -> spec (s.(postH) ++ (combined_commH s) ++ s.(preH)).
+  Admitted.
+  
   Lemma emulate_response_always_exists :
     forall s h t i s' a',
       generated s h ->
@@ -336,7 +344,7 @@ Section Theorems.
       * apply GenEmulate in Hgen. eapply emulate_response_always_exists; eauto. 
       * apply GenEmulate in Hgen; eapply emulate_response_always_exists; eauto. 
   Admitted.
-    
+  
   Lemma response_always_exists :
     forall s h t i s' a',
       generated s h ->
@@ -354,14 +362,9 @@ Section Theorems.
     - eapply emulate_response_always_exists; eauto. 
     - eapply replay_response_always_exists; eauto.
   Qed.
-  
-  Lemma inv_of_action_eq : forall a t i r,
-    a = (t, i, r) ->
-    action_invocation_eq a t i = true.
-  Proof.
-    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
-  Qed.
+End Helpers.
 
+Section Theorems.
   Ltac discriminate_noresp :=
     match goal with
       | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
@@ -466,19 +469,25 @@ Section Theorems.
     induction h; intros; inversion Hgen; subst; auto.
     - unfold start_state; simpl; repeat (split; auto).
       exists X; split; [apply app_nil_r | ]; auto.
+    - unfold state_with_md in Hmd; simpl in *. discriminate.
+    - unfold state_with_md in Hmd; simpl in *. discriminate.
     - assert (md s1 = Replay) as Hmds1 by now eapply emulator_act_replay; eauto.
       pose (IHh s1 H3 Hmds1) as IH; destruct IH as [Hpres1 [Hposts1 [h' [HeqX Hxcpys1]]]].
       unfold emulator_act in H2. rewrite Hmds1 in H2.
       unfold get_replay_response in H2; simpl in *.
       rewrite Hxcpys1 in H2; simpl in *.
       induction h' using rev_ind; subst; simpl in *.
-      + unfold get_commute_response in H2.
+      + pose (state_with_md_comp_eq s1 (state_with_md s1 Commute) Commute) as Hseq.
+        destruct Hseq as [Hs1 [Hs2 [Hs3 [Hs4 Hs5]]]]; auto. 
+        unfold get_commute_response in H2. try rewrite Hs1, Hs2, Hs3, Hs4, Hs5 in *.
         induction (Y_copy s1 t) using rev_ind; simpl in *; simpl_actions.
         remember (action_invocation_eq x t i) as Heq.
         destruct Heq; simpl_actions; subst; simpl in *. discriminate.
       + simpl_actions. destruct (action_invocation_eq x t i); subst; auto; simpl_actions.
         repeat (split; auto). exists h'; rewrite <- H1; split; auto.
         now rewrite rev_involutive.
+    - unfold state_with_md in *; simpl in *; discriminate.
+    - unfold state_with_md in *; simpl in *; discriminate.
   Qed.
     
   Lemma get_commute_response_correct : Prop. Admitted.
