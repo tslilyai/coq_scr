@@ -199,13 +199,11 @@ Section Emulator.
       emulator_act s1 t i = (s2, (t,i,r)) ->
       generated s1 h ->
       generated s2 ((t,i,r)::h)
-  | GenEmulate : forall s h, generated s h ->
-                             generated (state_with_md s Emulate) h
   | GenCommute : forall s h,
                    generated s h ->
-                   s.(md) = Replay ->
-                   s.(X_copy) = [] ->
+                   s.(X_copy) = [] /\ s.(md) = Replay ->
                    generated (state_with_md s Commute) h.
+
 End Emulator.
     Ltac unfold_action_inv_eq :=
     match goal with
@@ -255,6 +253,13 @@ Section Helpers.
     intros. unfold state_with_md in *; rewrite H; simpl; auto.
   Qed.
 
+  Lemma state_with_md_same_md_eq :
+    forall s mode,
+      s.(md) = mode -> state_with_md s mode = s.
+  Proof.
+    intros. destruct s. unfold state_with_md; simpl in *. rewrite H. auto.
+  Qed.
+
   Lemma generated_history_corresponds_state_history :
     forall s h,
       generated s h ->
@@ -272,14 +277,14 @@ Section Helpers.
   Admitted.
   
   Lemma emulate_response_always_exists :
-    forall s h t i s' a',
-      generated s h ->
+    forall s h t i s' a' mde,
+      generated (state_with_md s mde) h ->
       spec ((t,i,NoResp) :: h) ->
       s.(md) = Emulate ->                                   
       get_emulate_response s t i = (s', a') ->
       exists rtyp, a' = (t,i,Resp rtyp).
   Proof.
-    intros s h t i s' a' Hgen Hspec Hmd Hact.
+    intros s h t i s' a' md Hgen Hspec Hmd Hact.
     unfold emulator_act in Hact. unfold get_emulate_response in Hact;
       unfold get_emulate_response_helper in Hact.
     remember max_response_number as fuel.
@@ -304,8 +309,13 @@ Section Helpers.
     intros s h t i s' a' Hgen Hspec Hmd Hact.
     pose Hact as Hact'. unfold get_commute_response in *.
     remember (Y_copy s t) as ycpy.
+    assert (generated (state_with_md (state_with_md s Emulate) Commute) h) as H'. {
+      assert (s = state_with_md (state_with_md s Emulate) Commute).
+      unfold state_with_md in *; simpl in *. destruct s; simpl in *. rewrite Hmd; auto.
+      rewrite <- H; auto.
+    }
     induction (ycpy) using rev_ind; simpl in *. 
-    - apply GenEmulate in Hgen. eapply emulate_response_always_exists; eauto.
+    - eapply emulate_response_always_exists; eauto.
     - rewrite rev_unit in Hact'.
       remember (action_invocation_eq x t i) as Heq.
       destruct x as [[t' [i']] r]; destruct i as [i]; destruct Heq; subst;
@@ -315,8 +325,7 @@ Section Helpers.
         (* TODO lemma about what Y_Copy contains *)
         admit. destruct Hexists as [rt Hexists].
         exists rt; inversion Hact'; subst; auto.
-      * apply GenEmulate in Hgen; eapply emulate_response_always_exists; eauto.
-      * apply GenEmulate in Hgen; eapply emulate_response_always_exists; eauto.
+      * eapply emulate_response_always_exists; eauto.
   Admitted.
 
   Lemma replay_response_always_exists : 
@@ -331,18 +340,26 @@ Section Helpers.
     pose Hact as Hact'. unfold get_replay_response in *.
     remember (X_copy s) as xcpy.
     induction (xcpy) using rev_ind; simpl in *. 
-    - apply GenCommute in Hgen; auto. eapply commute_response_always_exists; eauto.
-    - rewrite rev_unit in Hact'.
+    - assert (generated (state_with_md s Commute) h).
+      apply GenCommute; auto.
+      eapply commute_response_always_exists; eauto.
+    - assert (generated (state_with_md (state_with_md s Emulate) Replay) h) as H'.
+      {
+          assert (s = state_with_md (state_with_md s Emulate) Replay).
+          unfold state_with_md in *; simpl in *. destruct s; simpl in *. rewrite Hmd; auto.
+          rewrite <- H; auto.
+      }
+      rewrite rev_unit in Hact'.
       remember (action_invocation_eq x t i) as Heq.
       destruct x as [[t' [i']] r]; destruct i as [i]; destruct Heq; subst;
       unfold_action_inv_eq.
       * assert (exists rtyp, r = Resp rtyp) as Hexists.
         pose X_and_Y_wf as Ywf. apply (Ywf t' (Inv i') r).
-        (* TODO lemma about what Y_Copy contains *)
+        (* TODO lemma about what X_Copy contains *)
         admit. destruct Hexists as [rt Hexists].
         exists rt; inversion Hact'; subst; auto.
-      * apply GenEmulate in Hgen. eapply emulate_response_always_exists; eauto. 
-      * apply GenEmulate in Hgen; eapply emulate_response_always_exists; eauto. 
+      * eapply emulate_response_always_exists; eauto.
+      * eapply emulate_response_always_exists; eauto.
   Admitted.
   
   Lemma response_always_exists :
@@ -359,7 +376,9 @@ Section Helpers.
     pose Hact as Hact'; unfold emulator_act in Hact'.
     destruct m; rewrite <- Heqm in Hact'.
     - eapply commute_response_always_exists; eauto.
-    - eapply emulate_response_always_exists; eauto. 
+    - assert (generated (state_with_md s Emulate) h) by
+          now rewrite state_with_md_same_md_eq.
+      eapply emulate_response_always_exists; eauto. 
     - eapply replay_response_always_exists; eauto.
   Qed.
 End Helpers.
@@ -490,7 +509,18 @@ Section Theorems.
     - unfold state_with_md in *; simpl in *; discriminate.
   Qed.
     
-  Lemma get_commute_response_correct : Prop. Admitted.
+  Lemma get_commute_response_correct :
+    forall h1 h2 gencommH t i r s s' a',
+      h1 ++ (t,i,r) :: h2  = (history_of_thread Y t) ->
+      generated s (gencommH ++ X) ->
+      h2 = history_of_thread gencommH t ->
+      emulator_act s t i = (s', a') ->
+      s.(md) = Commute /\ s.(X_copy) = [] /\ s.(Y_copy) t = h1 ++ [(t,i,r)] /\
+      s.(preH) = X /\ s.(commH) t = h2 /\ s.(postH) = [] /\
+      s'.(md) = Commute /\ s'.(X_copy) = [] /\ s'.(Y_copy) t = h1 /\
+      s'.(preH) = X /\ s'.(commH) t = (t,i,r) :: h2 /\ s'.(postH) = [] /\
+      a' = (t,i,r) /\ spec (gencommH ++ X).
+  Admitted.
 
   Lemma get_replay_response_correct :
     forall h1 h2 s s' a' t i r,
@@ -524,6 +554,7 @@ Section Theorems.
       eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
       auto.
 
+      
     - assert (exists a h, h2 = a :: h) as Hnotnil.
       { destruct h2. inversion HeqHlen. exists p; exists h2; auto. }
       destruct Hnotnil as [a [h Hnotnil]].
