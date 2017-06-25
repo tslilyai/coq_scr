@@ -489,7 +489,6 @@ Section Theorems.
     - unfold start_state; simpl; repeat (split; auto).
       exists X; split; [apply app_nil_r | ]; auto.
     - unfold state_with_md in Hmd; simpl in *. discriminate.
-    - unfold state_with_md in Hmd; simpl in *. discriminate.
     - assert (md s1 = Replay) as Hmds1 by now eapply emulator_act_replay; eauto.
       pose (IHh s1 H3 Hmds1) as IH; destruct IH as [Hpres1 [Hposts1 [h' [HeqX Hxcpys1]]]].
       unfold emulator_act in H2. rewrite Hmds1 in H2.
@@ -505,7 +504,6 @@ Section Theorems.
       + simpl_actions. destruct (action_invocation_eq x t i); subst; auto; simpl_actions.
         repeat (split; auto). exists h'; rewrite <- H1; split; auto.
         now rewrite rev_involutive.
-    - unfold state_with_md in *; simpl in *; discriminate.
     - unfold state_with_md in *; simpl in *; discriminate.
   Qed.
     
@@ -541,43 +539,60 @@ Section Theorems.
     remember (length h2) as Hlen. generalize dependent h2.
     induction (Hlen); intros.
     - destruct h2; try discriminate.
-      inversion Hgen; subst.
-      unfold emulator_act in Hact.
-      unfold start_state in Hact; simpl in *.
-      unfold get_replay_response in Hact. simpl in *.
-      rewrite <- HX in Hact; simpl in *.
-      rewrite rev_unit in Hact.
-      rewrite (inv_of_action_eq (t,i,r) t i r) in Hact.
+      pose (generated s []) as Hgen'.
+      inversion Hgen.
 
-      repeat (split; auto); inversion Hact; auto; simpl.
-      apply rev_involutive.
-      eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
-      auto.
-
-      
+      + subst; unfold emulator_act, start_state in *; simpl in *.
+        unfold get_replay_response in Hact; simpl in *.
+        rewrite <- HX in Hact; simpl in *.
+        rewrite rev_unit in Hact.
+        rewrite (inv_of_action_eq (t,i,r) t i r) in Hact; auto.
+        
+        repeat (split; auto); inversion Hact; auto; simpl.
+        apply rev_involutive.
+        eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
+        
+      + destruct H0 as [Hxcpy Hmd].
+        destruct (replay_state_correct s0 [] H Hmd) as [Hpre [Hpost temp]];
+          destruct temp as [preH [Hxstate Hxcpystate]].
+        rewrite app_nil_r in Hxstate. rewrite <- HX in Hxstate. rewrite Hxstate in Hxcpystate.
+        rewrite Hxcpy in Hxcpystate. destruct h1; discriminate. 
+        
     - assert (exists a h, h2 = a :: h) as Hnotnil.
       { destruct h2. inversion HeqHlen. exists p; exists h2; auto. }
       destruct Hnotnil as [a [h Hnotnil]].
-      rewrite Hnotnil in Hgen. inversion Hgen; subst.
-      assert (generated s1 h) as Hgenprefix by auto.
-      assert (n = length h) as Hlenh by now inversion HeqHlen.
-      assert ((h1 ++ [(t, i, r)]) ++ (t0, i0, r0) :: h = X) as HX' by
-            now rewrite <- app_assoc. 
-      pose (IHn h Hlenh (t0, i0, r0) s s1 Hgenprefix (h1 ++ [(t,i,r)]) r0 i0 t0 HX' H2)
-        as Hhyp.
-      destruct Hhyp as [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre
-                                                       [Hscpy [Dumb [Hspec [Hnils Hnils1]]]]]]]]].
-      unfold emulator_act in Hact. rewrite Hsmd in Hact.
-      unfold get_replay_response in Hact; simpl in *.
-      rewrite Hscpy in Hact; simpl in *.
-      rewrite rev_unit in Hact.
-      rewrite (inv_of_action_eq (t,i,r) t i r) in Hact.
+      rewrite Hnotnil in Hgen.
+      inversion Hgen.
 
-      repeat (split; auto); inversion Hact; auto; simpl.
-      rewrite Hspre. auto.
-      apply rev_involutive.
-      eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
-      auto. 
+      + subst.
+        assert (generated s1 h) as Hgenprefix by auto.
+        assert (n = length h) as Hlenh by now inversion HeqHlen.
+        assert ((h1 ++ [(t, i, r)]) ++ (t0, i0, r0) :: h = X) as HX' by
+              now rewrite <- app_assoc. 
+        pose (IHn h Hlenh (t0, i0, r0) s s1 Hgenprefix (h1 ++ [(t,i,r)]) r0 i0 t0 HX' H2)
+          as Hhyp.
+        destruct Hhyp as
+            [Hs1md [Hs1pre [Hs1cpy [Hsmd [Hspre [Hscpy [Dumb [Hspec [Hnils Hnils1]]]]]]]]].
+        unfold emulator_act in Hact. rewrite Hsmd in Hact.
+        unfold get_replay_response in Hact; simpl in *.
+        rewrite Hscpy in Hact; simpl in *.
+        rewrite rev_unit in Hact.
+        rewrite (inv_of_action_eq (t,i,r) t i r) in Hact; auto.
+
+        repeat (split; auto); inversion Hact; auto; simpl.
+        rewrite Hspre. auto.
+        apply rev_involutive.
+        eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
+      + destruct H0 as [Hxcpy Hmd].
+        destruct (replay_state_correct s0 (a :: h) H Hmd) as [Hpre [Hpost temp]];
+          destruct temp as [preH [Hxstate Hxcpystate]].
+        rewrite Hnotnil in HX. rewrite <- Hxstate in HX.
+        assert ((t, i, r) :: a :: h = [(t,i,r)] ++ a :: h) by now simpl.
+        assert (h1 ++ [(t,i,r)] = preH) as HpreH. {
+          rewrite H0 in HX. rewrite app_assoc in HX.
+          apply (app_inv_tail (a :: h) (h1 ++ [(t,i,r)]) preH); auto.
+        }
+        rewrite <- HpreH, Hxcpy in Hxcpystate. destruct h1; discriminate. 
   Qed.
 
   Lemma get_diverge_replay_response_correct :
