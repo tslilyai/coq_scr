@@ -401,7 +401,7 @@ Section Theorems.
             rewrite <- Hresp; apply List.in_app_iff; right;
             apply List.in_app_iff; right; apply List.in_eq | ];
           apply M in Hin; destruct Hin as [rtyp Hin]; discriminate
-      end.
+    end.
 
   Ltac simpl_actions :=
     (* get rid of weird associativity and rev stuff *)
@@ -506,20 +506,31 @@ Section Theorems.
         now rewrite rev_involutive.
     - unfold state_with_md in *; simpl in *; discriminate.
   Qed.
-    
-  Lemma get_commute_response_correct :
-    forall h1 h2 gencommH t i r s s' a',
-      h1 ++ (t,i,r) :: h2  = (history_of_thread Y t) ->
-      generated s (gencommH ++ X) ->
-      h2 = history_of_thread gencommH t ->
-      emulator_act s t i = (s', a') ->
-      s.(md) = Commute /\ s.(X_copy) = [] /\ s.(Y_copy) t = h1 ++ [(t,i,r)] /\
-      s.(preH) = X /\ s.(commH) t = h2 /\ s.(postH) = [] /\
-      s'.(md) = Commute /\ s'.(X_copy) = [] /\ s'.(Y_copy) t = h1 /\
-      s'.(preH) = X /\ s'.(commH) t = (t,i,r) :: h2 /\ s'.(postH) = [] /\
-      a' = (t,i,r) /\ spec (gencommH ++ X).
-  Admitted.
 
+  Ltac discriminate_xcpy :=
+    match goal with
+      | [H1 : X_copy ?s0 = [] /\ md ?s0 = Replay,
+              H0 : generated ?s0 [],
+                   HX : ?h1 ++ _ = X |- _] =>
+          destruct H1 as [Hxcpy Hmd];
+            destruct (replay_state_correct s0 [] H0 Hmd) as [Hpre [Hpost temp]];
+            destruct temp as [preH [Hxstate Hxcpystate]];
+            rewrite app_nil_r, <- HX in Hxstate; rewrite Hxstate, Hxcpy in Hxcpystate;
+            destruct h1; discriminate
+      | [H0 : X_copy ?s0 = [] /\ md ?s0 = Replay,
+              H : generated ?s0 (?a :: ?h),
+                  HX : ?h1 ++ (?t, ?i, ?r) :: _ = X |- _] =>                       
+        destruct H0 as [Hxcpy Hmd];
+        destruct (replay_state_correct s0 (a :: h) H Hmd) as [Hpre [Hpost temp]];
+          destruct temp as [preH [Hxstate Hxcpystate]];
+        rewrite <- Hxstate in HX; 
+        assert ((t, i, r) :: a :: h = [(t,i,r)] ++ a :: h); [now simpl | ];
+        assert (h1 ++ [(t,i,r)] = preH) as HpreH; [
+          apply (app_inv_tail (a :: h) (h1 ++ [(t,i,r)]) preH);
+          rewrite <- app_assoc; now rewrite <- H0 | ];
+        rewrite <- HpreH, Hxcpy in Hxcpystate; destruct h1; discriminate
+    end.
+  
   Lemma get_replay_response_correct :
     forall h1 h2 s s' a' t i r,
       h1 ++ (t,i,r) :: h2 = X ->
@@ -541,7 +552,6 @@ Section Theorems.
     - destruct h2; try discriminate.
       pose (generated s []) as Hgen'.
       inversion Hgen.
-
       + subst; unfold emulator_act, start_state in *; simpl in *.
         unfold get_replay_response in Hact; simpl in *.
         rewrite <- HX in Hact; simpl in *.
@@ -551,13 +561,7 @@ Section Theorems.
         repeat (split; auto); inversion Hact; auto; simpl.
         apply rev_involutive.
         eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
-        
-      + destruct H0 as [Hxcpy Hmd].
-        destruct (replay_state_correct s0 [] H Hmd) as [Hpre [Hpost temp]];
-          destruct temp as [preH [Hxstate Hxcpystate]].
-        rewrite app_nil_r in Hxstate. rewrite <- HX in Hxstate. rewrite Hxstate in Hxcpystate.
-        rewrite Hxcpy in Hxcpystate. destruct h1; discriminate. 
-        
+      + discriminate_xcpy.        
     - assert (exists a h, h2 = a :: h) as Hnotnil.
       { destruct h2. inversion HeqHlen. exists p; exists h2; auto. }
       destruct Hnotnil as [a [h Hnotnil]].
@@ -583,16 +587,7 @@ Section Theorems.
         rewrite Hspre. auto.
         apply rev_involutive.
         eapply spec_prefix_closed. apply HspecX. symmetry in HX; apply HX.
-      + destruct H0 as [Hxcpy Hmd].
-        destruct (replay_state_correct s0 (a :: h) H Hmd) as [Hpre [Hpost temp]];
-          destruct temp as [preH [Hxstate Hxcpystate]].
-        rewrite Hnotnil in HX. rewrite <- Hxstate in HX.
-        assert ((t, i, r) :: a :: h = [(t,i,r)] ++ a :: h) by now simpl.
-        assert (h1 ++ [(t,i,r)] = preH) as HpreH. {
-          rewrite H0 in HX. rewrite app_assoc in HX.
-          apply (app_inv_tail (a :: h) (h1 ++ [(t,i,r)]) preH); auto.
-        }
-        rewrite <- HpreH, Hxcpy in Hxcpystate. destruct h1; discriminate. 
+      + rewrite Hnotnil in HX. discriminate_xcpy. 
   Qed.
 
   Lemma get_diverge_replay_response_correct :
@@ -618,7 +613,12 @@ Section Theorems.
     assert (action_invocation_eq (t,i,r) t' i' = false) as Hneq;
     unfold action_invocation_eq;
     repeat (rewrite <- Nat.eqb_neq, Nat.eqb_sym in H); try rewrite H;
-    destruct i, i'; try rewrite andb_false_r; try rewrite andb_false_l; auto.
+    destruct i, i'; try rewrite andb_false_r; try rewrite andb_false_l;
+    try discriminate_xcpy; auto.
+
+    all : try (destruct (Nat.eq_dec n n0);
+               [ rewrite e in H; contradiction | rewrite <- (Nat.eqb_neq n n0) in n1;
+                   rewrite n1; apply andb_false_l]).
 
     - rewrite <- HX in Hact'; rewrite rev_unit in Hact'; rewrite Hneq in Hact'.
       simpl_actions; repeat (split; auto).
@@ -627,6 +627,7 @@ Section Theorems.
       unfold start_state in e; simpl in *. unfold combine_tid_commH in e.
       admit. (* TODO combined *)
       discriminate_noresp.
+      
     - assert ((h1 ++ [(t, Inv n, r)]) ++ (t0, i0, r0) :: h2 = X) as HX' by
             now rewrite <- app_assoc.
       pose (get_replay_response_correct (h1 ++ [(t, Inv n, r)])
@@ -640,17 +641,13 @@ Section Theorems.
       exists rtyp; auto.
       unfold get_state_history in e; admit. (* TODO combined *)
       discriminate_noresp.
-    - destruct (Nat.eq_dec n n0);
-      [ rewrite e in H; contradiction | rewrite <- (Nat.eqb_neq n n0) in n1;
-          rewrite n1; apply andb_false_l].
+      
     - rewrite <- HX in Hact'; rewrite rev_unit in Hact'; rewrite Hneq in Hact'.
       simpl_actions; repeat (split; auto).
       exists rtyp; auto.
       unfold get_state_history in e; admit. (* TODO combined *)
       discriminate_noresp.
-    - destruct (Nat.eq_dec n n0);
-      [ rewrite e in H; contradiction | rewrite <- (Nat.eqb_neq n n0) in n1;
-          rewrite n1; apply andb_false_l].
+      
     - assert ((h1 ++ [(t, Inv n, r)]) ++ (t0, i0, r0) :: h2 = X) as HX' by
             now rewrite <- app_assoc.
       pose (get_replay_response_correct (h1 ++ [(t, Inv n, r)])
@@ -664,6 +661,19 @@ Section Theorems.
       exists rtyp; auto.
       unfold get_state_history in e; admit. (* TODO combined *)
       discriminate_noresp.
+  Admitted.
+    
+  Lemma get_commute_response_correct :
+    forall h1 h2 gencommH t i r s s' a',
+      h1 ++ (t,i,r) :: h2  = (history_of_thread Y t) ->
+      generated s (gencommH ++ X) ->
+      h2 = history_of_thread gencommH t ->
+      emulator_act s t i = (s', a') ->
+      s.(md) = Commute /\ s.(X_copy) = [] /\ s.(Y_copy) t = h1 ++ [(t,i,r)] /\
+      s.(preH) = X /\ s.(commH) t = h2 /\ s.(postH) = [] /\
+      s'.(md) = Commute /\ s'.(X_copy) = [] /\ s'.(Y_copy) t = h1 /\
+      s'.(preH) = X /\ s'.(commH) t = (t,i,r) :: h2 /\ s'.(postH) = [] /\
+      a' = (t,i,r) /\ spec (gencommH ++ X).
   Admitted.
   
   Lemma get_diverge_commute_response_correct :
