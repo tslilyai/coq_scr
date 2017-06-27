@@ -830,7 +830,7 @@ End Helpers.
         unfold state_with_md in *; simpl in *. rewrite Hpres0, Hposts0, Hcomms0 in *. 
         repeat (split; auto).
         all: eapply Hcomm; auto.
-    -
+    - (*
             preH s' = [] /\
             postH s' = [a'] /\
             commH s' = (fun _ : tid => []) /\
@@ -869,33 +869,26 @@ End Helpers.
       unfold get_state_history in e; rewrite Hposts in e; simpl in e; rewrite Hpres in e. *)
       admit. (* TODO combined 
       now apply spec_oracle_correct. *)
+*)
   Admitted.
 
-  Lemma emulator_correct :
+  Lemma get_replay_response_correct :
     forall s s' h t i a',
       generated s h ->
+      md s = Replay ->
       spec ((t,i,NoResp) :: h) ->
       emulator_act s t i = (s', a') ->
       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h).
   Proof.
-    intros s s' h t i a' Hgen Hspec Hact. pose Hact as Hact'.
-    remember (md s) as mds.
-    unfold emulator_act in Hact'.
-    destruct (mds); rewrite <- Heqmds in *; simpl in *.
-    - unfold get_commute_response in Hact'.
-      induction (Y_copy s t) using rev_ind; simpl in *; auto.
-      split; eapply get_emulate_response_correct; eauto.
-      
-      admit. (* TODO commute mode *)
-    - split; eapply get_emulate_response_correct; eauto.
-    - symmetry in Heqmds; pose (replay_state_correct s h Hgen Heqmds) as temp;
-      destruct temp as [Hpres [Hposts [h' [Hresp Hxcpys]]]].
-      induction h as [ | a h0] using rev_ind; induction h' as [ | b h0'] using rev_ind;
-      simpl in *; subst; auto; simpl_actions.
-      1,3: pose (replay_done_correct t i s s' a') as Hdone; rewrite <- Hresp in *;
-        eapply Hdone; eauto.
-
-      all: unfold get_replay_response in Hact'; rewrite Hxcpys, rev_unit in Hact'.
+    intros s s' h t i a' Hgen Hmd Hspec Hact.
+    pose (replay_state_correct s h Hgen Hmd) as temp;
+      destruct temp as [Hpres [Hposts [Hcomm [h' [Hresp Hxcpys]]]]].
+    induction h as [ | a h0] using rev_ind; induction h' as [ | b h0'] using rev_ind;
+    simpl in *; subst; auto; simpl_actions.
+    1,3: pose (replay_done_correct t i s s' a') as Hdone; rewrite <- Hresp in *;
+    eapply Hdone; eauto.
+(*
+    all: unfold get_replay_response in Hact; rewrite Hxcpys, rev_unit in Hact.
       all: remember (action_invocation_eq b t i) as Hacteq;
         destruct (Hacteq); destruct b as [[t' [i']] r']; destruct i as [i];
         unfold_action_inv_eq.
@@ -906,7 +899,28 @@ End Helpers.
       + split; simpl_actions; destruct r'; [exists n; auto | discriminate_noresp].
       + eapply get_diverge_replay_response_correct; eauto.
       + eapply get_diverge_replay_response_correct; eauto.
-        right; intuition; inversion H; auto.
+        right; intuition; inversion H; auto. *)
+  Admitted.
+                                                                          
+  Lemma emulator_correct :
+    forall s s' h t i a',
+      generated s h ->
+      spec ((t,i,NoResp) :: h) ->
+      emulator_act s t i = (s', a') ->
+      (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h).
+  Proof.
+    intros s s' h t i a' Hgen Hspec Hact. pose Hact as Hact'.
+    remember (md s) as mds.
+    unfold emulator_act in Hact'.
+    destruct (mds).
+    - eapply get_commute_response_correct; eauto.
+    - eapply get_emulate_response_correct; eauto.
+      assert (generated (state_with_md s Emulate) h) as Hgen' by
+          now rewrite state_with_md_same_md_eq.
+      apply Hgen'.
+    - eapply get_replay_response_correct; eauto.
+
+    -
   Admitted.
 
   (* if we have a SIM-comm region of history, then the emulator produces a

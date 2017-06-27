@@ -462,6 +462,13 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">s'</span>.(<span class="id" title="var">postH</span>) = [<span class="id" title="var">a'</span>] \/ <span class="id" title="var">s'</span>.(<span class="id" title="var">commH</span>) <span class="id" title="var">t</span> = [<span class="id" title="var">a'</span>]) /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">a'</span> = (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">a'</span> :: <span class="id" title="var">X</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_replay_response_correct</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">md</span> <span class="id" title="var">s</span> = <span class="id" title="var">Replay</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">a'</span> = (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\ <span class="id" title="var">spec</span> (<span class="id" title="var">a'</span> :: <span class="id" title="var">h</span>).<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_correct</span> :<br/>
@@ -470,8 +477,6 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">a'</span> = (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\ <span class="id" title="var">spec</span> (<span class="id" title="var">a'</span> :: <span class="id" title="var">h</span>).<br/>
-
-<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_conflict_free</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">Y'</span> <span class="id" title="var">n</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
