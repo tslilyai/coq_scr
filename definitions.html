@@ -455,6 +455,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">a'</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">X</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">X</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>) = <span class="id" title="var">X</span> /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) = [] /\<br/>
@@ -477,6 +478,8 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">a'</span> = (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\ <span class="id" title="var">spec</span> (<span class="id" title="var">a'</span> :: <span class="id" title="var">h</span>).<br/>
+
+<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_conflict_free</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">Y'</span> <span class="id" title="var">n</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
@@ -500,7 +503,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">Y'</span> <span class="id" title="var">Y</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>).<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Theorems</span>.<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Lemmas</span>.<br/>
 </div>
 </div>
 
