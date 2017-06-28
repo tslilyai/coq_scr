@@ -149,8 +149,7 @@ Section Emulator.
     mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) s.(postH) md.
              
   Function get_emulate_response_helper (s : state) (t: tid) (i : invocation)
-           (rtyp : nat) (fuel : nat) :
-    state * action :=
+           (rtyp : nat) (fuel : nat) : state * action :=
     let response_action := (t, i, Resp rtyp) in
     let state_history := get_state_history s in
     let new_history := response_action :: state_history in
@@ -196,13 +195,10 @@ Section Emulator.
   Inductive generated : state -> history -> Prop := (* XXX: not sure about this *)
   | GenNil : generated start_state []
   | GenCons : forall s1 s2 t i r h,
-      emulator_act s1 t i = (s2, (t,i,r)) ->
-      generated s1 h ->
-      generated s2 ((t,i,r)::h)
-  | GenCommute : forall s h,
-                   generated s h ->
-                   s.(X_copy) = [] /\ s.(md) = Replay ->
-                   generated (state_with_md s Commute) h.
+                emulator_act s1 t i = (s2, (t,i,r)) ->
+                spec ((t,i,NoResp) :: h) ->
+                generated s1 h ->
+                generated s2 ((t,i,r)::h).
 
 End Emulator.
     Ltac unfold_action_inv_eq :=
@@ -225,7 +221,6 @@ End Emulator.
     end.
 
 Section Helpers.
-    
   Lemma inv_of_action_eq : forall a t i r,
                              a = (t, i, r) ->
                              action_invocation_eq a t i = true.
@@ -275,114 +270,74 @@ Section Helpers.
       reordered gencommH (combined_commH s) ->
       spec h -> spec (s.(postH) ++ (combined_commH s) ++ s.(preH)).
   Admitted.
-  
-  Lemma emulate_response_always_exists :
-    forall s h t i s' a' mde,
-      generated (state_with_md s mde) h ->
-      spec ((t,i,NoResp) :: h) ->
-      s.(md) = Emulate ->                                   
-      get_emulate_response s t i = (s', a') ->
-      exists rtyp, a' = (t,i,Resp rtyp).
-  Proof.
-    intros s h t i s' a' md Hgen Hspec Hmd Hact.
-    unfold emulator_act in Hact. unfold get_emulate_response in Hact;
-      unfold get_emulate_response_helper in Hact.
-    remember max_response_number as fuel.
-    functional induction (get_emulate_response_helper s t i 0 max_response_number);
-      pose (spec_resp_exists t i h Hspec) as Hrtyp;
-      destruct Hrtyp as [rty [Hrtyp Hspec2]].
-    - destruct fuel; simpl in *; rewrite e in *;
-      inversion Hact; subst; exists rtyp; auto.
-    - rewrite Heqfuel in Hact; simpl in *; rewrite e in *.
-      admit. (* todo must show that rty works *)
-    - Search (spec). (* TODO stuff relating fuel and rtyp *)
-  Admitted.
 
-  Lemma commute_response_always_exists :
-    forall s h t i s' a',
-      generated s h ->
-      spec ((t,i,NoResp) :: h) ->
-      s.(md) = Commute ->
-      get_commute_response s t i = (s', a') ->
-      exists rtyp, a' = (t,i,Resp rtyp).
-  Proof.
-    intros s h t i s' a' Hgen Hspec Hmd Hact.
-    pose Hact as Hact'. unfold get_commute_response in *.
-    remember (Y_copy s t) as ycpy.
-    assert (generated (state_with_md (state_with_md s Emulate) Commute) h) as H'. {
-      assert (s = state_with_md (state_with_md s Emulate) Commute).
-      unfold state_with_md in *; simpl in *. destruct s; simpl in *. rewrite Hmd; auto.
-      rewrite <- H; auto.
-    }
-    induction (ycpy) using rev_ind; simpl in *. 
-    - eapply emulate_response_always_exists; eauto.
-    - rewrite rev_unit in Hact'.
-      remember (action_invocation_eq x t i) as Heq.
-      destruct x as [[t' [i']] r]; destruct i as [i]; destruct Heq; subst;
-      unfold_action_inv_eq.
-      * assert (exists rtyp, r = Resp rtyp) as Hexists.
-        pose X_and_Y_wf as Ywf. apply (Ywf t' (Inv i') r).
-        (* TODO lemma about what Y_Copy contains *)
-        admit. destruct Hexists as [rt Hexists].
-        exists rt; inversion Hact'; subst; auto.
-      * eapply emulate_response_always_exists; eauto.
-  Admitted.
-
-  Lemma replay_response_always_exists : 
-    forall s h t i s' a',
-      generated s h ->
-      spec ((t,i,NoResp) :: h) ->
-      s.(md) = Replay ->
-      get_replay_response s t i = (s', a') ->
-      exists rtyp, a' = (t,i,Resp rtyp).
-  Proof.
-    intros s h t i s' a' Hgen Hspec Hmd Hact.
-    pose Hact as Hact'. unfold get_replay_response in *.
-    remember (X_copy s) as xcpy.
-    induction (xcpy) using rev_ind; simpl in *. 
-    - assert (generated (state_with_md s Commute) h).
-      apply GenCommute; auto.
-      eapply commute_response_always_exists; eauto.
-    - assert (generated (state_with_md (state_with_md s Emulate) Replay) h) as H'.
-      {
-          assert (s = state_with_md (state_with_md s Emulate) Replay).
-          unfold state_with_md in *; simpl in *. destruct s; simpl in *. rewrite Hmd; auto.
-          rewrite <- H; auto.
-      }
-      rewrite rev_unit in Hact'.
-      remember (action_invocation_eq x t i) as Heq.
-      destruct x as [[t' [i']] r]; destruct i as [i]; destruct Heq; subst;
-      unfold_action_inv_eq.
-      * assert (exists rtyp, r = Resp rtyp) as Hexists.
-        pose X_and_Y_wf as Ywf. apply (Ywf t' (Inv i') r).
-        (* TODO lemma about what X_Copy contains *)
-        admit. destruct Hexists as [rt Hexists].
-        exists rt; inversion Hact'; subst; auto.
-      * eapply emulate_response_always_exists; eauto.
-      * eapply emulate_response_always_exists; eauto.
-  Admitted.
-  
-  Lemma response_always_exists :
-    forall s h t i s' a',
-      generated s h ->
-      spec ((t,i,NoResp) :: h) ->
-      emulator_act s t i = (s', a') ->
-      exists rtyp, a' = (t,i,Resp rtyp).
-  Proof.
-    intros s h t i s' a' Hgen Hspec Hact.
-    pose (spec_resp_exists t i h Hspec) as Hrtyp;
-      destruct Hrtyp as [rty [Hrtyp Hspec2]].
-    remember (md s) as m.
-    pose Hact as Hact'; unfold emulator_act in Hact'.
-    destruct m; rewrite <- Heqm in Hact'.
-    - eapply commute_response_always_exists; eauto.
-    - assert (generated (state_with_md s Emulate) h) by
-          now rewrite state_with_md_same_md_eq.
-      eapply emulate_response_always_exists; eauto. 
-    - eapply replay_response_always_exists; eauto.
-  Qed.
-  
 End Helpers.
+
+Section Existance.
+  Lemma generated_deterministic :
+    forall s s' h,
+      generated s h ->
+      generated s' h ->
+      s = s'.
+  Proof.
+  Admitted.
+    
+  Lemma emulator_deterministic :
+    forall s1 s2 s2' t i a a',
+      emulator_act s1 t i = (s2, a) ->
+      emulator_act s1 t i = (s2', a') ->
+      s2 = s2' /\ a = a'.
+  Proof.
+  Admitted.
+
+  Lemma generated_commute_response_exists :
+    forall s h t i,
+      generated s h ->
+      (*next_state s = Commute ->*)
+      spec ((t,i,NoResp)::h) ->
+      exists rtyp s',
+        generated s' ((t,i,Resp rtyp)::h).
+  Proof.
+  Admitted.
+  
+  Lemma generated_response_exists :
+    forall s h t i,
+      generated s h ->
+      spec ((t,i,NoResp)::h) ->
+      exists rtyp s',
+        generated s' ((t,i,Resp rtyp)::h).
+  Proof.
+    
+  Admitted.
+
+  Lemma response_always_exists :
+    forall s h t i r,
+      generated s h ->
+      List.In (t,i,r) h ->
+      exists rtyp, r = Resp rtyp.
+  Proof.
+    intros s h t i r Hgen Hin.
+    pose Hgen as Hgen'.
+    induction Hgen'.
+    inversion Hin.
+    assert (exists rtyp s', generated s' ((t0,i0,Resp rtyp)::h)) as Hgenexists. {
+      eapply generated_response_exists; eauto.
+    } destruct Hgenexists as [rtyp [s' Hgenexists]].
+    inversion Hgenexists; subst.
+
+    remember (action_invocation_eq (t,i,r) t0 i0) as Heq.
+    destruct Heq, i, i0, r, r0; try destruct (Nat.eq_dec n1 n2); unfold_action_inv_eq;
+    subst; inversion Hin; try inversion H1; try (now exists n2); try (now exists n1);
+    try eapply IHHgen'; eauto.
+
+    all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
+    all : pose (emulator_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
+      as Heq; destruct Heq as [Hseq Haeq]; auto.
+    all : inversion Haeq.
+  Qed.
+
+End Existance.
+
   Ltac discriminate_noresp :=
     match goal with
       | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
@@ -830,7 +785,8 @@ End Helpers.
         unfold state_with_md in *; simpl in *. rewrite Hpres0, Hposts0, Hcomms0 in *. 
         repeat (split; auto).
         all: eapply Hcomm; auto.
-    - 
+    - inversion Hgen; subst; auto.
+      
   Admitted.
 
   Lemma get_replay_response_correct :
