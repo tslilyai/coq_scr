@@ -471,6 +471,24 @@ End Existance.
     Proof.
     Admitted.
 
+    Lemma replay_mode_state :
+      forall s t i,
+        next_mode s t i = Replay ->
+        exists hd tl, rev (X_copy (state_with_md s Replay)) = hd :: tl
+                      /\ action_invocation_eq hd t i = true.
+    Proof.
+      intros. 
+      unfold next_mode in *.
+      remember (rev (X_copy s)) as xcpy.
+      destruct (md s); try discriminate.
+      induction (Y_copy s t) using rev_ind; simpl in *; try rewrite rev_unit in *;
+      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
+      induction (xcpy); simpl in *; try rewrite rev_unit in *.
+      discriminate.
+      remember (action_invocation_eq a t i) as Heq; destruct Heq; try discriminate.
+      exists a. exists l. split; auto.
+    Qed.
+    
     Lemma get_replay_response_correct :
       forall s h t i s' rtyp,
         generated s h ->
@@ -479,6 +497,10 @@ End Existance.
         get_replay_response (state_with_md s Replay) t i = (s',(t,i,Resp rtyp)) ->
         spec ((t,i,Resp rtyp)::h).
     Proof.
+      intros s h t i s' rtyp Hgen Hspec Hmd Hact.
+      unfold get_replay_response in Hact.
+      pose (replay_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
+      
     Admitted.
 
     Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
