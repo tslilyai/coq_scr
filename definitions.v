@@ -281,6 +281,27 @@ Section Helpers.
       reordered gencommH (combined_commH s) ->
       spec h -> spec (s.(postH) ++ (combined_commH s) ++ s.(preH)).
   Admitted.
+  
+  Lemma rev_rev {A: Type} :
+    forall l1 l2 : list A,
+      rev l1 = rev l2 <-> l1 = l2.
+  Proof.
+    split; intros; generalize dependent l2;
+    induction l1 using rev_ind; destruct l2 using rev_ind; intros;
+    simpl in *; try rewrite rev_unit in *; try discriminate; auto;
+    try rewrite rev_unit in H; try inversion H; subst.
+    apply IHl1 in H2; subst; auto.
+    destruct l2; simpl in *; discriminate.
+    destruct l1; simpl in *; discriminate.
+    inversion H1; subst. rewrite rev_unit; auto.
+  Qed.
+
+  Lemma act_changes_to_next_mode :
+    forall s0 t i s a mode,
+      emulator_act s0 t i = (s, a) ->
+      next_mode s0 t i = mode <-> s.(md) = mode.
+  Proof.
+  Admitted.
 
 End Helpers.
 
@@ -431,7 +452,7 @@ End Existance.
   
   Section Correctness.
 
-    Lemma emulate_mode_retention :
+    Lemma emulate_mode_preservation :
       forall s t i s' a',
         s.(md) = Emulate ->
         emulator_act s t i = (s', a') ->
@@ -459,7 +480,32 @@ End Existance.
         get_emulate_response (state_with_md s Emulate) t i = (s',(t,i,Resp rtyp)) ->
         spec ((t,i,Resp rtyp)::h).
     Proof.
+      intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
+      unfold get_emulate_response in Hact.
+      functional induction (get_emulate_response_helper
+                              (state_with_md s Emulate) t i 0 max_response_number).
+      - admit.
+      - rewrite (state_with_md_same_md_eq) in Hact; auto. inversion Hact.
+      - now apply IHp in Hact.
     Admitted.
+
+    Lemma commute_mode_state :
+      forall s t i,
+        next_mode s t i = Commute ->
+        exists hd tl, rev (Y_copy (state_with_md s Commute) t) = hd :: tl
+                      /\ action_invocation_eq hd t i = true.
+    Proof.
+      intros. 
+      unfold next_mode in *.
+      remember (rev (Y_copy s t)) as ycpy.
+      destruct (md s); try discriminate.
+      induction (ycpy); simpl in *; try rewrite rev_unit in *;
+      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
+      remember (action_invocation_eq a t i) as Heq; destruct Heq; try discriminate.
+      exists a. exists l. split; auto.
+      induction ((X_copy s)) using rev_ind; simpl in *;
+      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
+    Qed.
 
     Lemma get_commute_response_correct :
       forall s h t i s' rtyp,
@@ -469,6 +515,11 @@ End Existance.
         get_commute_response (state_with_md s Commute) t i = (s',(t,i,Resp rtyp)) ->
         spec ((t,i,Resp rtyp)::h).
     Proof.
+      intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
+      unfold get_commute_response in *.
+      pose (commute_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
+      rewrite Hnil in Hact.
+      unfold state_with_md in *; subst; simpl in *.
     Admitted.
 
     Lemma replay_mode_state :
@@ -489,51 +540,12 @@ End Existance.
       exists a. exists l. split; auto.
     Qed.
 
-    Lemma commute_mode_state :
-      forall s t i,
-        next_mode s t i = Commute ->
-        exists hd tl, rev (Y_copy (state_with_md s Commute) t) = hd :: tl
-                      /\ action_invocation_eq hd t i = true.
-    Proof.
-      intros. 
-      unfold next_mode in *.
-      remember (rev (Y_copy s t)) as ycpy.
-      destruct (md s); try discriminate.
-      induction (ycpy); simpl in *; try rewrite rev_unit in *;
-      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
-      remember (action_invocation_eq a t i) as Heq; destruct Heq; try discriminate.
-      exists a. exists l. split; auto.
-      induction ((X_copy s)) using rev_ind; simpl in *;
-      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
-    Qed.
-
-    Lemma act_changes_to_next_mode :
-      forall s0 t i s a mode,
-        emulator_act s0 t i = (s, a) ->
-        next_mode s0 t i = mode <-> s.(md) = mode.
-    Proof.
-    Admitted.
-
     Lemma next_mode_replay_implies_current_mode_replay :
       forall s t i,
       next_mode s t i = Replay ->
       s.(md) = Replay.
     Proof.
     Admitted.
-
-    Lemma rev_rev {A: Type} :
-      forall l1 l2 : list A,
-        rev l1 = rev l2 <-> l1 = l2.
-    Proof.
-      split; intros; generalize dependent l2;
-      induction l1 using rev_ind; destruct l2 using rev_ind; intros;
-      simpl in *; try rewrite rev_unit in *; try discriminate; auto;
-      try rewrite rev_unit in H; try inversion H; subst.
-      apply IHl1 in H2; subst; auto.
-      destruct l2; simpl in *; discriminate.
-      destruct l1; simpl in *; discriminate.
-      inversion H1; subst. rewrite rev_unit; auto.
-    Qed.
       
     Lemma replay_xcopy_state :
       forall s h,
