@@ -259,6 +259,31 @@ Section Helpers.
     intros. unfold state_with_md in *; rewrite H; simpl; auto.
   Qed.
 
+  Lemma commH_eq_combined_commH_eq :
+    forall s s',
+      commH s = commH s' ->
+      combined_commH s = combined_commH s'.
+  Proof.
+    intros. 
+    unfold combined_commH.
+    functional induction (combine_tid_commH s num_threads []);
+      destruct s, s'; simpl in *; rewrite H; auto.
+    rewrite <- H in *.
+    rewrite IHl0; auto.
+  Qed.
+
+  Lemma state_with_md_get_state_history :
+    forall s mode,
+      (get_state_history s = get_state_history (state_with_md s mode)).
+  Proof.
+    intros.
+    destruct (state_with_md_comp_eq s (state_with_md s mode0) mode0); auto.
+    destruct_conjs.
+    unfold get_state_history.
+    rewrite <- (commH_eq_combined_commH_eq s (state_with_md s mode0));
+    now simpl in *.
+  Qed.
+    
   Lemma state_with_md_same_md_eq :
     forall s mode,
       s.(md) = mode -> state_with_md s mode = s.
@@ -472,6 +497,42 @@ End Existance.
       inversion H0; auto.
     Qed.
 
+    Lemma combined_commH_reordered_Y_prefix :
+      forall s h,
+        generated s h ->
+        exists h',
+          reordered (h' ++ combined_commH s) Y.
+    Proof.
+    Admitted.
+
+    Lemma reordered_Y_prefix_correct :
+      forall h' h,
+        reordered (h' ++ h) Y ->
+        spec h.
+    Proof.
+    Admitted.
+
+    Lemma reordered_trans :
+      forall h1 h2 h3,
+        reordered h1 h2 ->
+        reordered h2 h3 ->
+        reordered h1 h3.
+    Proof.
+    Admitted.
+
+    Lemma correct_state_correct_generated_history :
+      forall s h,
+        generated s h ->
+        spec (get_state_history s) ->
+        spec h.
+    Proof.
+      intros s h Hgen Hspec.
+      destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
+      unfold get_state_history in *; simpl in *.
+      destruct (combined_commH_reordered_Y_prefix s h Hgen) as [h' Hh'].
+      pose (reordered_Y_prefix_correct h' (combined_commH s) Hh') as Hcomm.
+    Admitted.
+    
     Lemma get_emulate_response_correct :
       forall s h t i s' rtyp,
         generated s h ->
@@ -481,13 +542,58 @@ End Existance.
         spec ((t,i,Resp rtyp)::h).
     Proof.
       intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
+      assert (get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp))) as Hact'.
+      auto.
       unfold get_emulate_response in Hact.
       functional induction (get_emulate_response_helper
                               (state_with_md s Emulate) t i 0 max_response_number).
-      - admit.
+      - assert (spec (get_state_history (state_with_md s Emulate))) as Hprefix.
+        {
+          rewrite <- (spec_oracle_correct
+                        ((t,i,Resp rtyp0) :: get_state_history (state_with_md s Emulate))) in e.
+          pose (spec_prefix_closed).
+          apply (spec_prefix_closed
+                   ((t, i, Resp rtyp0) :: get_state_history (state_with_md s Emulate))
+                   (get_state_history (state_with_md s Emulate))
+                   [(t,i,Resp rtyp0)]); auto.
+        }
+        assert (spec h).
+        {
+          eapply correct_state_correct_generated_history; eauto.
+          assert (get_state_history s = get_state_history (state_with_md s Emulate)) as temp.
+          eapply state_with_md_get_state_history; eauto.
+          rewrite (state_with_md_get_state_history s Emulate); auto.
+        }
+        assert (generated s' ((t, i, Resp rtyp0) :: h)) as Hnewgen.
+        {
+          assert (emulator_act s t i = (s', (t,i,Resp rtyp))).
+          unfold emulator_act in *. rewrite Hnextmd. apply Hact'.
+          eapply GenCons; eauto.
+          inversion Hact; subst; auto.
+        }
+        inversion Hact; subst; auto.
+        eapply correct_state_correct_generated_history; eauto.
+        assert ((t,i,Resp rtyp) :: get_state_history (state_with_md s Emulate) =
+                get_state_history {|
+              X_copy := X_copy s;
+              Y_copy := Y_copy s;
+              preH := preH s;
+              commH := commH s;
+              postH := (t, i, Resp rtyp) :: postH s;
+              md := Emulate |}).
+        unfold get_state_history in *; simpl in *.
+        now rewrite <- (commH_eq_combined_commH_eq (state_with_md s Emulate)
+                   {|
+                     X_copy := X_copy s;
+                     Y_copy := Y_copy s;
+                     preH := preH s;
+                     commH := commH s;
+                     postH := (t, i, Resp rtyp) :: postH s;
+                     md := Emulate |}).
+        rewrite H0 in e. apply spec_oracle_correct in e; auto.
       - rewrite (state_with_md_same_md_eq) in Hact; auto. inversion Hact.
       - now apply IHp in Hact.
-    Admitted.
+    Qed.
 
     Lemma commute_mode_state :
       forall s t i,
@@ -625,54 +731,54 @@ End Existance.
     Proof.
     Admitted.
 
-  Lemma emulator_correct :
-    forall s h,
-      generated s h ->
-      spec h.
-  Proof.
-    intros s h Hgen. pose Hgen as Hgen'.
-    induction Hgen'.
-    apply spec_nonempty.
-    pose H as Hact.
-    unfold emulator_act in Hact.
-    assert (generated s2 ((t,i,r)::h)). eapply GenCons; eauto.
-    destruct (next_mode_dec s1 t i) as [[Hnextmd | Hnextmd] | Hnextmd];
-    rewrite Hnextmd in Hact.
-    - destruct r. eapply get_commute_response_correct; eauto.
-      discriminate_noresp.
-    - destruct r. eapply get_emulate_response_correct; eauto.
-      discriminate_noresp.
-    - destruct r. eapply get_replay_response_correct; eauto.
-      discriminate_noresp.
-   Qed.    
+    Lemma emulator_correct :
+      forall s h,
+        generated s h ->
+        spec h.
+    Proof.
+      intros s h Hgen. pose Hgen as Hgen'.
+      induction Hgen'.
+      apply spec_nonempty.
+      pose H as Hact.
+      unfold emulator_act in Hact.
+      assert (generated s2 ((t,i,r)::h)). eapply GenCons; eauto.
+      destruct (next_mode_dec s1 t i) as [[Hnextmd | Hnextmd] | Hnextmd];
+        rewrite Hnextmd in Hact.
+      - destruct r. eapply get_commute_response_correct; eauto.
+        discriminate_noresp.
+      - destruct r. eapply get_emulate_response_correct; eauto.
+        discriminate_noresp.
+      - destruct r. eapply get_replay_response_correct; eauto.
+        discriminate_noresp.
+    Qed.    
     
-  (* if we have a SIM-comm region of history, then the emulator produces a
-   * conflict-free trace for the SIM-comm part of the history *)
-  Lemma emulator_conflict_free :
-    forall Y' n s s' h t i a',
-       generated s (h ++ X) ->
-       spec ((t,i,NoResp) :: h ++ X) ->
-       h = skipn n Y' ->
-       reordered Y' Y ->
-       emulator_act s t i = (s', a') ->
-       conflict_free_step t s s'.
-  Proof.
-  Admitted.
+    (* if we have a SIM-comm region of history, then the emulator produces a
+     * conflict-free trace for the SIM-comm part of the history *)
+    Lemma emulator_conflict_free :
+      forall Y' n s s' h t i a',
+        generated s (h ++ X) ->
+        spec ((t,i,NoResp) :: h ++ X) ->
+        h = skipn n Y' ->
+        reordered Y' Y ->
+        emulator_act s t i = (s', a') ->
+        conflict_free_step t s s'.
+    Proof.
+    Admitted.
 
-  Theorem scalable_commutativity_rule :
-    (forall s s' h t i a',
-       generated s h ->
-       spec ((t,i,NoResp) :: h) ->
-       emulator_act s t i = (s', a') ->
-       (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h)) /\
-    (forall Y' n s s' h t i a',
-       generated s (h ++ X) ->
-       spec ((t,i,NoResp) :: h ++ X) ->
-       h = skipn n Y' ->
-       reordered Y' Y ->
-       emulator_act s t i = (s', a') ->
-       conflict_free_step t s s').
-  Proof.
-    intros; split; [eapply emulator_correct | eapply emulator_conflict_free]; eauto.
-  Qed.
+    Theorem scalable_commutativity_rule :
+      (forall s s' h t i a',
+         generated s h ->
+         spec ((t,i,NoResp) :: h) ->
+         emulator_act s t i = (s', a') ->
+         (exists rtyp, a' = (t,i,Resp rtyp)) /\ spec (a' :: h)) /\
+      (forall Y' n s s' h t i a',
+         generated s (h ++ X) ->
+         spec ((t,i,NoResp) :: h ++ X) ->
+         h = skipn n Y' ->
+         reordered Y' Y ->
+         emulator_act s t i = (s', a') ->
+         conflict_free_step t s s').
+    Proof.
+      intros; split; [eapply emulator_correct | eapply emulator_conflict_free]; eauto.
+    Qed.
 End Lemmas.
