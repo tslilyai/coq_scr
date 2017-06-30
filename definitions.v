@@ -481,12 +481,98 @@ End Existance.
       unfold next_mode in *.
       remember (rev (X_copy s)) as xcpy.
       destruct (md s); try discriminate.
-      induction (Y_copy s t) using rev_ind; simpl in *; try rewrite rev_unit in *;
+      induction (Y_copy s t) using rev_ind; simpl in *;
       try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
       induction (xcpy); simpl in *; try rewrite rev_unit in *.
       discriminate.
       remember (action_invocation_eq a t i) as Heq; destruct Heq; try discriminate.
       exists a. exists l. split; auto.
+    Qed.
+
+    Lemma commute_mode_state :
+      forall s t i,
+        next_mode s t i = Commute ->
+        exists hd tl, rev (Y_copy (state_with_md s Commute) t) = hd :: tl
+                      /\ action_invocation_eq hd t i = true.
+    Proof.
+      intros. 
+      unfold next_mode in *.
+      remember (rev (Y_copy s t)) as ycpy.
+      destruct (md s); try discriminate.
+      induction (ycpy); simpl in *; try rewrite rev_unit in *;
+      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
+      remember (action_invocation_eq a t i) as Heq; destruct Heq; try discriminate.
+      exists a. exists l. split; auto.
+      induction ((X_copy s)) using rev_ind; simpl in *;
+      try rewrite rev_unit in *; try destruct (action_invocation_eq x t i); try discriminate.
+    Qed.
+
+    Lemma act_changes_to_next_mode :
+      forall s0 t i s a mode,
+        emulator_act s0 t i = (s, a) ->
+        next_mode s0 t i = mode <-> s.(md) = mode.
+    Proof.
+    Admitted.
+
+    Lemma next_mode_replay_implies_current_mode_replay :
+      forall s t i,
+      next_mode s t i = Replay ->
+      s.(md) = Replay.
+    Proof.
+    Admitted.
+
+    Lemma rev_rev {A: Type} :
+      forall l1 l2 : list A,
+        rev l1 = rev l2 <-> l1 = l2.
+    Proof.
+      split; intros; generalize dependent l2;
+      induction l1 using rev_ind; destruct l2 using rev_ind; intros;
+      simpl in *; try rewrite rev_unit in *; try discriminate; auto;
+      try rewrite rev_unit in H; try inversion H; subst.
+      apply IHl1 in H2; subst; auto.
+      destruct l2; simpl in *; discriminate.
+      destruct l1; simpl in *; discriminate.
+      inversion H1; subst. rewrite rev_unit; auto.
+    Qed.
+      
+    Lemma replay_xcopy_state :
+      forall s h,
+        generated s h ->
+        s.(md) = Replay ->
+        s.(preH) = h /\
+        s.(postH) = [] /\
+        s.(commH) = (fun tid => []) /\
+        exists h', h' ++ h = X /\
+                   s.(X_copy) = h'.
+    Proof.
+      intros s h Hgen Hmd. generalize dependent s.
+      induction h; intros; inversion Hgen; subst; auto.
+      - unfold start_state; simpl; repeat (split; auto).
+        exists X; split; [apply app_nil_r | ]; auto.
+      -  unfold emulator_act in H1.
+         assert (next_mode s1 t i = Replay) as Hs1nextmd.
+         {
+           eapply act_changes_to_next_mode; eauto.
+         }
+         assert (s1.(md) = Replay) as Hs1md.
+         {
+          eapply next_mode_replay_implies_current_mode_replay; eauto.
+         }
+         pose (IHh s1 H4 Hs1md) as Hs1state; destruct Hs1state as
+            [Hs1pre [Hs1post [Hs1comm [h' [HX Hxcpys1]]]]].
+         destruct (replay_mode_state s1 t i) as [hd [tl [Hnil Heq]]]; auto.
+         rewrite Hs1nextmd in *; unfold get_replay_response in *; rewrite Hnil in H1.
+         unfold state_with_md in *; simpl in *.
+         inversion H1; subst; simpl in *. repeat (split; auto).
+         exists (rev tl); split; auto.
+         assert (rev tl ++ [(t,i,r)] = X_copy s1).
+         assert (rev ((rev tl) ++ [(t,i,r)]) = (rev (X_copy s1))).
+         {
+           rewrite Hnil, rev_unit, rev_involutive; auto.
+         }
+         rewrite rev_rev in H; auto.
+         rewrite <- H in HX. rewrite <- app_assoc in HX.
+         apply HX.
     Qed.
     
     Lemma get_replay_response_correct :
@@ -500,8 +586,26 @@ End Existance.
       intros s h t i s' rtyp Hgen Hspec Hmd Hact.
       unfold get_replay_response in Hact.
       pose (replay_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
-      
-    Admitted.
+      rewrite Hnil in Hact.
+      unfold state_with_md in *; subst; simpl in *.
+      assert (md s = Replay) as Hmds.
+      {
+        eapply next_mode_replay_implies_current_mode_replay; eauto.
+      }
+      destruct (replay_xcopy_state s h Hgen Hmds) as [Hpres [Hposts [Hcomms [h' [HX Hxcpy]]]]].
+      assert (X = rev tl ++ hd :: h) as HX'.
+      {
+        rewrite <- Hxcpy in HX.
+        assert (rev (hd :: tl) = rev (rev (X_copy s))) as temp.
+        rewrite rev_rev. auto.
+        rewrite rev_involutive in temp.
+        rewrite <- temp in HX.
+        simpl in *; rewrite <- app_assoc in HX. auto.
+      }
+      simpl_actions.
+      eapply spec_prefix_closed. apply HspecX.
+      rewrite H1 in HX'. apply HX'.
+    Qed.
 
     Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
                                         + {next_mode s t i = Emulate}
