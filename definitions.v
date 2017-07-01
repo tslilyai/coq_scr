@@ -232,6 +232,21 @@ End Emulator.
       try unfold start_state in *; try unfold state_with_md in *; simpl in *.
 
 Section Helpers.
+  Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
+                                      + {next_mode s t i = Emulate}
+                                      + {next_mode s t i = Replay}.
+  Proof.
+    intros; destruct s; unfold next_mode in *; simpl in *; destruct md0.
+    - destruct (rev (Y_copy0 t)). left. right. auto.
+      destruct (action_invocation_eq a t i). left; left; auto.
+      left; right; auto.
+    - left; right; auto.
+    - destruct (rev X_copy0).
+      left; right; auto.
+      destruct (action_invocation_eq a t i). right; auto.
+      left; right; auto.
+  Qed.
+
   Lemma inv_of_action_eq : forall a t i r,
                              a = (t, i, r) ->
                              action_invocation_eq a t i = true.
@@ -298,14 +313,6 @@ Section Helpers.
         reordered gencommH (combined_commH s) /\
         s.(postH) ++ gencommH ++ s.(preH) = h.
   Admitted.
-
-  Lemma sim_commutative_prefix_in_spec :
-    forall s h gencommH,
-      generated s h->
-      s.(postH) ++ gencommH ++ s.(preH) = h ->
-      reordered gencommH (combined_commH s) ->
-      spec h -> spec (s.(postH) ++ (combined_commH s) ++ s.(preH)).
-  Admitted.
   
   Lemma rev_rev {A: Type} :
     forall l1 l2 : list A,
@@ -326,7 +333,83 @@ Section Helpers.
       emulator_act s0 t i = (s, a) ->
       next_mode s0 t i = mode <-> s.(md) = mode.
   Proof.
-  Admitted.
+    intros.
+    split; intros; destruct mode0;
+    unfold emulator_act in H.
+    - rewrite H0 in *.
+      unfold get_commute_response in *.
+      destruct (rev (Y_copy (state_with_md s0 Commute) t));
+        inversion H; auto.
+    - rewrite H0 in *.
+      unfold get_emulate_response in *.
+      functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
+                                                        max_response_number);
+        inversion H; auto.
+    - rewrite H0 in *.
+      unfold get_replay_response in *.
+      destruct (rev (X_copy (state_with_md s0 Replay))); inversion H; auto.
+    - destruct (next_mode s0 t i); auto.
+      unfold get_emulate_response in *.
+      functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
+                                                        max_response_number);
+        inversion H; subst; simpl in *. discriminate.
+      discriminate.
+      apply IHp in H2. discriminate.
+      unfold get_replay_response in *.
+      destruct (rev (X_copy (state_with_md s0 Replay))); inversion H; subst; simpl in *; auto.
+    - destruct (next_mode s0 t i); auto.
+      unfold get_commute_response in *.
+      destruct (rev (Y_copy (state_with_md s0 Commute) t));
+        inversion H; subst; simpl in *; auto.
+      unfold get_replay_response in *.
+      destruct (rev (X_copy (state_with_md s0 Replay))); inversion H; subst; simpl in *; auto.
+    - destruct (next_mode s0 t i); auto.
+      unfold get_commute_response in *.
+      destruct (rev (Y_copy (state_with_md s0 Commute) t));
+        inversion H; subst; simpl in *; auto.
+      unfold get_emulate_response in *.
+      functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
+                                                        max_response_number);
+        inversion H; subst; simpl in *. discriminate.
+      discriminate.
+      apply IHp in H2. discriminate.
+  Qed.
+
+  Lemma combined_commH_reordered_Y_prefix :
+      forall s h,
+        generated s h ->
+        exists h',
+          reordered (h' ++ combined_commH s) Y.
+    Proof.
+    Admitted.
+
+    Lemma reordered_Y_prefix_correct :
+      forall h' h,
+        reordered (h' ++ h) Y ->
+        spec h.
+    Proof.
+    Admitted.
+
+    Lemma reordered_trans :
+      forall h1 h2 h3,
+        reordered h1 h2 ->
+        reordered h2 h3 ->
+        reordered h1 h3.
+    Proof.
+    Admitted.
+
+    Lemma correct_state_correct_generated_history :
+      forall s h,
+        generated s h ->
+        spec (get_state_history s) ->
+        spec h.
+    Proof.
+      intros s h Hgen Hspec.
+      destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
+      unfold get_state_history in *; simpl in *.
+      destruct (combined_commH_reordered_Y_prefix s h Hgen) as [h' Hh'].
+      pose (reordered_Y_prefix_correct h' (combined_commH s) Hh') as Hcomm.
+    Admitted.
 
 End Helpers.
 
@@ -363,8 +446,7 @@ Section Existance.
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
         generated s' ((t,i,Resp rtyp)::h).
-  Proof.
-    
+  Proof.    
   Admitted.
 
   Lemma response_always_exists :
@@ -475,7 +557,7 @@ End Existance.
     end.
 
   
-  Section Correctness.
+  Section Emulate_Correctness.
 
     Lemma emulate_mode_preservation :
       forall s t i s' a',
@@ -496,42 +578,6 @@ End Existance.
       inversion H0; auto.
       inversion H0; auto.
     Qed.
-
-    Lemma combined_commH_reordered_Y_prefix :
-      forall s h,
-        generated s h ->
-        exists h',
-          reordered (h' ++ combined_commH s) Y.
-    Proof.
-    Admitted.
-
-    Lemma reordered_Y_prefix_correct :
-      forall h' h,
-        reordered (h' ++ h) Y ->
-        spec h.
-    Proof.
-    Admitted.
-
-    Lemma reordered_trans :
-      forall h1 h2 h3,
-        reordered h1 h2 ->
-        reordered h2 h3 ->
-        reordered h1 h3.
-    Proof.
-    Admitted.
-
-    Lemma correct_state_correct_generated_history :
-      forall s h,
-        generated s h ->
-        spec (get_state_history s) ->
-        spec h.
-    Proof.
-      intros s h Hgen Hspec.
-      destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
-      unfold get_state_history in *; simpl in *.
-      destruct (combined_commH_reordered_Y_prefix s h Hgen) as [h' Hh'].
-      pose (reordered_Y_prefix_correct h' (combined_commH s) Hh') as Hcomm.
-    Admitted.
     
     Lemma get_emulate_response_correct :
       forall s h t i s' rtyp,
@@ -595,6 +641,9 @@ End Existance.
       - now apply IHp in Hact.
     Qed.
 
+  End Emulate_Correctness.
+
+  Section Commute_Correctness.
     Lemma commute_mode_state :
       forall s t i,
         next_mode s t i = Commute ->
@@ -628,6 +677,10 @@ End Existance.
       unfold state_with_md in *; subst; simpl in *.
     Admitted.
 
+  End Commute_Correctness.
+
+  Section Replay_Correctness.
+
     Lemma replay_mode_state :
       forall s t i,
         next_mode s t i = Replay ->
@@ -647,11 +700,35 @@ End Existance.
     Qed.
 
     Lemma next_mode_replay_implies_current_mode_replay :
-      forall s t i,
-      next_mode s t i = Replay ->
-      s.(md) = Replay.
+      forall s t i h,
+        generated s h ->
+        next_mode s t i = Replay ->
+        s.(md) = Replay.
     Proof.
-    Admitted.
+      intros s t i h Hgen Hnext.
+      induction Hgen.
+      unfold start_state in *; auto.
+      unfold emulator_act in H.
+      destruct (next_mode s1 t0 i0).
+      - unfold get_commute_response in H.
+        destruct (rev (Y_copy (state_with_md s1 Commute) t0));
+        inversion H; subst;
+        unfold next_mode in Hnext; simpl in *.
+        unfold state_with_md in *; simpl in *; auto.
+        destruct (rev (Y_copy s1 t));
+          [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
+        destruct (t =? t0). destruct (rev (rev l)). discriminate.
+        destruct (action_invocation_eq a t i); simpl in *; discriminate.
+        destruct (rev (Y_copy s1 t0));
+          [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
+      - unfold get_emulate_response in H.
+        functional induction (get_emulate_response_helper (state_with_md s1 Emulate) t0 i0 0
+                                                          max_response_number);
+          inversion H; subst; simpl in *; auto.
+      - unfold get_replay_response in H.
+        destruct (rev (X_copy (state_with_md s1 Replay)));
+          inversion H; auto.
+    Qed.
       
     Lemma replay_xcopy_state :
       forall s h,
@@ -725,11 +802,9 @@ End Existance.
       rewrite H1 in HX'. apply HX'.
     Qed.
 
-    Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
-                                        + {next_mode s t i = Emulate}
-                                        + {next_mode s t i = Replay}.
-    Proof.
-    Admitted.
+  End Replay_Correctness.
+
+  Section SCR.
 
     Lemma emulator_correct :
       forall s h,
@@ -781,4 +856,4 @@ End Existance.
     Proof.
       intros; split; [eapply emulator_correct | eapply emulator_conflict_free]; eauto.
     Qed.
-End Lemmas.
+End SCR.
