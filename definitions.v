@@ -137,14 +137,16 @@ Section Conflict.
 End Conflict.
 
 Section Emulator.
-  Function combine_tid_commH (s : state) (t : tid) (acc : history) :=
-    let newacc := (s.(commH) t) ++ acc in
+  Function combine_tid_histories (histories : tid -> history) (t : tid) (acc : history) :=
+    let newacc := (histories t) ++ acc in
     match t with
       | 0 => newacc
-      | S t' => combine_tid_commH s t' newacc
+      | S t' => combine_tid_histories histories t' newacc
     end.
-  Definition combined_commH (s : state) := combine_tid_commH s num_threads [].
-  Definition get_state_history (s : state) := s.(postH) ++ combined_commH s ++ s.(preH).
+  Definition combined_histories (histories : tid -> history) :=
+    combine_tid_histories histories num_threads [].
+  Definition get_state_history (s : state) :=
+    s.(postH) ++ combined_histories s.(commH) ++ s.(preH).
   Definition state_with_md (s : state) (md : mode) :=
     mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) s.(postH) md.
              
@@ -284,14 +286,12 @@ Section Helpers.
   Lemma commH_eq_combined_commH_eq :
     forall s s',
       commH s = commH s' ->
-      combined_commH s = combined_commH s'.
+      combined_histories s.(commH) = combined_histories s'.(commH).
   Proof.
     intros. 
-    unfold combined_commH.
-    functional induction (combine_tid_commH s num_threads []);
+    unfold combined_histories.
+    functional induction (combine_tid_histories s.(commH) num_threads []);
       destruct s, s'; simpl in *; rewrite H; auto.
-    rewrite <- H in *.
-    rewrite IHl0; auto.
   Qed.
 
   Lemma state_with_md_get_state_history :
@@ -300,10 +300,6 @@ Section Helpers.
   Proof.
     intros.
     destruct (state_with_md_comp_eq s (state_with_md s mode0) mode0); auto.
-    destruct_conjs.
-    unfold get_state_history.
-    rewrite <- (commH_eq_combined_commH_eq s (state_with_md s mode0));
-    now simpl in *.
   Qed.
     
   Lemma state_with_md_same_md_eq :
@@ -317,7 +313,7 @@ Section Helpers.
     forall s h,
       generated s h ->
       exists gencommH,
-        reordered gencommH (combined_commH s) /\
+        reordered gencommH (combined_histories s.(commH)) /\
         s.(postH) ++ gencommH ++ s.(preH) = h.
   Admitted.
   
@@ -386,14 +382,14 @@ Section Helpers.
       forall s h,
         generated s h ->
         exists h',
-          reordered (h' ++ combined_commH s) Y.
+          reordered (h' ++ combined_histories s.(commH)) Y.
     Proof.
     Admitted.
 
     Lemma reordered_Y_prefix_correct :
       forall h' h,
         reordered (h' ++ h) Y ->
-        spec h.
+        spec (h ++ X).
     Proof.
     Admitted.
 
@@ -415,7 +411,7 @@ Section Helpers.
       destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
       unfold get_state_history in *; simpl in *.
       destruct (combined_commH_reordered_Y_prefix s h Hgen) as [h' Hh'].
-      pose (reordered_Y_prefix_correct h' (combined_commH s) Hh') as Hcomm.
+      pose (reordered_Y_prefix_correct h' (combined_histories s.(commH)) Hh') as Hcomm.
     Admitted.
 
 End Helpers.
@@ -756,9 +752,6 @@ Section Emulate_Correctness.
         assert (spec h).
         {
           eapply correct_state_correct_generated_history; eauto.
-          assert (get_state_history s = get_state_history (state_with_md s Emulate)) as temp.
-          eapply state_with_md_get_state_history; eauto.
-          rewrite (state_with_md_get_state_history s Emulate); auto.
         }
         assert (generated s' ((t, i, Resp rtyp0) :: h)) as Hnewgen.
         {
@@ -777,15 +770,7 @@ Section Emulate_Correctness.
               commH := commH s;
               postH := (t, i, Resp rtyp) :: postH s;
               md := Emulate |}).
-        unfold get_state_history in *; simpl in *.
-        now rewrite <- (commH_eq_combined_commH_eq (state_with_md s Emulate)
-                   {|
-                     X_copy := X_copy s;
-                     Y_copy := Y_copy s;
-                     preH := preH s;
-                     commH := commH s;
-                     postH := (t, i, Resp rtyp) :: postH s;
-                     md := Emulate |}).
+        unfold get_state_history in *; simpl in *. auto.
         rewrite H0 in e. apply spec_oracle_correct in e; auto.
       - rewrite (state_with_md_same_md_eq) in Hact; auto. inversion Hact.
       - now apply IHp in Hact.
@@ -809,7 +794,17 @@ Section Commute_Correctness.
     rewrite Hnil in Hact.
     unfold state_with_md in *; subst; simpl in *.
     inversion Hact; subst.
-    
+    assert (s.(md) = Replay \/ s.(md) = Commute) as Hsmd.
+    {
+      unfold next_mode in *.
+      destruct (md s); [right | discriminate | left]; auto.
+    }
+    destruct Hsmd as [Hsmd | Hsmd];
+      [pose (after_replay_state s h t i Hgen Hsmd Hnextmd) as Hstate | 
+       pose (during_commute_state s h Hgen Hsmd) as Hstate].
+    destruct Hstate as [HX [Hspre [Hspost [Hcomms [Hxcpys Hycpys]]]]].
+    rewrite HX.
+    pose (reordered_Y_prefix_correct) as HY.
   Admitted.
 
 End Commute_Correctness.
@@ -833,7 +828,8 @@ Section Replay_Correctness.
     {
       eapply next_mode_replay_implies_current_mode_replay; eauto.
     }
-    destruct (replay_xcopy_state s h Hgen Hmds) as [Hpres [Hposts [Hcomms [h' [HX Hxcpy]]]]].
+    destruct (during_replay_state s h Hgen Hmds) as
+        [Hpres [Hposts [Hcomms [Hycpy [h' [HX Hxcpy]]]]]].
     assert (X = rev tl ++ hd :: h) as HX'.
     {
       rewrite <- Hxcpy in HX.
