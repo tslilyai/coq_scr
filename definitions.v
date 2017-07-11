@@ -100,15 +100,31 @@ Section Histories.
     inversion Heqact.
     rewrite (IHreordered2 Heqact) in IHreordered1. apply (IHreordered1 Heqact).
   Qed.
-  
-  Lemma reordered_in : forall a h1 h2, reordered h1 h2 -> List.In a h1 <-> List.In a h2.
+
+  Lemma reordered_app_head {t1 t2} l:
+    reordered t1 t2 ->
+    reordered (l++t1) (l++t2).
   Proof.
-  Admitted.
+    induction l; auto; intros.
+    rewrite <- app_comm_cons; apply ro_perm_skip; now apply IHl.
+  Qed.
+  
   Lemma reordered_prefix :
     forall h1 h2 h3 h4,
       reordered (h1 ++ h2) h4 -> reordered h2 h3 -> reordered (h1 ++ h3) h4.
   Proof.
-  Admitted.
+    intros. generalize dependent h4. generalize dependent h1.
+    induction H0; intros; simpl in *; auto.
+    - pose (IHreordered (h1 ++ [x]) h4) as IHr.
+      repeat rewrite <- app_assoc in *.
+      assert (h1 ++ [x] ++ t1 = h1 ++ x :: t1) as tmp1 by now simpl.
+      assert (h1 ++ [x] ++ t2 = h1 ++ x :: t2) as tmp2 by now simpl.
+      rewrite tmp1, tmp2 in *.
+      now apply IHr.
+    - assert (reordered (h1 ++ a1 :: a2 :: t) (h1 ++ a2 :: a1 :: t)).
+      apply reordered_app_head. apply ro_perm_swap. now apply swappable_sym.
+      apply (ro_perm_trans _ _ _ H1 H0).    
+  Qed.
 
 End Histories.
 
@@ -426,15 +442,7 @@ Section Helpers.
       spec (h ++ X).
   Proof.
   Admitted.
-  
-  Lemma reordered_trans :
-    forall h1 h2 h3,
-      reordered h1 h2 ->
-      reordered h2 h3 ->
-      reordered h1 h3.
-  Proof.
-  Admitted.
-  
+    
   Lemma correct_state_correct_generated_history :
     forall s h,
       generated s h ->
