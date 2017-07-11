@@ -64,6 +64,52 @@ Section Histories.
                       reordered t1 t2 ->
                       reordered t2 t3 ->
                       reordered t1 t3.
+  Hint Constructors reordered.
+
+  Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
+  Proof.
+    intros.
+    destruct a1 as [[t i] r].
+    destruct a2 as [[t2 i2] r2].
+    unfold swappable in *; auto.
+  Qed.
+
+  Lemma reordered_nil : forall h, reordered h [] -> h = [].
+  Proof.
+    intros.
+    remember [] as N in H.
+    induction H; discriminate || auto.
+  Qed.
+
+  Lemma reordered_sym : forall h1 h2, reordered h1 h2 -> reordered h2 h1.
+  Proof.
+    intros.
+    induction H; eauto.
+    apply ro_perm_swap. apply swappable_sym; auto.
+  Qed.
+
+  Lemma reordered_unit : forall h a, reordered h [a] -> h = [a].
+  Proof.
+    intros.
+    remember [a] as act.
+    induction H; eauto.
+    assert ([x] ++ t2 = x :: t2) as temp by now simpl. rewrite <- temp in *.
+    destruct (app_eq_unit _ _ Heqact) as [Heq | Heq]; destruct_conjs; try discriminate.
+    rewrite H1 in *.
+    apply reordered_nil in H; rewrite H in *; rewrite app_nil_r; auto.
+    inversion Heqact.
+    rewrite (IHreordered2 Heqact) in IHreordered1. apply (IHreordered1 Heqact).
+  Qed.
+  
+  Lemma reordered_in : forall a h1 h2, reordered h1 h2 -> List.In a h1 <-> List.In a h2.
+  Proof.
+  Admitted.
+  Lemma reordered_prefix :
+    forall h1 h2 h3 h4,
+      reordered (h1 ++ h2) h4 -> reordered h2 h3 -> reordered (h1 ++ h3) h4.
+  Proof.
+  Admitted.
+
 End Histories.
 
 Section MachineState.
@@ -367,42 +413,41 @@ Section Helpers.
       apply IHp in H2. discriminate.
   Qed.
 
-  Lemma combined_commH_reordered_Y_prefix :
-      forall s h,
-        generated s h ->
-        exists h',
-          reordered (h' ++ combined_histories s.(commH)) Y.
-    Proof.
-    Admitted.
-
-    Lemma reordered_Y_prefix_correct :
-      forall h' h,
-        reordered (h' ++ h) Y ->
-        spec (h ++ X).
-    Proof.
-    Admitted.
-
-    Lemma reordered_trans :
-      forall h1 h2 h3,
-        reordered h1 h2 ->
-        reordered h2 h3 ->
-        reordered h1 h3.
-    Proof.
-    Admitted.
-
-    Lemma correct_state_correct_generated_history :
-      forall s h,
-        generated s h ->
-        spec (get_state_history s) ->
-        spec h.
-    Proof.
-      intros s h Hgen Hspec.
-      destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
-      unfold get_state_history in *; simpl in *.
-      destruct (combined_commH_reordered_Y_prefix s h Hgen) as [h' Hh'].
-      pose (reordered_Y_prefix_correct h' (combined_histories s.(commH)) Hh') as Hcomm.
-    Admitted.
-
+  Lemma state_combined_histories_is_reordered_Y :
+    forall s h,
+      generated s h ->
+      reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y.
+  Proof.
+  Admitted.
+  
+  Lemma reordered_Y_prefix_correct :
+    forall h' h,
+      reordered (h' ++ h) Y ->
+      spec (h ++ X).
+  Proof.
+  Admitted.
+  
+  Lemma reordered_trans :
+    forall h1 h2 h3,
+      reordered h1 h2 ->
+      reordered h2 h3 ->
+      reordered h1 h3.
+  Proof.
+  Admitted.
+  
+  Lemma correct_state_correct_generated_history :
+    forall s h,
+      generated s h ->
+      spec (get_state_history s) ->
+      spec h.
+  Proof.
+    intros s h Hgen Hspec.
+    destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
+    unfold get_state_history in *; simpl in *.
+    pose (state_combined_histories_is_reordered_Y s h Hgen) as Hh'.
+    pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy)) (combined_histories s.(commH)) Hh') as Hcomm.
+  Admitted.
+  
 End Helpers.
 
 Section Existance.
@@ -785,28 +830,47 @@ Section Commute_Correctness.
       unfold next_mode in *.
       destruct (md s); [right | discriminate | left]; auto.
     }
-    destruct Hsmd as [Hsmd | Hsmd];
-      [pose (after_replay_state s h t i Hgen Hsmd Hnextmd) as Hstate | 
-       pose (during_commute_state s h Hgen Hsmd) as Hstate].
-    destruct Hstate as [HX [Hspre [Hspost [Hcomms [Hxcpys Hycpys]]]]].
-    rewrite HX.
-    pose (reordered_Y_prefix_correct) as HY.
-    inversion Hact'.
     assert (emulator_act s t i = (s', (t,i,Resp rtyp))) as Hemact.
     {
       unfold emulator_act. rewrite Hnextmd; auto.
     }
     assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
-    assert (md s' = Commute) as Hmds' by now subst.
-    pose (during_commute_state s' ((t,i,Resp rtyp) :: h) Hgens' Hmds') as Hstate.
-    destruct Hstate as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
-    assert (combined_histories (commH s') = [(t,i,Resp rtyp)]).
-    {
-    }
+    assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
+    destruct Hsmd as [Hsmd | Hsmd];
+      [pose (after_replay_state s h t i Hgen Hsmd Hnextmd) as Hstate | 
+       pose (during_commute_state s h Hgen Hsmd) as Hstate];
+      pose (reordered_Y_prefix_correct) as HY.
 
-    
-
-  Admitted.
+    (* Finished Replay *)
+    - destruct Hstate as [HX [Hspre [Hspost [Hcomms [Hxcpys Hycpys]]]]].
+      inversion Hact'.
+      rewrite HX in *.
+      pose (during_commute_state s' ((t,i,Resp rtyp) :: X) Hgens' Hmds') as Hstate.
+      destruct Hstate as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
+      apply HY in Hreordered.
+      assert (combined_histories (commH s') = [(t,i,Resp rtyp)]) as HcommH.
+      {
+        assert (gencomm = [(t,i,Resp rtyp)]) as Hrewrite.
+        {
+          assert ((t, i, Resp rtyp) :: X = [(t,i,Resp rtyp)] ++ X) as Hrewrite.
+          simpl; auto.
+          rewrite Hrewrite in *.
+          now apply (app_inv_tail X [(t,i,Resp rtyp)] gencomm) in Hrespeq.
+        }
+        rewrite Hrewrite in *.
+        apply reordered_sym in Hgencommorder.
+        now apply reordered_unit in Hgencommorder.
+      }
+      now rewrite HcommH in *.
+      
+    (* During Commute *)
+    - pose (during_commute_state s' _ Hgens' Hmds') as Hstates'.
+      destruct Hstates' as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
+      apply reordered_sym in Hgencommorder.
+      pose (reordered_prefix _ _ _ _ Hreordered Hgencommorder) as HYorder.
+      apply HY in HYorder.
+      now rewrite Hrespeq in *.
+  Qed.
 
 End Commute_Correctness.
 
