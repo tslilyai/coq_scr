@@ -565,40 +565,6 @@ End Existance.
       | [ Hact' : (?s, ?a) = (?s', ?a') |- _ ] =>
         inversion Hact'; clear Hact'; simpl; auto
       | _ => idtac
-    end;
-    (* solve for prefix spec cases *)
-    match goal with
-      | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] = X, HspecX : spec X |-
-          spec [(?t, ?i, ?r)] ] =>
-        eapply (spec_prefix_closed (h1 ++ [(t, i, r)]) ([(t,i,r)]) h1); eauto;
-        rewrite <- Hresp in HspecX; auto
-      | [ Hresp : ?h1 ++ [(?t, ?i, ?r)] ++ ?h2 = X, HspecX : spec X |-
-          spec ((?t, ?i, ?r) :: ?h2) ] =>
-        eapply (spec_prefix_closed (h1 ++ [(t, i, r)] ++ h2) ([(t,i,r)] ++ h2) h1); eauto;
-        rewrite <- Hresp in HspecX; auto
-      | _ => idtac
-    end;
-    (* solve for silly exists cases *)
-    match goal with
-      | [ H : (?t', Inv ?i', Resp ?n) = ?a' |- 
-          exists _, (?t', Inv ?i', Resp ?n) = (?t', Inv ?i', Resp _)] =>
-        exists n; auto
-      | [ H : (?t', Inv ?i', NoResp) = ?a' |-
-          exists _ : nat, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _)] =>
-        discriminate_noresp
-      | _ => idtac
-    end;
-  (* when we want to solve for emulate cases *)
-    let M := fresh "H" in
-    let IHp := fresh "IHp" in
-    match goal with
-      | [ Hact : get_emulate_response ?s ?t ?i = (?s', ?a) |- _ ] =>
-        unfold get_emulate_response in Hact;
-          functional induction (get_emulate_response_helper s t i 0 max_response_number)
-          as [ | | IHp];
-          inversion Hact as [M]; subst; simpl in *; try discriminate;
-          try apply IHp in M; auto
-      | _ => idtac
     end.
 
 Section State_Lemmas.
