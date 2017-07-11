@@ -283,17 +283,6 @@ Section Helpers.
     intros. unfold state_with_md in *; rewrite H; simpl; auto.
   Qed.
 
-  Lemma commH_eq_combined_commH_eq :
-    forall s s',
-      commH s = commH s' ->
-      combined_histories s.(commH) = combined_histories s'.(commH).
-  Proof.
-    intros. 
-    unfold combined_histories.
-    functional induction (combine_tid_histories s.(commH) num_threads []);
-      destruct s, s'; simpl in *; rewrite H; auto.
-  Qed.
-
   Lemma state_with_md_get_state_history :
     forall s mode,
       (get_state_history s = get_state_history (state_with_md s mode)).
@@ -691,14 +680,11 @@ Section State_Lemmas.
       forall s h,
         generated s h ->
         s.(md) = Commute ->
-        exists h1 h2,
-          Y = h1 ++ h2 ->
-          h = h2 ++ X /\
-          s.(preH) = X /\
-          s.(postH) = [] /\
-          s.(commH) = (fun tid => history_of_thread h2 tid) /\
-          s.(Y_copy) = (fun tid => history_of_thread h1 tid) /\
-          s.(X_copy) = [].
+        reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y /\
+        (exists gencomm, h = gencomm ++ X /\ reordered gencomm (combined_histories s.(commH))) /\
+        s.(preH) = X /\
+        s.(postH) = [] /\
+        s.(X_copy) = [].
     Admitted.
 
 End State_Lemmas.
@@ -789,11 +775,11 @@ Section Commute_Correctness.
       spec ((t,i,Resp rtyp)::h).
   Proof.
     intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
-    unfold get_commute_response in *.
+    pose Hact as Hact'.
+    unfold get_commute_response in Hact'.
     pose (commute_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
-    rewrite Hnil in Hact.
-    unfold state_with_md in *; subst; simpl in *.
-    inversion Hact; subst.
+    rewrite Hnil in Hact'.
+    unfold state_with_md in Hact'; subst; simpl in *.
     assert (s.(md) = Replay \/ s.(md) = Commute) as Hsmd.
     {
       unfold next_mode in *.
@@ -805,6 +791,21 @@ Section Commute_Correctness.
     destruct Hstate as [HX [Hspre [Hspost [Hcomms [Hxcpys Hycpys]]]]].
     rewrite HX.
     pose (reordered_Y_prefix_correct) as HY.
+    inversion Hact'.
+    assert (emulator_act s t i = (s', (t,i,Resp rtyp))) as Hemact.
+    {
+      unfold emulator_act. rewrite Hnextmd; auto.
+    }
+    assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
+    assert (md s' = Commute) as Hmds' by now subst.
+    pose (during_commute_state s' ((t,i,Resp rtyp) :: h) Hgens' Hmds') as Hstate.
+    destruct Hstate as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
+    assert (combined_histories (commH s') = [(t,i,Resp rtyp)]).
+    {
+    }
+
+    
+
   Admitted.
 
 End Commute_Correctness.
