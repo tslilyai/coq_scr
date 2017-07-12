@@ -764,8 +764,11 @@ Section State_Lemmas.
         rewrite Hh' in *.
         unfold emulator_act in H1. rewrite Hnextmds1 in H1.
         unfold get_replay_response in *.
-        rewrite <- Hs1xcpy in H1.
-    Admitted.
+        assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Hxcpyeq by
+              now eapply state_with_md_comp_eq; eauto.
+        rewrite Hxcpyeq in H1. rewrite Hs1xcpy in *; simpl in *.
+        inversion H1; subst; simpl in *; split; auto.
+    Qed.
 
     Lemma commute_mode_state :
       forall s t i,
