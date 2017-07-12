@@ -636,7 +636,8 @@ Section State_Lemmas.
         inversion Hact; subst;
         unfold state_with_md in *; simpl in *; auto; discriminate.
       - unfold get_emulate_response in *.
-        functional induction (get_emulate_response_helper (state_with_md s Emulate) t i 0 max_response_number);
+        functional induction (get_emulate_response_helper
+                                (state_with_md s Emulate) t i 0 max_response_number);
           unfold state_with_md in *; simpl in *;
           inversion Hact; subst; simpl in *; try discriminate.
         now apply IHp.
@@ -804,7 +805,7 @@ Section State_Lemmas.
 
 End State_Lemmas.
   
-Section Emulate_Correctness.
+Section Correctness.
 
     Lemma emulate_mode_preservation :
       forall s t i s' a',
@@ -876,10 +877,6 @@ Section Emulate_Correctness.
       - rewrite (state_with_md_same_md_eq) in Hact; auto. inversion Hact.
       - now apply IHp in Hact.
     Qed.
-
-End Emulate_Correctness.
-
-Section Commute_Correctness.
   
   Lemma get_commute_response_correct :
     forall s h t i s' rtyp,
@@ -942,10 +939,6 @@ Section Commute_Correctness.
       now rewrite Hrespeq in *.
   Qed.
 
-End Commute_Correctness.
-
-Section Replay_Correctness.
-  
   Lemma get_replay_response_correct :
     forall s h t i s' rtyp,
       generated s h ->
@@ -978,8 +971,7 @@ Section Replay_Correctness.
     eapply spec_prefix_closed. apply HspecX.
     rewrite H1 in HX'. apply HX'.
   Qed.
-
-End Replay_Correctness.
+End Correctness.
 
 Section SCR.
 
@@ -1007,14 +999,20 @@ Section SCR.
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_conflict_free :
-    forall Y' n s s' h t i a',
+    forall s s' h t i a',
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
-      h = skipn n Y' ->
-      reordered Y' Y ->
+      (exists h', reordered (h' ++ (t,i,NoResp) :: h) Y) ->
       emulator_act s t i = (s', a') ->
       conflict_free_step t s s'.
   Proof.
+    intros s s' h t i a' Hgen Hspec [h' Hreordered] Hact.
+    unfold conflict_free_step.
+    inversion Hgen.
+    unfold start_state in *; simpl in *. 
+    assert (md s = Commute).
+    
+    pose during_commute_state.
   Admitted.
 
   Theorem scalable_commutativity_rule :
