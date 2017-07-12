@@ -76,6 +76,30 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">t1</span> <span class="id" title="var">t2</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">t2</span> <span class="id" title="var">t3</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">t1</span> <span class="id" title="var">t3</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">swappable_sym</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">a1</span> <span class="id" title="var">a2</span>, <span class="id" title="var">swappable</span> <span class="id" title="var">a1</span> <span class="id" title="var">a2</span> -&gt; <span class="id" title="var">swappable</span> <span class="id" title="var">a2</span> <span class="id" title="var">a1</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_nil</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">h</span>, <span class="id" title="var">reordered</span> <span class="id" title="var">h</span> [] -&gt; <span class="id" title="var">h</span> = [].<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_sym</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span>, <span class="id" title="var">reordered</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span> -&gt; <span class="id" title="var">reordered</span> <span class="id" title="var">h2</span> <span class="id" title="var">h1</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_unit</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">h</span> <span class="id" title="var">a</span>, <span class="id" title="var">reordered</span> <span class="id" title="var">h</span> [<span class="id" title="var">a</span>] -&gt; <span class="id" title="var">h</span> = [<span class="id" title="var">a</span>].<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_app_head</span> {<span class="id" title="var">t1</span> <span class="id" title="var">t2</span>} <span class="id" title="var">l</span>:<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">t1</span> <span class="id" title="var">t2</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">l</span>++<span class="id" title="var">t1</span>) (<span class="id" title="var">l</span>++<span class="id" title="var">t2</span>).<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_prefix</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span> <span class="id" title="var">h3</span> <span class="id" title="var">h4</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h1</span> ++ <span class="id" title="var">h2</span>) <span class="id" title="var">h4</span> -&gt; <span class="id" title="var">reordered</span> <span class="id" title="var">h2</span> <span class="id" title="var">h3</span> -&gt; <span class="id" title="var">reordered</span> (<span class="id" title="var">h1</span> ++ <span class="id" title="var">h3</span>) <span class="id" title="var">h4</span>.<br/>
+
+<br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">Histories</span>.<br/>
 
 <br/>
@@ -297,31 +321,23 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s0</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">mode</span> &lt;-&gt; <span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">mode</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">combined_commH_reordered_Y_prefix</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ <span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>)) <span class="id" title="var">Y</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_combined_histories_is_reordered_Y</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) ++ <span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>)) <span class="id" title="var">Y</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_Y_prefix_correct</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h'</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ <span class="id" title="var">h</span>) <span class="id" title="var">Y</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_Y_prefix_correct</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h'</span> <span class="id" title="var">h</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ <span class="id" title="var">h</span>) <span class="id" title="var">Y</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>).<br/>
 
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_trans</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span> <span class="id" title="var">h3</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">h2</span> <span class="id" title="var">h3</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">h1</span> <span class="id" title="var">h3</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">correct_state_correct_generated_history</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">get_state_history</span> <span class="id" title="var">s</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">correct_state_correct_generated_history</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">get_state_history</span> <span class="id" title="var">s</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">Helpers</span>.<br/>
@@ -468,6 +484,8 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Commute</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">get_commute_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Commute</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>,(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
+
+<br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">Commute_Correctness</span>.<br/>
 
 <br/>
