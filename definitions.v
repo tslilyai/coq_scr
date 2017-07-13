@@ -873,16 +873,21 @@ Section Correctness.
   Qed.
 
   Lemma get_replay_response_correct :
-    forall s h t i s' rtyp,
+    forall s h t i s' rtyp mde,
       generated s h ->
       spec ((t,i,NoResp)::h) ->
       next_mode s t i = Replay ->
-      get_replay_response (state_with_md s Replay) t i = (s',(t,i,Resp rtyp)) ->
+      get_replay_response (state_with_md s mde) t i = (s',(t,i,Resp rtyp)) ->
       spec ((t,i,Resp rtyp)::h).
   Proof.
-    intros s h t i s' rtyp Hgen Hspec Hmd Hact.
+    intros s h t i s' rtyp mde Hgen Hspec Hmd Hact.
     unfold get_replay_response in Hact.
     pose (replay_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
+    assert (X_copy (state_with_md s Replay) = X_copy s) as Htmp by
+          now eapply state_with_md_comp_eq.
+    assert (X_copy (state_with_md s mde) = X_copy s) as Htmp' by
+          now eapply state_with_md_comp_eq.
+    rewrite Htmp, Htmp' in *.
     rewrite Hnil in Hact.
     unfold state_with_md in *; subst; simpl in *.
     assert (md s = Replay) as Hmds.
@@ -904,6 +909,8 @@ Section Correctness.
     eapply spec_prefix_closed. apply HspecX.
     rewrite H1 in HX'. apply HX'.
   Qed.
+
+
 End Correctness.
 
 Section SCR.
@@ -925,8 +932,10 @@ Section SCR.
       discriminate_noresp.
     - destruct r. eapply get_emulate_response_correct; eauto.
       discriminate_noresp.
-    - destruct r. eapply get_replay_response_correct; eauto.
-      discriminate_noresp.
+    - destruct (rev (X_copy s1)).
+      destruct r; [eapply get_replay_response_correct; eauto | discriminate_noresp].
+      destruct l; destruct r; try discriminate_noresp.
+      all: eapply get_replay_response_correct; eauto.
   Qed.    
   
   (* if we have a SIM-comm region of history, then the emulator produces a
