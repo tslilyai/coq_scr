@@ -394,83 +394,6 @@ Section Helpers.
     rewrite <- app_assoc, app_comm_cons in *; simpl in *; auto. 
   Qed.
   
-  Lemma act_changes_to_next_mode :
-    forall s0 t i s a mode,
-      emulator_act s0 t i = (s, a) ->
-      next_mode s0 t i = mode <-> s.(md) = mode.
-  Proof.
-    (*
-    intros.
-    split; intros; destruct mode0;
-    unfold emulator_act in H.
-    - rewrite H0 in *.
-      unfold get_commute_response in *.
-      destruct (rev (Y_copy (state_with_md s0 Commute) t));
-        inversion H; auto.
-    - rewrite H0 in *.
-      unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
-                                                        max_response_number);
-        inversion H; auto.
-    - rewrite H0 in *.
-      remember (X_copy s0) as s0xcpy.
-      destruct s0xcpy.
-      unfold next_mode in *; subst; simpl in *.
-      destruct (md s0).
-      destruct (rev (Y_copy s0 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
-      discriminate.
-      rewrite <- Heqs0xcpy in *; discriminate.
-      destruct s0xcpy.
-      unfold next_mode in *; subst; simpl in *.
-      
-      
-      unfold get_replay_response in *.
-      assert (X_copy s0 = X_copy (state_with_md s0 Replay)) by
-          now apply (state_with_md_comp_eq s0 (state_with_md s0 Replay) Replay).
-      rewrite Hnotnil, <- H1 in *.
-      destruct (rev_not_nil_or_unit x x1 tl) as [x' [x1' [tl' Heq]]]. rewrite Heq in H.
-      inversion H; auto.
-    - remember (next_mode s0 t i) as nextmd. destruct nextmd; auto.
-      + unfold get_emulate_response in *.
-        functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
-                                                          max_response_number);
-          inversion H; subst; simpl in *. discriminate.
-        discriminate.
-        apply IHp in H2. discriminate.
-      + unfold get_replay_response in *.
-        symmetry in Heqnextmd.
-        destruct (next_mode_replay_implies_xcpy_nonempty s0 t i Heqnextmd) as [x [x1 [tl Hnotnil]]].
-        assert (X_copy s0 = X_copy (state_with_md s0 Replay)) by
-          now apply (state_with_md_comp_eq s0 (state_with_md s0 Replay) Replay).
-        rewrite Hnotnil, <- H1 in *.
-        destruct (rev_not_nil_or_unit x x1 tl) as [x' [x1' [tl' Heq]]]. rewrite Heq in H.
-        inversion H; subst; simpl in *; auto.
-    - remember (next_mode s0 t i) as nextmd. destruct nextmd; auto.
-      unfold get_commute_response in *.
-      destruct (rev (Y_copy (state_with_md s0 Commute) t));
-        inversion H; subst; simpl in *; auto.
-      unfold get_replay_response in *.
-      symmetry in Heqnextmd.
-      destruct (next_mode_replay_implies_xcpy_nonempty s0 t i Heqnextmd) as [x [x1 [tl Hnotnil]]].
-      assert (X_copy s0 = X_copy (state_with_md s0 Replay)) by
-          now apply (state_with_md_comp_eq s0 (state_with_md s0 Replay) Replay).
-      rewrite Hnotnil, <- H1 in *.
-      destruct (rev_not_nil_or_unit x x1 tl) as [x' [x1' [tl' Heq]]]. rewrite Heq in H.
-      inversion H; subst; simpl in *; auto.
-    - destruct (next_mode s0 t i); auto.
-      unfold get_commute_response in *.
-      destruct (rev (Y_copy (state_with_md s0 Commute) t));
-        inversion H; subst; simpl in *; auto.
-      unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper (state_with_md s0 Emulate) t i 0
-                                                        max_response_number);
-        inversion H; subst; simpl in *. discriminate.
-      discriminate.
-      apply IHp in H2. discriminate.
-  Qed.
-     *)
-  Admitted.
-
   Lemma state_combined_histories_is_reordered_Y :
     forall s h,
       generated s h ->
@@ -718,7 +641,14 @@ Section State_Lemmas.
       -  unfold emulator_act in H1.
          assert (next_mode s1 t i = Replay) as Hs1nextmd.
          {
-           eapply act_changes_to_next_mode; eauto.
+           destruct (next_mode s1 t i); auto.
+           - unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
+             destruct (rev (Y_copy s1 t)) in *; inversion H1; subst; discriminate.
+           - unfold get_emulate_response in *.
+             functional induction (get_emulate_response_helper
+                                     (state_with_md s1 Emulate) t i 0 max_response_number);
+               inversion H1; subst; try discriminate.
+             now eapply IHp.
          }
          assert (s1.(md) = Replay) as Hs1md.
          {
