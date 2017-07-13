@@ -259,10 +259,11 @@ Section Emulator.
   Definition emulator_act (s : state) (t: tid) (i : invocation) : (state * action) :=
     let mode := next_mode s t i in
     match mode with
-      | Emulate => get_emulate_response (state_with_md s mode) t i
-      | Commute => get_commute_response (state_with_md s mode) t i
-      | Replay => match s.(X_copy) with
+      | Emulate => get_emulate_response (state_with_md s Emulate) t i
+      | Commute => get_commute_response (state_with_md s Commute) t i
+      | Replay => match rev (s.(X_copy)) with
                   | [hd] => get_replay_response (state_with_md s Commute) t i
+                                                (* Changes mode to Commute *)
                   | _ => get_replay_response (state_with_md s Replay) t i
                   end
     end.
@@ -592,7 +593,8 @@ Section State_Lemmas.
               unfold next_mode in Hnext; inversion H; unfold state_with_md in *;
                 subst; simpl in *.
             1-2: destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
-          * destruct (rev (X_copy (state_with_md s1 Replay))); inversion H; auto.
+          * destruct (rev_not_nil_or_unit a a0 h0) as [x [y [tl' Heq]]]; rewrite Heq in *.
+            destruct (rev (X_copy (state_with_md s1 Replay))); inversion H; auto.
     Qed.
       
     Lemma current_mode_replay_implies_last_mode_replay :
@@ -654,11 +656,18 @@ Section State_Lemmas.
          {
           eapply next_mode_replay_implies_current_mode_replay; eauto.
          }
+         
          pose (IHh s1 H4 Hs1md) as Hs1state; destruct Hs1state as
-            [Hs1pre [Hs1post [Hs1comm [Hs1ycpy [h' [HX Hxcpys1]]]]]].
+             [Hs1pre [Hs1post [Hs1comm [Hs1ycpy [h' [HX Hxcpys1]]]]]].
+         
          destruct (replay_mode_state s1 t i) as [hd [tl [Hnil Heq]]]; auto.
-         rewrite Hs1nextmd in *; unfold get_replay_response in *; rewrite Hnil in H1.
-         unfold state_with_md in *; simpl in *.
+
+         assert (X_copy (state_with_md s1 Commute) = X_copy s1) as Ht1 by
+               now eapply state_with_md_comp_eq.
+         assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Ht2 by
+             now eapply state_with_md_comp_eq.
+         rewrite Hs1nextmd in *; unfold get_replay_response in *; rewrite Ht1, Ht2 in *;
+           rewrite Hnil in H1.
          destruct tl; simpl in *; auto;
            inversion H1; subst; simpl in *; try discriminate; repeat (split; auto).
          exists (rev tl ++ [a]); split; auto.
@@ -693,73 +702,7 @@ Section State_Lemmas.
       unfold next_mode in Hnextmd'.
       rewrite Hm in Hnextmd'.
       destruct (rev (X_copy s)), (rev (Y_copy s t)); try discriminate;
-      try destruct (action_invocation_eq a t i); try discriminate.
-      generalize dependent s.
-      induction h; intros.
-      - inversion Hgen. remember X as HX.
-        destruct HX using rev_ind; unfold start_state, start_mode in *;
-          simpl in *; repeat (split; auto).
-        destruct X. destruct HX in HeqHX; try discriminate.
-        unfold next_mode in *; rewrite <- H in *; simpl in *.
-        
-        rewrite <- HeqHX in *; rewrite <- H in *; 
-          unfold next_mode in *; simpl in *; simpl_actions.
-        destruct (action_invocation_eq x t i); try discriminate.
-      - inversion Hgen; subst.
-        assert (md s1 = Replay) as Hmds1 by
-              now eapply (current_mode_replay_implies_last_mode_replay); eauto.
-        assert (next_mode s1 t0 i0 = Replay) as Hnextmds1.
-        {
-          unfold emulator_act in H1.
-          remember (next_mode s1 t0 i0) as s1nextmd; destruct s1nextmd; auto; try discriminate.
-          unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
-          destruct (rev (Y_copy s1 t0)); inversion H1; subst; try discriminate.
-          unfold get_emulate_response in *.
-          functional induction (get_emulate_response_helper
-                                  (state_with_md s1 Emulate) t0 i0 0 max_response_number);
-            inversion H1; subst; try discriminate.
-          now apply IHp.
-        }
-        destruct (during_replay_state s1 h H4 Hmds1) as
-            [Hs1pre [Hs1post [Hs1comm [Hs1Ycpy [h' [HX Hs1xcpy]]]]]].
-        assert (h' = [(t0, i0, r)]) as Hh'.
-        {
-          pose Hnextmds1 as Hnextmds1'.
-          unfold next_mode in Hnextmds1'.
-          rewrite Hmds1 in Hnextmds1'.
-          rewrite Hs1xcpy in Hnextmds1'.
-          remember h' as rest.
-          destruct rest using rev_ind; simpl in *; simpl_actions.
-          - destruct (rev (Y_copy s1 t0)); try discriminate.
-            destruct (action_invocation_eq a0 t0 i0); discriminate.
-          - remember (action_invocation_eq x t0 i0) as Hacteq; destruct Hacteq; try discriminate.
-            unfold emulator_act in H1.
-            rewrite Hnextmds1 in H1.
-            unfold get_replay_response in H1.
-            assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Hxcpyeq by
-                  now eapply state_with_md_comp_eq; eauto.
-            rewrite Hxcpyeq in *.
-            rewrite Hs1xcpy in *; simpl_actions.
-            assert (rest = []) as Hnil.
-            {
-              unfold next_mode in Hnextmd; rewrite Hm in *;
-              remember (rev (X_copy s)) as sxcpy;
-              destruct sxcpy; try discriminate.
-              - destruct (rev (Y_copy s t)); try discriminate.
-                assert (rev [] = rev (rev (X_copy s))) by now eapply rev_rev.
-                simpl in H; rewrite <- H0 in H; simpl in *.
-                repeat rewrite rev_involutive in *; auto.
-              - destruct (action_invocation_eq a0 t i); discriminate.
-            }
-            rewrite Hnil in *; simpl in *; auto.
-        }
-        rewrite Hh' in *.
-        unfold emulator_act in H1. rewrite Hnextmds1 in H1.
-        unfold get_replay_response in *.
-        assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Hxcpyeq by
-              now eapply state_with_md_comp_eq; eauto.
-        rewrite Hxcpyeq in H1. rewrite Hs1xcpy in *; simpl in *.
-        inversion H1; subst; simpl in *; split; auto.
+        try destruct (action_invocation_eq a t i); try discriminate.
     Qed.
 
     Lemma commute_mode_state :
@@ -780,7 +723,6 @@ Section State_Lemmas.
       destruct (xcpy), ycpy; simpl in *; 
       try rewrite rev_unit in *;
       try remember (action_invocation_eq a t i) as Heq; try destruct Heq; try discriminate.
-      exists a. exists ycpy. split; auto.
     Qed.
     
     Lemma during_commute_state :
