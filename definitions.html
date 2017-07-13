@@ -147,9 +147,9 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">postH</span> : <span class="id" title="var">history</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">md</span> : <span class="id" title="var">mode</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">start_state</span> : <span class="id" title="var">state</span> := <span class="id" title="var">mkState</span> <span class="id" title="var">X</span> (<span class="id" title="var">history_of_thread</span> <span class="id" title="var">Y</span>) [] (<span class="id" title="keyword">fun</span> <span class="id" title="var">tid</span> =&gt; []) [] <span class="id" title="var">Replay</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">start_mode</span> := <span class="id" title="keyword">match</span> <span class="id" title="var">X</span> <span class="id" title="keyword">with</span> | [] =&gt; <span class="id" title="var">Commute</span> | <span class="id" title="var">_</span> =&gt; <span class="id" title="var">Replay</span> <span class="id" title="keyword">end</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">start_state</span> : <span class="id" title="var">state</span> :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">mkState</span> <span class="id" title="var">X</span> (<span class="id" title="var">history_of_thread</span> <span class="id" title="var">Y</span>) [] (<span class="id" title="keyword">fun</span> <span class="id" title="var">tid</span> =&gt; []) [] <span class="id" title="var">start_mode</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">sim_commutes</span> : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -221,8 +221,8 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">get_replay_response</span> (<span class="id" title="var">s</span> : <span class="id" title="var">state</span>) (<span class="id" title="var">t</span>: <span class="id" title="var">tid</span>) (<span class="id" title="var">i</span> : <span class="id" title="var">invocation</span>) : <span class="id" title="var">state</span> * <span class="id" title="var">action</span> :=<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">rev</span> <span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">hd</span>::<span class="id" title="var">tl</span> =&gt; (<span class="id" title="var">mkState</span> (<span class="id" title="var">rev</span> <span class="id" title="var">tl</span>) <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) (<span class="id" title="var">hd</span>::<span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>)) <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>) <span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) <span class="id" title="var">Replay</span>, <span class="id" title="var">hd</span>)<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; (<span class="id" title="var">s</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)) <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">hd</span>::<span class="id" title="var">tl</span> =&gt; (<span class="id" title="var">mkState</span> (<span class="id" title="var">rev</span> <span class="id" title="var">tl</span>) <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) (<span class="id" title="var">hd</span>::<span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>)) <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>) <span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) <span class="id" title="var">s</span>.(<span class="id" title="var">md</span>), <span class="id" title="var">hd</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; (<span class="id" title="var">s</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)) <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">next_mode</span> (<span class="id" title="var">s</span> : <span class="id" title="var">state</span>) (<span class="id" title="var">t</span>: <span class="id" title="var">tid</span>) (<span class="id" title="var">i</span>: <span class="id" title="var">invocation</span>) : <span class="id" title="var">mode</span> :=<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) <span class="id" title="keyword">with</span><br/>
@@ -233,13 +233,9 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">else</span> <span class="id" title="var">Emulate</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Replay</span> =&gt; <span class="id" title="keyword">match</span> <span class="id" title="var">rev</span> <span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| [] =&gt; <span class="id" title="keyword">match</span> <span class="id" title="var">rev</span> (<span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) <span class="id" title="var">t</span>) <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| [] =&gt; <span class="id" title="var">Emulate</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">hd</span> :: <span class="id" title="var">tl</span> =&gt; <span class="id" title="keyword">if</span> <span class="id" title="var">action_invocation_eq</span> <span class="id" title="var">hd</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="keyword">then</span> <span class="id" title="var">Commute</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">else</span> <span class="id" title="var">Emulate</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">hd</span> :: <span class="id" title="var">tl</span> =&gt; <span class="id" title="keyword">if</span> <span class="id" title="var">action_invocation_eq</span> <span class="id" title="var">hd</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="keyword">then</span> <span class="id" title="var">Replay</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">else</span> <span class="id" title="var">Emulate</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| [] =&gt; <span class="id" title="var">Emulate</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">hd</span> :: <span class="id" title="var">tl</span> =&gt; <span class="id" title="keyword">if</span> <span class="id" title="var">action_invocation_eq</span> <span class="id" title="var">hd</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="keyword">then</span> <span class="id" title="var">Replay</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">else</span> <span class="id" title="var">Emulate</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <span class="id" title="var">emulator_act</span> (<span class="id" title="var">s</span> : <span class="id" title="var">state</span>) (<span class="id" title="var">t</span>: <span class="id" title="var">tid</span>) (<span class="id" title="var">i</span> : <span class="id" title="var">invocation</span>) : (<span class="id" title="var">state</span> * <span class="id" title="var">action</span>) :=<br/>
@@ -247,7 +243,10 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">mode</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Emulate</span> =&gt; <span class="id" title="var">get_emulate_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Commute</span> =&gt; <span class="id" title="var">get_commute_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Replay</span> =&gt; <span class="id" title="var">get_replay_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Replay</span> =&gt; <span class="id" title="keyword">match</span> <span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| [<span class="id" title="var">hd</span>] =&gt; <span class="id" title="var">get_replay_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Commute</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; <span class="id" title="var">get_replay_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Replay</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
@@ -313,6 +312,15 @@
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">rev_rev</span> {<span class="id" title="var">A</span>: <span class="id" title="keyword">Type</span>} :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">l1</span> <span class="id" title="var">l2</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">rev</span> <span class="id" title="var">l1</span> = <span class="id" title="var">rev</span> <span class="id" title="var">l2</span> &lt;-&gt; <span class="id" title="var">l1</span> = <span class="id" title="var">l2</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">next_mode_replay_implies_xcpy_nonempty</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Replay</span> -&gt; <span class="id" title="tactic">exists</span> <span class="id" title="var">x</span> <span class="id" title="var">x1</span> <span class="id" title="var">tl</span>, <span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) = <span class="id" title="var">x</span> :: <span class="id" title="var">x1</span> :: <span class="id" title="var">tl</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">rev_not_nil_or_unit</span> : <span class="id" title="keyword">forall</span> (<span class="id" title="var">x</span> <span class="id" title="var">y</span> : <span class="id" title="var">action</span>) <span class="id" title="var">tl</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">x'</span> <span class="id" title="var">y'</span> <span class="id" title="var">tl'</span>, <span class="id" title="var">rev</span> (<span class="id" title="var">x</span> :: <span class="id" title="var">y</span> :: <span class="id" title="var">tl</span>) = <span class="id" title="var">x'</span> :: <span class="id" title="var">y'</span> :: <span class="id" title="var">tl'</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">act_changes_to_next_mode</span> :<br/>
@@ -406,6 +414,14 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span>.<br/>
 
 <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">current_mode_replay_implies_last_mode_replay</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">h</span> <span class="id" title="var">a</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span>.<br/>
+
+<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">during_replay_state</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
@@ -452,7 +468,7 @@
 <span class="id" title="keyword">End</span> <span class="id" title="var">State_Lemmas</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Emulate_Correctness</span>.<br/>
+<span class="id" title="keyword">Section</span> <span class="id" title="var">Correctness</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulate_mode_preservation</span> :<br/>
@@ -471,12 +487,6 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
 
 <br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Emulate_Correctness</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Commute_Correctness</span>.<br/>
-
-<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_commute_response_correct</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">rtyp</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
@@ -486,12 +496,6 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
 
 <br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Commute_Correctness</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Replay_Correctness</span>.<br/>
-
-<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_replay_response_correct</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">rtyp</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
@@ -499,9 +503,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Replay</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">get_replay_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Replay</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>,(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
-
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Replay_Correctness</span>.<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Correctness</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Section</span> <span class="id" title="var">SCR</span>.<br/>
@@ -514,12 +516,11 @@
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_conflict_free</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">Y'</span> <span class="id" title="var">n</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">h</span> = <span class="id" title="var">skipn</span> <span class="id" title="var">n</span> <span class="id" title="var">Y'</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">Y'</span> <span class="id" title="var">Y</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span> <span class="id" title="var">r</span>, <span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>.<br/>
 
 <br/>
