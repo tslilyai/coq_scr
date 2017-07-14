@@ -100,6 +100,22 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h1</span> ++ <span class="id" title="var">h2</span>) <span class="id" title="var">h4</span> -&gt; <span class="id" title="var">reordered</span> <span class="id" title="var">h2</span> <span class="id" title="var">h3</span> -&gt; <span class="id" title="var">reordered</span> (<span class="id" title="var">h1</span> ++ <span class="id" title="var">h3</span>) <span class="id" title="var">h4</span>.<br/>
 
 <br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_in</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">l</span> <span class="id" title="var">l'</span> <span class="id" title="var">x</span>, <span class="id" title="var">reordered</span> <span class="id" title="var">l</span> <span class="id" title="var">l'</span> -&gt; <span class="id" title="var">List.In</span> <span class="id" title="var">x</span> <span class="id" title="var">l</span> -&gt;<span class="id" title="var">List.In</span> <span class="id" title="var">x</span> <span class="id" title="var">l'</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reorder_length_eq</span> : (<span class="id" title="keyword">forall</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span>, <span class="id" title="var">reordered</span> <span class="id" title="var">h1</span> <span class="id" title="var">h2</span> -&gt; <span class="id" title="var">length</span> <span class="id" title="var">h1</span> = <span class="id" title="var">length</span> <span class="id" title="var">h2</span>).<br/>
+ 
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reorder_unit_eq</span> : (<span class="id" title="keyword">forall</span> <span class="id" title="var">a</span> <span class="id" title="var">b</span>, <span class="id" title="var">reordered</span> [<span class="id" title="var">a</span>] [<span class="id" title="var">b</span>] -&gt; <span class="id" title="var">a</span> = <span class="id" title="var">b</span>).<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">history_of_thread_not_nil</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span> <span class="id" title="var">h</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt; <span class="id" title="var">history_of_thread</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> &lt;&gt; [].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Search</span> (<span class="id" title="var">_</span> =? <span class="id" title="var">_</span> = <span class="id" title="var">false</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">Histories</span>.<br/>
 
 <br/>
@@ -507,11 +523,34 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span>.<br/>
 
 <br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">mode_generated_X</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">X</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Commute</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">mode_generated_replay</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">h'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span> = <span class="id" title="var">X</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">mode_generated_replay_finish</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span> = <span class="id" title="var">X</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span> /\<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Commute</span>.<br/>
+
+<br/>
+
+<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_conflict_free</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span> <span class="id" title="var">r</span>, <span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span>, <span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>.<br/>
 

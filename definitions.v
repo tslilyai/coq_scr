@@ -980,7 +980,24 @@ Section SCR.
       destruct l; destruct r; try discriminate_noresp.
       all: eapply get_replay_response_correct; eauto.
   Qed.    
-  
+
+  Lemma mode_generated_replay :
+    forall s h h' t i r,
+      generated s h ->
+      h' ++ (t,i,r) :: h = X ->
+      s.(md) = Replay.
+  Proof.
+  Admitted.
+
+  Lemma mode_generated_commute :
+    forall s h Yend Yfront t i r,
+      generated s h ->
+      h = Yend ++ X ->
+      reordered (Yfront ++ (t,i,r) :: Yend) Y ->
+      s.(md) = Commute.
+  Proof.
+  Admitted.
+        
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_conflict_free :
