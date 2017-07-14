@@ -125,6 +125,47 @@ Section Histories.
       apply reordered_app_head. apply ro_perm_swap. now apply swappable_sym.
       apply (ro_perm_trans _ _ _ H1 H0).    
   Qed.
+  
+  Lemma reordered_in : forall l l' x, reordered l l' -> List.In x l ->List.In x l'.
+  Proof.
+    intros l l' x Hperm; induction Hperm; simpl; tauto.
+  Qed.
+  
+  Lemma reorder_length_eq : (forall h1 h2, reordered h1 h2 -> length h1 = length h2).
+  Proof.    
+    intros.
+    induction H; subst; simpl in *; auto.
+    rewrite IHreordered1, <- IHreordered2; auto.
+  Qed.    
+
+  Lemma reorder_unit_eq : (forall a b, reordered [a] [b] -> a = b).
+  Proof.
+    intros.
+    assert (List.In a [b]).
+    apply (reordered_in _ _ a H). apply in_eq.
+    inversion H0; auto.
+    apply in_inv in H0; destruct H0; try discriminate; subst; auto;
+      inversion H0.
+  Qed.
+
+  Lemma history_of_thread_not_nil :
+    forall t i r h,
+      List.In (t,i,r) h -> history_of_thread h t <> [].
+  Proof.
+    intros. induction h. inversion H.
+    apply in_inv in H; destruct H; subst.
+    unfold history_of_thread; simpl. rewrite <- beq_nat_refl in *.
+    intuition.
+    eapply (nil_cons). symmetry in H; eauto.
+    pose (IHh H).
+    unfold history_of_thread. destruct a as [[t' i'] r']. simpl in *.
+    Search (_ =? _ = false).
+    destruct (Nat.eq_dec t' t) as [T | F]; subst;
+      [rewrite <- beq_nat_refl | rewrite <- Nat.eqb_neq in *; rewrite F];
+      fold history_of_thread; auto.
+    intuition.
+    eapply nil_cons; eauto.
+  Qed.
 
 End Histories.
 
@@ -419,7 +460,8 @@ Section Helpers.
     destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
     unfold get_state_history in *; simpl in *.
     pose (state_combined_histories_is_reordered_Y s h Hgen) as Hh'.
-    pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy)) (combined_histories s.(commH)) Hh') as Hcomm.
+    pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy))
+                                     (combined_histories s.(commH)) Hh') as Hcomm.
   Admitted.
   
 End Helpers.
@@ -592,7 +634,8 @@ Section State_Lemmas.
           * destruct (rev (X_copy (state_with_md s1 Commute)));
               unfold next_mode in Hnext; inversion H; unfold state_with_md in *;
                 subst; simpl in *.
-            1-2: destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
+            1-2: destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)];
+              discriminate.
           * destruct (rev_not_nil_or_unit a a0 h0) as [x [y [tl' Heq]]]; rewrite Heq in *.
             destruct (rev (X_copy (state_with_md s1 Replay))); inversion H; auto.
     Qed.
@@ -941,20 +984,66 @@ Section SCR.
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_conflict_free :
-    forall s s' h t i a',
+    forall s s' h t i r,
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
-      (exists h' r, reordered (h' ++ (t,i,r) :: h) Y) ->
+      (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       emulator_act s t i = (s', (t,i,r)) ->
       conflict_free_step t s s'.
   Proof.
-    intros s s' h t i a' Hgen Hspec [h' Hreordered] Hact.
+    intros s s' h t i r Hgen Hspec [h' Hreordered] Hact.
     unfold conflict_free_step.
-    inversion Hgen.
-    unfold start_state in *; simpl in *. 
-    assert (md s = Commute).
-    
-    pose during_commute_state.
+    inversion Hgen; subst.
+
+    (* we've generated [] so far *)
+    - unfold start_state, start_mode in *; destruct X; simpl in *;
+       unfold step_writes, write_tid_set in *; simpl in *;
+         unfold emulator_act in Hact;
+         unfold next_mode in *; subst; simpl in *.
+      (* X = [] *)
+      + rewrite app_nil_r in *; subst.
+        assert (List.In (t,i,r) Y) as HinY.
+        {
+          apply (reordered_in _ _ (t,i,r) Hreordered).
+          apply in_or_app.
+          right; apply in_eq.
+        }
+        assert (history_of_thread Y t <> []) as Hist.
+        {
+          eapply history_of_thread_not_nil; eauto.
+        }
+        remember (history_of_thread Y t) as Yhist.
+        destruct Yhist using rev_ind.
+        intuition; discriminate.
+        rewrite rev_unit in *.
+        clear IHYhist.
+        assert (exists h', history_of_thread Y t = h' ++ [(t,i,r)]) as HYhistEnd.
+        {
+          admit.
+        }
+        assert (action_invocation_eq x t i = true) as Heq.
+        {
+          destruct HYhistEnd as [bleh HYhistEnd].
+          rewrite HYhistEnd in *; simpl in *.
+          assert (rev (Yhist ++ [x]) = rev (bleh ++ [(t,i,r)])).
+          rewrite HeqYhist; simpl in *; auto.
+          repeat rewrite rev_unit in *. destruct x as [[t' [i']] r'].
+          inversion H; subst; auto.
+          unfold action_invocation_eq; simpl in *; repeat rewrite <- beq_nat_refl; auto.
+        }
+        rewrite Heq in *.
+        unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
+        rewrite <- HeqYhist in *; try rewrite rev_unit in *.
+        inversion Hact; subst; simpl in *; repeat (split; auto).
+        admit.
+      (* X = a :: h *)
+      + pose (app_cons_not_nil h h0 a). contradiction.
+
+    (* we've generated some history h so far *)
+    - remember X as HX. destruct h; destruct HX; simpl in *.
+      symmetry in H. pose (nil_cons H); discriminate.
+      pose (after_replay_state).
+      
   Admitted.
 
   Theorem scalable_commutativity_rule :
