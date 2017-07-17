@@ -272,7 +272,7 @@ Section Emulator.
     match rev (s.(Y_copy) t) with
       | hd::tl => (mkState s.(X_copy)
                                (fun tid => if tid =? t then (rev tl)
-                                           else s.(Y_copy) t)
+                                           else s.(Y_copy) tid)
                                s.(preH) (fun tid => if tid =? t then hd::(s.(commH) t)
                                                     else s.(commH) tid)
                                         s.(postH) Commute, hd)
@@ -620,7 +620,7 @@ Section State_Lemmas.
             [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
           destruct (t =? t0). destruct (rev (rev l)). discriminate.
           destruct (action_invocation_eq a t i); simpl in *; discriminate.
-          destruct (rev (Y_copy s1 t0));
+          destruct (rev (Y_copy s1 t));
             [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
         + unfold get_emulate_response in H.
           functional induction (get_emulate_response_helper (state_with_md s1 Emulate) t0 i0 0
@@ -726,26 +726,6 @@ Section State_Lemmas.
          rewrite rev_rev in H; simpl in *; rewrite <- app_assoc in *; auto.
          rewrite <- H in HX. repeat rewrite <- app_assoc in *; simpl in *.
          apply HX.
-    Qed.
-    
-    Lemma after_replay_state :
-      forall s h t i,
-        generated s h ->
-        s.(md) = Replay ->
-        next_mode s t i = Commute ->
-        h = X /\
-        s.(preH) = X /\
-        s.(postH) = [] /\
-        s.(commH) = (fun tid => []) /\
-        s.(X_copy) = [] /\
-        s.(Y_copy) = (fun tid => history_of_thread Y tid).
-    Proof.
-      intros s h t i Hgen Hm Hnextmd.
-      pose Hnextmd as Hnextmd'.
-      unfold next_mode in Hnextmd'.
-      rewrite Hm in Hnextmd'.
-      destruct (rev (X_copy s)), (rev (Y_copy s t)); try discriminate;
-        try destruct (action_invocation_eq a t i); try discriminate.
     Qed.
 
     Lemma commute_mode_state :
@@ -880,38 +860,12 @@ Section Correctness.
     assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
     assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
     destruct Hsmd as [Hsmd | Hsmd];
-      [pose (after_replay_state s h t i Hgen Hsmd Hnextmd) as Hstate | 
-       pose (during_commute_state s h Hgen Hsmd) as Hstate];
-      pose (reordered_Y_prefix_correct) as HY.
-
-    (* Finished Replay *)
-    - destruct Hstate as [HX [Hspre [Hspost [Hcomms [Hxcpys Hycpys]]]]].
-      inversion Hact'.
-      rewrite HX in *.
-      pose (during_commute_state s' ((t,i,Resp rtyp) :: X) Hgens' Hmds') as Hstate.
-      destruct Hstate as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
-      apply HY in Hreordered.
-      assert (combined_histories (commH s') = [(t,i,Resp rtyp)]) as HcommH.
-      {
-        assert (gencomm = [(t,i,Resp rtyp)]) as Hrewrite.
-        {
-          assert ((t, i, Resp rtyp) :: X = [(t,i,Resp rtyp)] ++ X) as Hrewrite.
-          simpl; auto.
-          rewrite Hrewrite in *.
-          now apply (app_inv_tail X [(t,i,Resp rtyp)] gencomm) in Hrespeq.
-        }
-        rewrite Hrewrite in *.
-        apply reordered_sym in Hgencommorder.
-        now apply reordered_unit in Hgencommorder.
-      }
-      now rewrite HcommH in *.
-      
-    (* During Commute *)
-    - pose (during_commute_state s' _ Hgens' Hmds') as Hstates'.
-      destruct Hstates' as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]].
-      apply reordered_sym in Hgencommorder.
-      pose (reordered_prefix _ _ _ _ Hreordered Hgencommorder) as HYorder.
-      apply HY in HYorder.
+      pose (during_commute_state s' ((t,i,Resp rtyp)::h) Hgens' Hmds') as Hstates';
+      pose (reordered_Y_prefix_correct) as HY;
+      destruct Hstates' as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]];
+      apply reordered_sym in Hgencommorder;
+      pose (reordered_prefix _ _ _ _ Hreordered Hgencommorder) as HYorder;
+      apply HY in HYorder;
       now rewrite Hrespeq in *.
   Qed.
 
@@ -997,7 +951,14 @@ Section SCR.
       s.(md) = Commute.
   Proof.
   Admitted.
-        
+
+  Lemma history_of_thread_end :
+    forall t h i r,
+      reordered (h ++ [(t,i,r)]) Y ->
+      exists h', history_of_thread Y t = h' ++ [(t,i,r)].
+  Proof.
+  Admitted.
+
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma emulator_conflict_free :
@@ -1034,13 +995,9 @@ Section SCR.
         intuition; discriminate.
         rewrite rev_unit in *.
         clear IHYhist.
-        assert (exists h', history_of_thread Y t = h' ++ [(t,i,r)]) as HYhistEnd.
-        {
-          admit.
-        }
         assert (action_invocation_eq x t i = true) as Heq.
         {
-          destruct HYhistEnd as [bleh HYhistEnd].
+          destruct (history_of_thread_end _ _ _ _ Hreordered) as [bleh HYhistEnd].
           rewrite HYhistEnd in *; simpl in *.
           assert (rev (Yhist ++ [x]) = rev (bleh ++ [(t,i,r)])).
           rewrite HeqYhist; simpl in *; auto.
@@ -1052,15 +1009,196 @@ Section SCR.
         unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
         rewrite <- HeqYhist in *; try rewrite rev_unit in *.
         inversion Hact; subst; simpl in *; repeat (split; auto).
-        admit.
+
+        (* tid stuff *)
+        remember (fun tid0 : tid => [] <> (if tid0 =? t then [(t, i, r)] else [])) as A.
+        assert (Same_set tid A (Singleton tid t)) as Hsameset.
+        {
+          unfold Same_set; unfold Included; split; intros t' Hinc; rewrite HeqA in *;
+          destruct (Nat.eq_dec t' t).
+          rewrite e in *; apply In_singleton.
+          unfold In in Hinc. rewrite <- Nat.eqb_neq in n. rewrite n in Hinc.
+          intuition; auto.
+
+          rewrite e in *. unfold In. rewrite Nat.eqb_refl. intuition. discriminate.
+          unfold In in Hinc. inversion Hinc. intuition.
+        }
+        assert (Same_set tid
+                         (fun tid0 : tid =>
+                            history_of_thread Y tid0 <>
+                            (if tid0 =? t then rev (rev Yhist) else history_of_thread Y tid0))
+                         (Singleton tid t)) as Hsameset'.
+        {
+          unfold Same_set; unfold Included; split; intros t' Hinc;
+          destruct (Nat.eq_dec t' t).
+          rewrite e in *; apply In_singleton.
+          unfold In in Hinc. rewrite <- Nat.eqb_neq in n. rewrite n in Hinc.
+          intuition; auto.
+
+          rewrite e in *. unfold In. rewrite Nat.eqb_refl.
+          rewrite <- HeqYhist. rewrite rev_involutive. intuition.
+          rewrite <- app_nil_r in H. apply app_inv_head in H; discriminate.
+          
+          unfold In in Hinc. inversion Hinc. intuition.
+        }
+        assert (Same_set tid (Union tid A A) A) as Hsameset''.
+        {
+          unfold Same_set; unfold Included; split; intros t' Hinc; rewrite HeqA in *;
+          destruct (Nat.eq_dec t' t); unfold In in *; subst.
+          rewrite Nat.eqb_refl. intuition; discriminate.
+
+          inversion Hinc; subst; unfold In in *;
+            rewrite <- Nat.eqb_neq in n; rewrite n in *; now intuition.
+
+          apply Union_introl; unfold In; auto.
+          rewrite <- Nat.eqb_neq in n; rewrite n in *; now intuition.
+        }
+        apply Extensionality_Ensembles in Hsameset;
+          apply Extensionality_Ensembles in Hsameset';
+          apply Extensionality_Ensembles in Hsameset''.
+        rewrite HeqA in Hsameset''; rewrite <- Hsameset in Hsameset'.
+        rewrite Hsameset', <- Hsameset; now rewrite HeqA.
+
       (* X = a :: h *)
       + pose (app_cons_not_nil h h0 a). contradiction.
 
-    (* we've generated some history h so far *)
-    - remember X as HX. destruct h; destruct HX; simpl in *.
-      symmetry in H. pose (nil_cons H); discriminate.
-      pose (after_replay_state).
-      
+    (* we've generated some history a::h so far *)
+    - remember X as HX. destruct h; destruct HX; try rewrite <- HeqHX in *; simpl in *;
+                          unfold step_writes.
+      (* h, X = [] *)
+      + symmetry in H. pose (nil_cons H); discriminate.
+      (* h = [], X = a :: hx *)
+      + inversion H; subst.
+
+        (* figure out the state of s *)
+        assert (md s1 = Replay) as Hs1md by
+              now eapply (mode_generated_replay s1 _ [] t0 i0 r0); eauto.
+        destruct (during_replay_state s1 _ H3 Hs1md) as
+            [Hpres1 [Hposets1 [Hcomms1 [Hycpys1 [Xend [Hh' Hxcpys1]]]]]].
+        assert (Xend = [(t0, i0, r0)]) as HeqXend.
+        {
+          rewrite <- Hh' in HeqHX.
+          assert ((t0,i0,r0) :: HX = [(t0,i0,r0)] ++ HX) as tmp by now simpl in *.
+          repeat rewrite tmp in *. rewrite <- H in *.
+          apply app_inv_tail in HeqHX; auto.
+        }
+        subst. unfold emulator_act in H0.
+        unfold next_mode in H0; rewrite Hs1md in *. rewrite HeqXend in *.
+        simpl in *. destruct i0; simpl in *.
+        repeat rewrite Nat.eqb_refl in *; simpl in *.
+        unfold get_replay_response in *.
+        assert (X_copy (state_with_md s1 Commute) = X_copy s1) as Htmp
+            by now eapply state_with_md_comp_eq.
+        rewrite Htmp, HeqXend in *; simpl in *.
+        inversion H0; subst; simpl in *.
+        
+        (* now figure out the state of s' *)        
+        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        rewrite Hycpys1 in *.
+        destruct (history_of_thread_end _ _ _ _ Hreordered) as [Yhist HYhist].
+        rewrite HYhist in *. rewrite rev_unit in *.
+        destruct i; simpl in *. repeat rewrite Nat.eqb_refl in *; simpl in *.
+        unfold get_commute_response in *; simpl in *.
+        rewrite HYhist in *; rewrite rev_unit in *; simpl in *.
+        inversion Hact; subst; simpl in *.
+        repeat (split; auto).
+
+        unfold write_tid_set.
+        assert (Same_set tid
+                         (Union tid
+                                (fun tid0 : tid =>
+                                   commH s1 tid0 <>
+                                   (if tid0 =? t then (t, Inv n0, r) :: commH s1 t
+                                    else commH s1 tid0))
+                                (fun tid0 : tid =>
+                                   history_of_thread Y tid0 <>
+                                   (if tid0 =? t then rev (rev Yhist)
+                                    else history_of_thread Y tid0)))
+                         (Singleton tid t)).
+        {
+          unfold Same_set; unfold Included; split; unfold In;
+            intros x Hinc; destruct (Nat.eq_dec x t); subst.
+          - constructor. 
+          - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n1 in *;
+            intuition.
+          - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+            intuition. assert ([] ++ commH s1 t = [(t,Inv n0, r)] ++ commH s1 t) by now simpl.
+            apply app_inv_tail in H4. discriminate.
+          - inversion Hinc. rewrite H2 in *; intuition.
+        }
+        now apply Extensionality_Ensembles in H2.
+
+      (* X = [], h = a :: h *)
+      + rewrite app_nil_r in *; rewrite <- H in *.
+         (* figure out the state of s *)
+        assert (md s1 = Commute) as Hs1md.
+        {
+          eapply (mode_generated_commute s1 _ h0 _ t0 i0 r0); eauto.
+          rewrite <- HeqHX; rewrite app_nil_r; auto.
+          assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h0 = (h'++ (t,i,r)::(t0,i0,r0)::h0)) as bleh.
+          rewrite <- app_assoc. simpl in *; auto.
+          rewrite bleh in *. auto.
+        }
+        destruct (during_commute_state s1 _ H3 Hs1md) as 
+            [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
+        destruct hist as [gencomm [Hgencomm Hgcorder]].
+        rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
+        unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
+        assert (exists history, rev (Y_copy s1 t0) = (t0,i0,r0) :: history) as Hs1ycpyt0.
+        {
+          admit.
+        }
+        destruct Hs1ycpyt0 as [history Hs1ycpyt0].
+        rewrite Hs1ycpyt0 in H0; simpl in *; destruct i0; simpl in *.
+        repeat rewrite Nat.eqb_refl in *; simpl in *.
+        unfold get_commute_response in *; simpl in *.
+        rewrite Hs1ycpyt0 in *. inversion H0; subst; simpl in *.
+
+        (* now figure out the state of s' *)
+        assert (exists history', Y_copy s1 t = (t,i,r) :: history') as Hs1ycpyt.
+        {
+          admit.
+        }
+        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        destruct (Nat.eq_dec t t0); subst; [rewrite Nat.eqb_refl in *|].
+        (* if t = t0 *)
+        * assert (exists posthist, history = (t0,i,r)::posthist) as Hhist.
+          {
+            admit.
+          }
+          destruct Hhist as [posthist Hhist].
+          rewrite Hhist in Hact. rewrite rev_involutive in *; simpl in *.
+          destruct i; simpl in *.
+          repeat rewrite Nat.eqb_refl in *; simpl in *.
+          unfold get_commute_response, state_with_md in *; simpl in *.
+          rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
+          repeat (split; auto).
+
+          unfold write_tid_set.
+        assert (Same_set tid
+                         (Union tid
+                                (fun tid0 : tid =>
+                                   commH s1 tid0 <>
+                                   (if tid0 =? t then (t, Inv n0, r) :: commH s1 t
+                                    else commH s1 tid0))
+                                (fun tid0 : tid =>
+                                   history_of_thread Y tid0 <>
+                                   (if tid0 =? t then rev (rev Yhist)
+                                    else history_of_thread Y tid0)))
+                         (Singleton tid t)).
+        {
+          unfold Same_set; unfold Included; split; unfold In;
+            intros x Hinc; destruct (Nat.eq_dec x t); subst.
+          - constructor. 
+          - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n1 in *;
+            intuition.
+          - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+            intuition. assert ([] ++ commH s1 t = [(t,Inv n0, r)] ++ commH s1 t) by now simpl.
+            apply app_inv_tail in H4. discriminate.
+          - inversion Hinc. rewrite H2 in *; intuition.
+        }
+        now apply Extensionality_Ensembles in H2.
+
   Admitted.
 
   Theorem scalable_commutativity_rule :
