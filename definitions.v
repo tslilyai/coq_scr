@@ -1130,7 +1130,7 @@ Section SCR.
 
       (* X = [], h = a :: h *)
       + rewrite app_nil_r in *; rewrite <- H in *.
-         (* figure out the state of s *)
+        (* figure out the state of s *)
         assert (md s1 = Commute) as Hs1md.
         {
           eapply (mode_generated_commute s1 _ h0 _ t0 i0 r0); eauto.
@@ -1155,12 +1155,13 @@ Section SCR.
         rewrite Hs1ycpyt0 in *. inversion H0; subst; simpl in *.
 
         (* now figure out the state of s' *)
-        assert (exists history', Y_copy s1 t = (t,i,r) :: history') as Hs1ycpyt.
+        assert (exists history', Y_copy s1 t = history' ++ [(t,i,r)]) as Hs1ycpyt.
         {
           admit.
         }
         unfold emulator_act in *; unfold next_mode in *; simpl in *.
-        destruct (Nat.eq_dec t t0); subst; [rewrite Nat.eqb_refl in *|].
+        destruct (Nat.eq_dec t t0); subst; [rewrite Nat.eqb_refl in *
+                                           | rewrite <- Nat.eqb_neq in *; rewrite n0 in *].
         (* if t = t0 *)
         * assert (exists posthist, history = (t0,i,r)::posthist) as Hhist.
           {
@@ -1175,30 +1176,191 @@ Section SCR.
           repeat (split; auto).
 
           unfold write_tid_set.
-        assert (Same_set tid
-                         (Union tid
-                                (fun tid0 : tid =>
-                                   commH s1 tid0 <>
-                                   (if tid0 =? t then (t, Inv n0, r) :: commH s1 t
-                                    else commH s1 tid0))
-                                (fun tid0 : tid =>
-                                   history_of_thread Y tid0 <>
-                                   (if tid0 =? t then rev (rev Yhist)
-                                    else history_of_thread Y tid0)))
-                         (Singleton tid t)).
-        {
-          unfold Same_set; unfold Included; split; unfold In;
-            intros x Hinc; destruct (Nat.eq_dec x t); subst.
-          - constructor. 
-          - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n1 in *;
-            intuition.
-          - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
-            intuition. assert ([] ++ commH s1 t = [(t,Inv n0, r)] ++ commH s1 t) by now simpl.
-            apply app_inv_tail in H4. discriminate.
-          - inversion Hinc. rewrite H2 in *; intuition.
-        }
-        now apply Extensionality_Ensembles in H2.
+          assert (Same_set tid
+                      (Union tid
+                      (fun tid0 : tid =>
+                         (if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0 else commH s1 tid0) <>
+                         (if tid0 =? t0 then (t0, Inv n0, r) :: (t0, Inv n, r0) :: commH s1 t0
+                          else if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                               else commH s1 tid0))
+                      (fun tid0 : tid =>
+                         (if tid0 =? t0 then rev posthist ++ [(t0, Inv n0, r)]
+                          else Y_copy s1 tid0) <>
+                         (if tid0 =? t0 then rev (rev (rev posthist))
+                          else if tid0 =? t0 then rev posthist ++ [(t0, Inv n0, r)]
+                               else Y_copy s1 tid0)))
+                      (Singleton tid t0)) as HSS.
+          {
+            unfold Same_set; unfold Included; split; unfold In;
+              intros x Hinc; destruct (Nat.eq_dec x t0); subst.
+            - constructor. 
+            - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n1 in *;
+                intuition.
+            - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+              intuition. assert ([] ++ (t0,Inv n, r0) :: commH s1 t0
+                                 = [(t0,Inv n0, r)] ++ (t0, Inv n, r0) :: commH s1 t0) by now simpl.
+              apply app_inv_tail in H4. discriminate.
+            - inversion Hinc. rewrite H2 in *; intuition.
+          }
+          now apply Extensionality_Ensembles in HSS.
+        (* if t <> t0 *)
+        * destruct Hs1ycpyt as [history' Hs1ycpyt].
+          rewrite Hs1ycpyt in *. rewrite rev_unit in *; simpl in *.
+          destruct i; simpl in *.
+          repeat rewrite Nat.eqb_refl in *; simpl in *.
+          inversion Hact; subst.
+           unfold get_commute_response, state_with_md in *; simpl in *.
+           rewrite n0 in *. rewrite Hs1ycpyt in *. rewrite rev_unit in *.
+           inversion H4; subst; simpl in *.
+          repeat (split; auto).
 
+          unfold write_tid_set.
+          assert (Same_set tid
+                           (Union tid (fun tid0 : tid =>
+                                         (if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                                          else commH s1 tid0) <>
+                                         (if tid0 =? t
+                                          then (t, Inv n1, r) :: commH s1 t
+                                          else if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                                               else commH s1 tid0))
+                                  (fun tid0 : tid =>
+                                     (if tid0 =? t0 then rev history else Y_copy s1 tid0) <>
+                                     (if tid0 =? t then rev (rev history')
+                                      else if tid0 =? t0 then rev history else Y_copy s1 tid0)))
+                           (Singleton tid t)) as HSS.
+          {
+            unfold Same_set; unfold Included; split; unfold In;
+              intros x Hinc; destruct (Nat.eq_dec x t); subst.
+            - constructor. 
+            - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n2 in *; subst.
+              all: destruct (Nat.eq_dec x t0); subst; [
+                rewrite Nat.eqb_refl in *
+              | rewrite <- Nat.eqb_neq in n3; rewrite n3 in *]; 
+                intuition.
+            - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+              intuition. rewrite n0 in *.
+              assert ([] ++ commH s1 t = [(t,Inv n1, r)] ++ commH s1 t) by now simpl.
+              apply app_inv_tail in H5. discriminate.
+            - inversion Hinc. rewrite H2 in *; intuition.
+          }
+          now apply Extensionality_Ensembles in HSS.
+
+      (* X = a :: HX and h = b :: h' *)
+      + inversion H; subst; clear H.
+        (* figure out the state of s *)
+        assert (md s1 = Commute) as Hs1md.
+        {
+          eapply (mode_generated_commute s1 _ h _ t0 i0 r0); eauto.
+          rewrite <- HeqHX; auto.
+          assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h  = (h'++ (t,i,r)::(t0,i0,r0)::h)) as bleh.
+          rewrite <- app_assoc. simpl in *; auto.
+          rewrite bleh in *. auto.
+        }
+        destruct (during_commute_state s1 _ H3 Hs1md) as 
+            [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
+        destruct hist as [gencomm [Hgencomm Hgcorder]].
+        rewrite <- HeqHX in *; rewrite Hgencomm in *.
+        unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
+        assert (exists history, rev (Y_copy s1 t0) = (t0,i0,r0) :: history) as Hs1ycpyt0.
+        {
+          admit.
+        }
+        destruct Hs1ycpyt0 as [history Hs1ycpyt0].
+        rewrite Hs1ycpyt0 in H0; simpl in *; destruct i0; simpl in *.
+        repeat rewrite Nat.eqb_refl in *; simpl in *.
+        unfold get_commute_response in *; simpl in *.
+        rewrite Hs1ycpyt0 in *. inversion H0; subst; simpl in *.
+
+        (* now figure out the state of s' *)
+        assert (exists history', Y_copy s1 t = history' ++ [(t,i,r)]) as Hs1ycpyt.
+        {
+          admit.
+        }
+        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        destruct (Nat.eq_dec t t0); subst; [rewrite Nat.eqb_refl in *
+                                           | rewrite <- Nat.eqb_neq in *; rewrite n0 in *].
+        (* if t = t0 *)
+        * assert (exists posthist, history = (t0,i,r)::posthist) as Hhist.
+          {
+            admit.
+          }
+          destruct Hhist as [posthist Hhist].
+          rewrite Hhist in Hact. rewrite rev_involutive in *; simpl in *.
+          destruct i; simpl in *.
+          repeat rewrite Nat.eqb_refl in *; simpl in *.
+          unfold get_commute_response, state_with_md in *; simpl in *.
+          rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
+          repeat (split; auto).
+
+          unfold write_tid_set.
+          assert (Same_set tid
+                      (Union tid
+                      (fun tid0 : tid =>
+                         (if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0 else commH s1 tid0) <>
+                         (if tid0 =? t0 then (t0, Inv n0, r) :: (t0, Inv n, r0) :: commH s1 t0
+                          else if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                               else commH s1 tid0))
+                      (fun tid0 : tid =>
+                         (if tid0 =? t0 then rev posthist ++ [(t0, Inv n0, r)]
+                          else Y_copy s1 tid0) <>
+                         (if tid0 =? t0 then rev (rev (rev posthist))
+                          else if tid0 =? t0 then rev posthist ++ [(t0, Inv n0, r)]
+                               else Y_copy s1 tid0)))
+                      (Singleton tid t0)) as HSS.
+          {
+            unfold Same_set; unfold Included; split; unfold In;
+              intros x Hinc; destruct (Nat.eq_dec x t0); subst.
+            - constructor. 
+            - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n1 in *;
+                intuition.
+            - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+              intuition. assert ([] ++ (t0,Inv n, r0) :: commH s1 t0
+                                 = [(t0,Inv n0, r)] ++ (t0, Inv n, r0) :: commH s1 t0) as tmp by now simpl.
+              apply app_inv_tail in tmp. discriminate.
+            - inversion Hinc. rewrite H in *; intuition.
+          }
+          now apply Extensionality_Ensembles in HSS.
+        (* if t <> t0 *)
+        * destruct Hs1ycpyt as [history' Hs1ycpyt].
+          rewrite Hs1ycpyt in *. rewrite rev_unit in *; simpl in *.
+          destruct i; simpl in *.
+          repeat rewrite Nat.eqb_refl in *; simpl in *.
+          inversion Hact; subst.
+           unfold get_commute_response, state_with_md in *; simpl in *.
+           rewrite n0 in *. rewrite Hs1ycpyt in *. rewrite rev_unit in *.
+           inversion H2; subst; simpl in *.
+          repeat (split; auto).
+
+          unfold write_tid_set.
+          assert (Same_set tid
+                           (Union tid (fun tid0 : tid =>
+                                         (if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                                          else commH s1 tid0) <>
+                                         (if tid0 =? t
+                                          then (t, Inv n1, r) :: commH s1 t
+                                          else if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
+                                               else commH s1 tid0))
+                                  (fun tid0 : tid =>
+                                     (if tid0 =? t0 then rev history else Y_copy s1 tid0) <>
+                                     (if tid0 =? t then rev (rev history')
+                                      else if tid0 =? t0 then rev history else Y_copy s1 tid0)))
+                           (Singleton tid t)) as HSS.
+          {
+            unfold Same_set; unfold Included; split; unfold In;
+              intros x Hinc; destruct (Nat.eq_dec x t); subst.
+            - constructor. 
+            - inversion Hinc; unfold In in *; rewrite <- Nat.eqb_neq in *; rewrite n2 in *; subst.
+              all: destruct (Nat.eq_dec x t0); subst; [
+                rewrite Nat.eqb_refl in *
+              | rewrite <- Nat.eqb_neq in n3; rewrite n3 in *]; 
+                intuition.
+            - apply Union_introl; unfold In in *. rewrite Nat.eqb_refl.
+              intuition. rewrite n0 in *.
+              assert ([] ++ commH s1 t = [(t,Inv n1, r)] ++ commH s1 t) as tmp by now simpl.
+              apply app_inv_tail in tmp. discriminate.
+            - inversion Hinc. rewrite H in *; intuition.
+          }
+          now apply Extensionality_Ensembles in HSS.
   Admitted.
 
   Theorem scalable_commutativity_rule :
