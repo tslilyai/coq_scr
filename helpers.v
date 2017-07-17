@@ -31,6 +31,11 @@ Section Histories.
     induction H; discriminate || auto.
   Qed.
 
+  Lemma reordered_refl : forall h, reordered h h.
+  Proof.
+    intros; induction h; eauto.
+  Qed.
+
   Lemma reordered_sym : forall h1 h2, reordered h1 h2 -> reordered h2 h1.
   Proof.
     intros.
@@ -98,13 +103,129 @@ Section Histories.
       inversion H0.
   Qed.
 
+  Hint Resolve reordered_sym reordered_refl swappable_sym.
+  Theorem reordered_ind_bis :
+    forall P : history -> history -> Prop,
+      P [] [] ->
+      (forall x l l', reordered l l' -> P l l' -> P (x :: l) (x :: l')) ->
+      (forall x y l l', swappable x y ->
+                        reordered l l' ->
+                        P l l' ->
+                        P (y :: x :: l) (x :: y :: l')) ->
+      (forall l l' l'', reordered l l' -> P l l' -> reordered l' l'' -> P l' l'' -> P l l'') ->
+      forall l l', reordered l l' -> P l l'.
+  Proof.
+    intros P Hnil Hskip Hswap Htrans.
+    induction 1; auto.
+    apply Htrans with (a1::a2::t); auto.
+    apply Hswap; auto.
+    induction t; auto.
+    apply Hskip; auto.
+    apply Hskip; auto.
+    induction t; auto.
+    eauto.
+  Qed.
+
+  Ltac break_list l x l' H :=
+  destruct l as [|x l']; simpl in *;
+  injection H; intros; subst; clear H.
+
+  Theorem reordered_cons_app : forall l l1 l2 a,
+      reordered l (l1 ++ l2) ->
+      (forall a0, List.In a0 l1 -> swappable a a0) ->
+      reordered (a :: l) (l1 ++ a :: l2).
+  Proof.
+    intros l l1; revert l.
+    induction l1.
+    simpl.
+    intros; apply ro_perm_skip; auto.
+    simpl; intros.
+    apply ro_perm_trans with (a0::a::l1++l2).
+    apply ro_perm_skip; auto.
+    apply ro_perm_trans with (a::a0::l1++l2).
+    apply ro_perm_swap; auto.
+    apply ro_perm_skip; auto.
+  Qed.
+  Hint Resolve reordered_cons_app.
+
+  Theorem reordered_app_inv : forall l1 l2 l3 l4 a,
+      reordered (l1++a::l2) (l3++a::l4) -> reordered (l1++l2) (l3++l4).
+  Proof.
+    set (P:=fun l l' => 
+             forall a l1 l2 l3 l4, l=l1++a::l2 -> l'=l3++a::l4 -> reordered (l1++l2) (l3++l4)).
+    cut (forall l l', reordered l l' -> P l l').
+    intros; apply (H _ _ H0 a); auto.
+    intros; apply (reordered_ind_bis P); unfold P; clear P; try clear H l l'; simpl; auto.
+    intros; destruct l1; simpl in *; discriminate.
+    intros x l l' H IH; intros. admit. (*
+    break_list l1 b l1' H0; break_list l3 c l3' H1.
+    auto.
+    apply ro_perm_trans with (l3'++c::l4); auto.
+    apply ro_perm_trans with (l1'++a::l2); auto using reordered_cons_app.
+    apply perm_skip.
+    apply (IH a l1' l2 l3' l4); auto. *)
+    intros x y l l' Hswap Hp IH; intros.
+    break_list l1 b l1' H; break_list l3 c l3' H0.
+    auto.
+    break_list l3' b l3'' H.
+    auto.
+    apply ro_perm_trans with (c::l3''++b::l4); auto. admit.
+    break_list l1' c l1'' H1.
+    auto.
+    apply ro_perm_trans with (b::l1''++c::l2); auto. admit.
+    break_list l3' d l3'' H; break_list l1' e l1'' H1.
+    auto.
+    apply ro_perm_trans with (e::a::l1''++l2); auto.
+    apply ro_perm_trans with (e::l1''++a::l2); auto.
+    admit.
+    apply ro_perm_trans with (d::a::l3''++l4); auto.
+    apply ro_perm_trans with (d::l3''++a::l4); auto.
+    admit.
+    apply ro_perm_trans with (e::d::l1''++l2); auto.
+    apply ro_perm_skip; apply ro_perm_skip.
+    apply (IH a l1'' l2 l3'' l4); auto.
+    intros.
+    destruct (In_split a l') as (l'1,(l'2,H6)).
+    apply (reordered_in l _ a); auto.
+    subst l.
+    apply in_or_app; right; red; auto.
+    apply ro_perm_trans with (l'1++l'2).
+    apply (H0 _ _ _ _ _ H3 H6).
+    apply (H2 _ _ _ _ _ H6 H4).
+  Admitted.
+
+  Lemma reordered_cons_inv : forall a l1 l2, reordered (a :: l1) (a :: l2) -> reordered l1 l2.
+  Proof.
+    intros. exact (reordered_app_inv [] l1 [] l2 a H).
+  Qed.
+  
   Lemma reordered_app_inv_hd :
+    forall l l1 l2, reordered (l1++l) (l2++l) -> reordered l1 l2.
+  Proof.
+    induction l.
+    intros l1 l2. do 2 rewrite app_nil_r; auto.
+    intros.
+    apply IHl.
+    now apply reordered_app_inv in H.
+  Qed.
+    
+  Lemma reordered_app_inv_prefix :
     forall hd1 hd2 tl1 tl2,
     reordered (hd1++tl1) (hd2++tl2) ->
     reordered tl1 tl2 ->
     reordered hd1 hd2.
   Proof.
-  Admitted.
+    intros.
+    assert (reordered (hd2++tl1) (hd1++tl1)).
+    {
+      eapply reordered_prefix; apply reordered_sym in H; apply reordered_sym in H0; eauto.
+    }
+    assert (reordered (hd1 ++ tl1) (hd2 ++ tl1)).
+    {
+      eapply ro_perm_trans; eauto.
+    }
+    eapply reordered_app_inv_hd; eauto.
+  Qed.
     
   Lemma history_of_thread_not_nil :
     forall t i r h,
