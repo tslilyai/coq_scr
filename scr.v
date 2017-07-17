@@ -33,135 +33,6 @@ Ltac unfold_action_inv_eq :=
       | _ => idtac
     end.
 
-    Ltac unfold_me :=
-      try unfold emulator_act in *; try unfold next_mode in *;
-      try unfold start_state in *; try unfold state_with_md in *; simpl in *.
-
-Section Helpers.
-  Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
-                                      + {next_mode s t i = Emulate}
-                                      + {next_mode s t i = Replay}.
-  Proof.
-    intros; destruct s; unfold next_mode in *; simpl in *; destruct md0.
-    - destruct (rev (Y_copy0 t)). left. right. auto.
-      destruct (action_invocation_eq a t i). left; left; auto.
-      left; right; auto.
-    - left; right; auto.
-    - destruct (rev X_copy0).
-      destruct (rev (Y_copy0 t)).
-      left; right; auto.
-      destruct (action_invocation_eq a t i). left; right; auto. 
-      left; right; auto.
-      destruct (action_invocation_eq a t i). right; auto. 
-      left; right; auto.
-  Qed.
-
-  Lemma inv_of_action_eq : forall a t i r,
-                             a = (t, i, r) ->
-                             action_invocation_eq a t i = true.
-  Proof.
-    intros. unfold action_invocation_eq; subst. destruct i; repeat rewrite Nat.eqb_refl. auto. 
-  Qed.
-
-  Lemma state_with_md_has_md :
-    forall s s' mode,
-      s' = state_with_md s mode ->
-      s'.(md) = mode.
-  Proof.
-    intros. unfold state_with_md in *. rewrite H in *; simpl; auto.
-  Qed.
-
-  Lemma state_with_md_comp_eq :
-    forall s s' mode,
-      s' = state_with_md s mode ->
-      s'.(X_copy) = s.(X_copy) /\
-      s'.(Y_copy) = s.(Y_copy) /\
-      s'.(preH) = s.(preH) /\
-      s'.(postH) = s.(postH) /\
-      s'.(commH) = s.(commH).
-  Proof.
-    intros. unfold state_with_md in *; rewrite H; simpl; auto.
-  Qed.
-
-  Lemma state_with_md_get_state_history :
-    forall s mode,
-      (get_state_history s = get_state_history (state_with_md s mode)).
-  Proof.
-    intros.
-    destruct (state_with_md_comp_eq s (state_with_md s mode0) mode0); auto.
-  Qed.
-    
-  Lemma state_with_md_same_md_eq :
-    forall s mode,
-      s.(md) = mode -> state_with_md s mode = s.
-  Proof.
-    intros. destruct s. unfold state_with_md; simpl in *. rewrite H. auto.
-  Qed.
-
-  Lemma generated_history_corresponds_state_history :
-    forall s h,
-      generated s h ->
-      exists gencommH,
-        reordered gencommH (combined_histories s.(commH)) /\
-        s.(postH) ++ gencommH ++ s.(preH) = h.
-  Admitted.
-  
-  Lemma rev_rev {A: Type} :
-    forall l1 l2 : list A,
-      rev l1 = rev l2 <-> l1 = l2.
-  Proof.
-    split; intros; generalize dependent l2;
-    induction l1 using rev_ind; destruct l2 using rev_ind; intros;
-    simpl in *; try rewrite rev_unit in *; try discriminate; auto;
-    try rewrite rev_unit in H; try inversion H; subst.
-    apply IHl1 in H2; subst; auto.
-    destruct l2; simpl in *; discriminate.
-    destruct l1; simpl in *; discriminate.
-    inversion H1; subst. rewrite rev_unit; auto.
-  Qed.
-
-  Lemma rev_not_nil_or_unit : forall (x y : action) tl,
-      exists x' y' tl', rev (x :: y :: tl) = x' :: y' :: tl'.
-  Proof.
-    intros.
-    destruct (tl) using rev_ind; simpl in *.
-    exists y; exists x; exists []; auto.
-    rewrite rev_unit. destruct (rev l).
-    exists x0; exists y; exists [x]; simpl in *; auto.
-    exists x0; exists a; exists (l0 ++ [y] ++ [x]); simpl in *; auto.
-    rewrite <- app_assoc, app_comm_cons in *; simpl in *; auto. 
-  Qed.
-  
-  Lemma state_combined_histories_is_reordered_Y :
-    forall s h,
-      generated s h ->
-      reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y.
-  Proof.
-  Admitted.
-  
-  Lemma reordered_Y_prefix_correct :
-    forall h' h,
-      reordered (h' ++ h) Y ->
-      spec (h ++ X).
-  Proof.
-  Admitted.
-    
-  Lemma correct_state_correct_generated_history :
-    forall s h,
-      generated s h ->
-      spec (get_state_history s) ->
-      spec h.
-  Proof.
-    intros s h Hgen Hspec.
-    destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
-    unfold get_state_history in *; simpl in *.
-    pose (state_combined_histories_is_reordered_Y s h Hgen) as Hh'.
-    pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy))
-                                     (combined_histories s.(commH)) Hh') as Hcomm.
-  Admitted.
-  
-End Helpers.
-
 Section Existance.
   Lemma generated_deterministic :
     forall s s' h,
@@ -465,16 +336,11 @@ Section Correctness.
         emulator_act s t i = (s', a') ->
         s'.(md) = Emulate.
     Proof.
-      intros.
-      unfold_me. rewrite H in *.
+      intros. unfold emulator_act in *. unfold next_mode in *.
+      rewrite H in *.
       unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper  {|
-         X_copy := X_copy s;
-         Y_copy := Y_copy s;
-         preH := preH s;
-         commH := commH s;
-         postH := postH s;
-         md := Emulate |} t i 0 max_response_number); eauto.
+      functional induction (get_emulate_response_helper (state_with_md s Emulate)
+                                                        t i 0 max_response_number); eauto.
       inversion H0; auto.
       inversion H0; auto.
     Qed.
@@ -1037,15 +903,15 @@ Section SCR.
        generated s h ->
        spec h /\
        (List.In (t,i,r) h -> exists rtyp, r = Resp rtyp)) /\
-    (forall Y' n s s' h t i a',
-       generated s (h ++ X) ->
-       spec ((t,i,NoResp) :: h ++ X) ->
-       h = skipn n Y' ->
-       reordered Y' Y ->
-       emulator_act s t i = (s', a') ->
-       conflict_free_step t s s').
+    (forall s s' h t i r,
+      generated s (h ++ X) ->
+      spec ((t,i,NoResp) :: h ++ X) ->
+      (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
+      emulator_act s t i = (s', (t,i,r)) ->
+      conflict_free_step t s s').
   Proof.
     intros; split. split; [eapply emulator_correct | eapply response_always_exists]; eauto.
     eapply emulator_conflict_free; eauto.
   Qed.
+  
 End SCR.
