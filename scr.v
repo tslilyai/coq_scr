@@ -34,31 +34,28 @@ Ltac unfold_action_inv_eq :=
     end.
 
 Section Existance.
-  Lemma generated_deterministic :
-    forall s s' h,
-      generated s h ->
-      generated s' h ->
-      s = s'.
-  Proof.
-  Admitted.
-    
+      
   Lemma emulator_deterministic :
     forall s1 s2 s2' t i a a',
       emulator_act s1 t i = (s2, a) ->
       emulator_act s1 t i = (s2', a') ->
       s2 = s2' /\ a = a'.
   Proof.
-  Admitted.
+    intros. rewrite H in H0; inversion H0; auto.
+  Qed.
 
-  Lemma generated_commute_response_exists :
-    forall s h t i,
+  Lemma generated_deterministic :
+    forall s s' h,
       generated s h ->
-      next_mode s t i = Commute ->
-      spec ((t,i,NoResp)::h) ->
-      exists rtyp s',
-        generated s' ((t,i,Resp rtyp)::h).
+      generated s' h ->
+      s = s'.
   Proof.
-  Admitted.
+    intros. revert s s' H H0.
+    induction h; intros; inversion H; inversion H0; auto; subst.
+    assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
+    inversion H7; subst.
+    eapply emulator_deterministic; eauto.
+  Qed.
   
   Lemma generated_response_exists :
     forall s h t i,
@@ -66,7 +63,8 @@ Section Existance.
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
         generated s' ((t,i,Resp rtyp)::h).
-  Proof.    
+  Proof.
+    intros s h t i Hgen Hspec.
   Admitted.
 
   Lemma response_always_exists :
