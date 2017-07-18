@@ -164,6 +164,7 @@ Section Emulator.
            | 0 => (state_with_md s Emulate, (t, i, NoResp)) (* should never reach this *)
            | S n' => get_emulate_response_helper s t i (S rtyp) n'
          end.
+
   Definition get_emulate_response (s : state) (t: tid) (i : invocation) : state * action :=
     get_emulate_response_helper s t i 0 max_response_number.
   Definition get_commute_response (s : state) (t: tid) (i: invocation) : state * action :=

@@ -309,6 +309,35 @@ Section Histories.
     fold history_of_thread in Ht1; rewrite Nat.eqb_refl in *;
       rewrite Ht1; try rewrite <- app_assoc; simpl in *; auto.
   Qed.
+
+  Lemma history_of_thread_sublist :
+    forall a t h,
+      List.In a (history_of_thread h t) -> List.In a h.
+  Proof.
+    intros.
+    induction h. simpl in *; auto.
+    assert ({a = a0} + {a <> a0}) as ActEqDec.
+    {
+      destruct a as [[ta [ia]] ra]; destruct a0 as [[ta0 [ia0]] ra0].
+      destruct (Nat.eq_dec ta ta0), (Nat.eq_dec ia ia0), ra as [ra|], ra0 as [ra0|];
+        try destruct (Nat.eq_dec ra ra0); subst;
+          try (left; auto; fail); try (right; intuition; inversion H0; auto).
+    }
+    destruct ActEqDec; subst.
+    apply in_eq. apply in_cons.
+    assert ((a0 :: h) = [a0] ++ h) as tmp by now simpl. rewrite tmp in *.
+    rewrite history_of_thread_app_distributes in *.
+    destruct a0 as [[t0 i0] r0].
+    destruct (Nat.eq_dec t0 t); subst; unfold history_of_thread; simpl in *;
+      [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n0 in *].
+
+    apply in_app_or in H; destruct H.
+    inversion H. rewrite H0 in *; intuition. inversion H0.
+    eapply IHh; eauto.
+
+    rewrite app_nil_l in *. eapply IHh; eauto.
+  Qed.
+
 End Histories.
 
 Section Misc.

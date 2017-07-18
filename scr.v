@@ -33,90 +33,6 @@ Ltac unfold_action_inv_eq :=
       | _ => idtac
     end.
 
-Section Existance.
-      
-  Lemma emulator_deterministic :
-    forall s1 s2 s2' t i a a',
-      emulator_act s1 t i = (s2, a) ->
-      emulator_act s1 t i = (s2', a') ->
-      s2 = s2' /\ a = a'.
-  Proof.
-    intros. rewrite H in H0; inversion H0; auto.
-  Qed.
-
-  Lemma generated_deterministic :
-    forall s s' h,
-      generated s h ->
-      generated s' h ->
-      s = s'.
-  Proof.
-    intros. revert s s' H H0.
-    induction h; intros; inversion H; inversion H0; auto; subst.
-    assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
-    inversion H7; subst.
-    eapply emulator_deterministic; eauto.
-  Qed.
-  
-  Lemma generated_response_exists :
-    forall s h t i,
-      generated s h ->
-      spec ((t,i,NoResp)::h) ->
-      exists rtyp s',
-        generated s' ((t,i,Resp rtyp)::h).
-  Proof.
-    intros s h t i Hgen Hspec.
-  Admitted.
-
-  Lemma response_always_exists :
-    forall s h t i r,
-      generated s h ->
-      List.In (t,i,r) h ->
-      exists rtyp, r = Resp rtyp.
-  Proof.
-    intros s h t i r Hgen Hin.
-    pose Hgen as Hgen'.
-    induction Hgen'.
-    inversion Hin.
-    assert (exists rtyp s', generated s' ((t0,i0,Resp rtyp)::h)) as Hgenexists. {
-      eapply generated_response_exists; eauto.
-    } destruct Hgenexists as [rtyp [s' Hgenexists]].
-    inversion Hgenexists; subst.
-
-    remember (action_invocation_eq (t,i,r) t0 i0) as Heq.
-    destruct Heq, i, i0, r, r0; try destruct (Nat.eq_dec n1 n2); unfold_action_inv_eq;
-    subst; inversion Hin; try inversion H1; try (now exists n2); try (now exists n1);
-    try eapply IHHgen'; eauto.
-
-    all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
-    all : pose (emulator_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
-      as Heq; destruct Heq as [Hseq Haeq]; auto.
-    all : inversion Haeq.
-  Qed.
-
-End Existance.
-
-  Ltac discriminate_noresp :=
-    match goal with
-      | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
-              Hspec : spec ((?t, ?i, NoResp) :: ?h),
-                      Hact : emulator_act ?s ?t ?i = (?s', ?a') |- _ ] =>
-        let M := fresh "SO" in
-        assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
-            now apply (response_always_exists s h t i s' a') |
-            destruct M as [rtyp_new M] ; subst; discriminate ]
-      | [ Hresp : _ = X |-
-          exists _, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _) ] =>
-        let M := fresh "SO" in pose (X_and_Y_wf t' (Inv i') NoResp) as M;
-          assert (List.In (t', Inv i', NoResp) (Y++X)) as Hin; [
-            rewrite <- Hresp; apply List.in_app_iff; right;
-            apply List.in_app_iff; right; apply List.in_eq | ];
-          apply M in Hin; destruct Hin as [rtyp Hin]; discriminate
-      | [ Hgen : generated ?s2 ((?t,?i,NoResp)::?h) |- _] =>
-          pose (response_always_exists s2 ((t,i,NoResp)::h) t i NoResp Hgen) as Hexists;
-            assert (List.In (t, i, NoResp) ((t, i, NoResp) :: h)) as Hin; [ apply in_eq |];
-            destruct (Hexists Hin) as [rtyp Ha]; inversion Ha; auto
-    end.
-
   Ltac simpl_actions :=
     (* get rid of weird associativity and rev stuff *)
     repeat (match goal with
@@ -325,6 +241,181 @@ Section State_Lemmas.
     Admitted.
 
 End State_Lemmas.
+
+Section Existance.
+      
+  Lemma emulator_deterministic :
+    forall s1 s2 s2' t i a a',
+      emulator_act s1 t i = (s2, a) ->
+      emulator_act s1 t i = (s2', a') ->
+      s2 = s2' /\ a = a'.
+  Proof.
+    intros. rewrite H in H0; inversion H0; auto.
+  Qed.
+
+  Lemma generated_deterministic :
+    forall s s' h,
+      generated s h ->
+      generated s' h ->
+      s = s'.
+  Proof.
+    intros. revert s s' H H0.
+    induction h; intros; inversion H; inversion H0; auto; subst.
+    assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
+    inversion H7; subst.
+    eapply emulator_deterministic; eauto.
+  Qed.
+  
+  Lemma emulator_act_response_exists :
+    forall s h t i,
+      generated s h ->
+      spec ((t,i,NoResp)::h) ->
+      exists rtyp s',
+        emulator_act s t i = (s', (t,i,Resp rtyp)).
+  Proof.
+    intros s h t i Hgen Hspec. revert dependent s. revert dependent t.
+    revert dependent i.
+    induction h; intros; inversion Hgen; subst.
+    
+    - unfold start_state in *; unfold start_mode in *; simpl in *.
+      unfold emulator_act, next_mode.
+      remember X as HX.
+      destruct HX using rev_ind; simpl in *.
+      remember (history_of_thread Y t) as Yhist.
+      destruct (Yhist) using rev_ind; [|rewrite rev_unit]; unfold state_with_md; simpl in *.
+      + unfold get_emulate_response.
+        admit.
+      + remember (action_invocation_eq x t i) as Hacteq.
+        destruct Hacteq.
+        * unfold get_commute_response; simpl in *. rewrite <- HeqYhist; rewrite rev_unit; eauto.
+          destruct x as [[tx [ix]] rx]; destruct i as [i]. inversion HeqHacteq.
+          simpl in *. symmetry in H0; rewrite andb_true_iff in *;
+                        destruct_conjs; rewrite Nat.eqb_eq in *; subst.
+          destruct rx; eauto.
+          assert (exists rtyp, NoResp = Resp rtyp).
+          {
+            eapply X_and_Y_wf.
+            assert (List.In (tx, Inv i, NoResp) Y).
+            assert (List.In (tx, Inv i, NoResp) (history_of_thread Y tx)).
+            rewrite <- HeqYhist. apply in_or_app; right. apply in_eq.
+            eapply history_of_thread_sublist; eauto.
+            apply in_or_app; left; eauto.
+          }
+          destruct H as [rtyp bleh]; discriminate.
+        * admit.
+      + clear IHHX.
+        remember (HX ++ [x]) as blah; destruct blah;
+          [symmetry in Heqblah; apply app_eq_nil in Heqblah; destruct_conjs; discriminate|
+           rewrite Heqblah in *].
+        rewrite rev_unit.
+        remember (action_invocation_eq x t i) as Hacteq.
+        destruct Hacteq.
+        * destruct HX using rev_ind; try rewrite app_nil_l in *; simpl in *.
+          unfold get_replay_response, state_with_md in *; simpl in *.
+          assert (exists rtyp, x = (t,i,Resp rtyp)).
+          destruct x as [[tx [ix]] rx]; destruct rx.
+          inversion HeqHacteq; destruct i as [i].
+          symmetry in H0; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
+            destruct_conjs; subst.
+          exists n; auto.
+          assert (exists rtyp, NoResp = Resp rtyp).
+          {
+            eapply X_and_Y_wf.
+            assert (List.In (tx, Inv ix, NoResp) X).
+            rewrite <- HeqHX; apply in_eq.
+            apply in_or_app; right; eauto.
+          } destruct H as [rtyp bleh]; discriminate.
+          destruct H as [rtyp bleh]; rewrite bleh; eauto.
+
+          rewrite rev_unit. clear IHHX.
+          unfold get_replay_response, state_with_md in *; simpl in *.
+          assert (exists rtyp, x = (t,i,Resp rtyp)).
+          destruct x as [[tx [ix]] rx]; destruct rx.
+          inversion HeqHacteq; destruct i as [i].
+          symmetry in H0; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
+            destruct_conjs; subst.
+          exists n; auto.
+          assert (exists rtyp, NoResp = Resp rtyp).
+          {
+            eapply X_and_Y_wf.
+            assert (List.In (tx, Inv ix, NoResp) X).
+            rewrite <- HeqHX. apply in_or_app.
+            right; apply in_eq.
+            apply in_or_app; right; eauto.
+          } destruct H as [rtyp bleh]; discriminate.
+          destruct H as [rtyp bleh]; rewrite bleh; eauto.
+          rewrite rev_unit; eauto.
+        * admit.
+    - unfold emulator_act.
+      unfold next_mode.
+      destruct (md s).
+  Admitted.
+        
+  
+  Lemma generated_response_exists :
+    forall s h t i,
+      generated s h ->
+      spec ((t,i,NoResp)::h) ->
+      exists rtyp s',
+        generated s' ((t,i,Resp rtyp)::h).
+  Proof.
+    intros s h t i Hgen Hspec. generalize dependent s.
+    induction h; intros; inversion Hgen; subst.
+    assert 
+    destruct H as [s' [rtyp Hact]].
+    unfold emulator_act, start_state in *. eauto.
+    
+  Admitted.
+
+  Lemma response_always_exists :
+    forall s h t i r,
+      generated s h ->
+      List.In (t,i,r) h ->
+      exists rtyp, r = Resp rtyp.
+  Proof.
+    intros s h t i r Hgen Hin.
+    pose Hgen as Hgen'.
+    induction Hgen'.
+    inversion Hin.
+    assert (exists rtyp s', generated s' ((t0,i0,Resp rtyp)::h)) as Hgenexists. {
+      eapply generated_response_exists; eauto.
+    } destruct Hgenexists as [rtyp [s' Hgenexists]].
+    inversion Hgenexists; subst.
+
+    remember (action_invocation_eq (t,i,r) t0 i0) as Heq.
+    destruct Heq, i, i0, r, r0; try destruct (Nat.eq_dec n1 n2); unfold_action_inv_eq;
+    subst; inversion Hin; try inversion H1; try (now exists n2); try (now exists n1);
+    try eapply IHHgen'; eauto.
+
+    all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
+    all : pose (emulator_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
+      as Heq; destruct Heq as [Hseq Haeq]; auto.
+    all : inversion Haeq.
+  Qed.
+
+End Existance.
+
+  Ltac discriminate_noresp :=
+    match goal with
+      | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
+              Hspec : spec ((?t, ?i, NoResp) :: ?h),
+                      Hact : emulator_act ?s ?t ?i = (?s', ?a') |- _ ] =>
+        let M := fresh "SO" in
+        assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
+            now apply (response_always_exists s h t i s' a') |
+            destruct M as [rtyp_new M] ; subst; discriminate ]
+      | [ Hresp : _ = X |-
+          exists _, (?t', Inv ?i', NoResp) = (?t', Inv ?i', Resp _) ] =>
+        let M := fresh "SO" in pose (X_and_Y_wf t' (Inv i') NoResp) as M;
+          assert (List.In (t', Inv i', NoResp) (Y++X)) as Hin; [
+            rewrite <- Hresp; apply List.in_app_iff; right;
+            apply List.in_app_iff; right; apply List.in_eq | ];
+          apply M in Hin; destruct Hin as [rtyp Hin]; discriminate
+      | [ Hgen : generated ?s2 ((?t,?i,NoResp)::?h) |- _] =>
+          pose (response_always_exists s2 ((t,i,NoResp)::h) t i NoResp Hgen) as Hexists;
+            assert (List.In (t, i, NoResp) ((t, i, NoResp) :: h)) as Hin; [ apply in_eq |];
+            destruct (Hexists Hin) as [rtyp Ha]; inversion Ha; auto
+    end.
   
 Section Correctness.
 
@@ -466,7 +557,6 @@ Section Correctness.
     eapply spec_prefix_closed. apply HspecX.
     rewrite H1 in HX'. apply HX'.
   Qed.
-
 
 End Correctness.
 
@@ -772,3 +862,4 @@ Section SCR.
   Qed.
   
 End SCR.
+
