@@ -673,13 +673,13 @@ Section SCR.
         rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
         unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
 
-        pose (state_ycpy_nonempty s1 (h' ++ [(t,i,r)]) t0 i0 r0 gencomm Hys1)
+        pose (state_ycpy_nonempty s1 (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
           as tmp; rewrite <- app_assoc in *; simpl in *.
         pose (tmp Hreordered Hgcorder) as Hs1ycpyt0. 
 
-        pose (state_ycpy_nonempty s1 (h' ++ [(t,i,r)]) t0 i r0 gencomm Hys1)
-          as tmp'; rewrite <- app_assoc in *; simpl in *.
-        pose (tmp Hreordered Hgcorder) as Hs1ycpyt. 
+        pose (state_ycpy_nonempty s1 h' [(t0, i0, r0)] t i r gencomm Hys1)
+          as tmp'; simpl in *.
+        pose (tmp' Hreordered Hgcorder) as Hs1ycpyt. 
 
         rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
           simpl in *; destruct i0; simpl in *.
@@ -725,38 +725,32 @@ Section SCR.
 
         (* t <> t0 *)
         * rewrite <- Nat.eqb_neq in *; rewrite n0 in *.
+          rewrite Hs1ycpyt in *.
+          rewrite Nat.eqb_sym in n0; rewrite n0 in *.
+          rewrite rev_unit in *.
           unfold state_with_md in *; simpl in *.
 
-        rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
-          simpl in *; destruct i0; simpl in *.
-        repeat rewrite Nat.eqb_refl in *; simpl in *.
-        unfold get_commute_response in *; simpl in *.
-        rewrite Hs1ycpyt0 in *; rewrite rev_unit in *; inversion H0; subst; simpl in *.
-        unfold emulator_act in *; unfold next_mode in *; simpl in *.
-        destruct (Nat.eq_dec t t0); subst; rewrite rev_involutive in *.
-
-          rewrite Hs1ycpyt0 in *. rewrite rev_unit in *; simpl in *.
           destruct i; simpl in *.
           repeat rewrite Nat.eqb_refl in *; simpl in *.
           inversion Hact; subst.
-           unfold get_commute_response, state_with_md in *; simpl in *.
-           rewrite n0 in *. rewrite Hs1ycpyt in *. rewrite rev_unit in *.
-           inversion H4; subst; simpl in *.
+          unfold get_commute_response, state_with_md in *; simpl in *.
+          rewrite Hs1ycpyt in *; rewrite Nat.eqb_sym in n0; rewrite n0, rev_unit in *.
+          inversion H4; subst; simpl in *.
           repeat (split; auto).
 
           unfold write_tid_set.
           assert (Same_set tid
-                           (Union tid (fun tid0 : tid =>
-                                         (if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
-                                          else commH s1 tid0) <>
-                                         (if tid0 =? t
-                                          then (t, Inv n1, r) :: commH s1 t
-                                          else if tid0 =? t0 then (t0, Inv n, r0) :: commH s1 t0
-                                               else commH s1 tid0))
-                                  (fun tid0 : tid =>
-                                     (if tid0 =? t0 then rev history else Y_copy s1 tid0) <>
-                                     (if tid0 =? t then rev (rev history')
-                                      else if tid0 =? t0 then rev history else Y_copy s1 tid0)))
+                           (Union tid
+                                  (fun tid : tid =>
+                                     (if tid =? t0 then (t0, Inv n, r0) :: commH s1 t0 else commH s1 tid) <>
+                                     (if tid =? t
+                                      then (t, Inv n1, r) :: commH s1 t
+                                      else if tid =? t0 then (t0, Inv n, r0) :: commH s1 t0 else commH s1 tid))
+                                  (fun tid : tid =>
+                                     (if tid =? t0 then history_of_thread (h' ++ [(t, Inv n1, r)]) t0 else Y_copy s1 tid) <>
+                                     (if tid =? t
+                                      then rev (rev (history_of_thread h' t))
+                                      else if tid =? t0 then history_of_thread (h' ++ [(t, Inv n1, r)]) t0 else Y_copy s1 tid)))
                            (Singleton tid t)) as HSS.
           {
             unfold Same_set; unfold Included; split; unfold In;
