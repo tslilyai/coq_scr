@@ -316,11 +316,12 @@ Section State_Lemmas.
     Qed.
     
     Lemma during_commute_state :
-      forall s h,
+      forall s h t,
         generated s h ->
         s.(md) = Commute ->
         reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y /\
         (exists gencomm, h = gencomm ++ X /\ reordered gencomm (combined_histories s.(commH))) /\
+        s.(Y_copy) t ++ s.(commH) t = history_of_thread Y t /\
         s.(preH) = X /\
         s.(postH) = [] /\
         s.(X_copy) = [].
@@ -422,7 +423,7 @@ Section Correctness.
     assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
     assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
     destruct Hsmd as [Hsmd | Hsmd];
-      pose (during_commute_state s' ((t,i,Resp rtyp)::h) Hgens' Hmds') as Hstates';
+      pose (during_commute_state s' ((t,i,Resp rtyp)::h) t Hgens' Hmds') as Hstates';
       pose (reordered_Y_prefix_correct) as HY;
       destruct Hstates' as [Hreordered [[gencomm [Hrespeq Hgencommorder]] [HHistory rest]]];
       apply reordered_sym in Hgencommorder;
@@ -520,6 +521,13 @@ Section SCR.
       history_of_thread Y t = history_of_thread h' t ++ (t,i,r) :: history_of_thread h t.
   Proof.
   Admitted.    
+
+  Lemma history_of_thread_reordered_eq :
+    forall h h' t,
+      reordered h h' ->
+      history_of_thread h' t = history_of_thread h t.
+  Proof.
+  Admitted.
     
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
@@ -674,13 +682,49 @@ Section SCR.
           rewrite <- app_assoc. simpl in *; auto.
           rewrite bleh in *. auto.
         }
-        destruct (during_commute_state s1 _ H3 Hs1md) as 
-            [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
+        destruct (during_commute_state s1 _ t H3 Hs1md) as 
+            [Hys1 [hist [HYcomm [Hpres1 [Hposts1 Hxcpys1]]]]].
         destruct hist as [gencomm [Hgencomm Hgcorder]].
         rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
         unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
         assert (exists history, rev (Y_copy s1 t0) = (t0,i0,r0) :: history) as Hs1ycpyt0.
         {
+          assert (reordered (h' ++ (t,i,r) :: (t0,i0,r0) :: []) (combined_histories (Y_copy s1))).
+          {
+            eapply reordered_app_inv_prefix; eauto. eapply ro_perm_trans; eauto.
+            rewrite <- app_assoc.
+            apply Hreordered.
+            apply reordered_sym; auto.
+          }
+          assert (history_of_thread
+                    (combined_histories (Y_copy s1) ++ combined_histories (commH s1)) t
+                  = history_of_thread Y t) as Ht1.
+          {
+            eapply history_of_thread_reordered_eq; eauto. apply reordered_sym; auto.
+          }
+          assert (history_of_thread
+                    (h' ++ (t, i, r) :: (t0, i0, r0) :: gencomm) t
+                  = history_of_thread Y t) as Ht2.
+          {
+            eapply history_of_thread_reordered_eq; eauto. apply reordered_sym; auto.
+          }
+          Lemma history_of_thread_app_distributes :
+            forall h h' t,
+              history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.
+          Proof. Admitted.
+
+          Lemma history_of_thread_combined_is_application :
+            forall (f : state -> tid -> history) s t,
+              history_of_thread (combined_histories (f s)) t = f s t.
+          Proof. Admitted.
+
+          rewrite history_of_thread_app_distributes in Ht1.
+          repeat rewrite history_of_thread_combined_is_application in Ht1.
+          rewrite <- Ht2 in Ht1.
+          unfold history_of_thread in Ht1. simpl in *.
+          
+        }
+          
           admit.
         }
         destruct Hs1ycpyt0 as [history Hs1ycpyt0].
