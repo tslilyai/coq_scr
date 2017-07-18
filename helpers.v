@@ -220,10 +220,7 @@ Section Histories.
     {
       eapply reordered_prefix; apply reordered_sym in H; apply reordered_sym in H0; eauto.
     }
-    assert (reordered (hd1 ++ tl1) (hd2 ++ tl1)).
-    {
-      eapply ro_perm_trans; eauto.
-    }
+    assert (reordered (hd1 ++ tl1) (hd2 ++ tl1)) by now eapply ro_perm_trans; eauto.
     eapply reordered_app_inv_hd; eauto.
   Qed.
     
@@ -244,6 +241,73 @@ Section Histories.
       fold history_of_thread; auto.
     intuition.
     eapply nil_cons; eauto.
+  Qed.
+
+  Lemma history_of_thread_app_distributes :
+    forall h h' t,
+      history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.
+  Proof. Admitted.
+
+  Lemma history_of_thread_combined_is_application :
+    forall (f : state -> tid -> history) s t,
+      history_of_thread (combined_histories (f s)) t = f s t.
+  Proof. Admitted.
+
+  Lemma history_of_thread_end :
+    forall h t i r, exists h',
+        (history_of_thread (h ++ [(t,i,r)]) t = h' ++ [(t,i,r)]).
+  Proof. Admitted.
+
+  
+  Lemma history_of_thread_nonempty :
+    forall h' t i r h,
+      reordered (h' ++ (t, i, r) :: h) Y ->
+      history_of_thread Y t = history_of_thread h' t ++ (t,i,r) :: history_of_thread h t.
+  Proof.
+  Admitted.    
+
+  Lemma history_of_thread_reordered_eq :
+    forall h h' t,
+      reordered h h' ->
+      history_of_thread h' t = history_of_thread h t.
+  Proof.
+  Admitted.
+
+  Lemma state_ycpy_nonempty :
+    forall s h1 h2 t i r gencomm,
+      reordered (combined_histories (Y_copy s) ++ combined_histories (commH s)) Y ->
+      reordered (h1 ++ [(t,i,r)] ++ h2 ++ gencomm) Y ->
+      reordered gencomm (combined_histories (commH s)) ->
+      Y_copy s t = (history_of_thread h1 t) ++ [(t,i,r)] ++ history_of_thread h2 t.
+  Proof.
+    Ltac equal_histories := eapply history_of_thread_reordered_eq; eauto;
+                            apply reordered_sym; auto.
+    intros s h1 h2 t i r gencomm Hr1 Hr2 Hr3.
+    assert (reordered (h1 ++ (t,i,r) :: h2) (combined_histories (Y_copy s))).
+    {
+      eapply reordered_app_inv_prefix; eauto. eapply ro_perm_trans; eauto.
+      rewrite <- app_assoc; eauto.
+    }
+    assert (history_of_thread
+              (combined_histories (Y_copy s) ++ combined_histories (commH s)) t
+            = history_of_thread Y t) as Ht1 by now equal_histories.
+    assert (history_of_thread (h1 ++ [(t, i, r)] ++ h2 ++ gencomm) t
+            = history_of_thread Y t) as Ht2 by now equal_histories.
+    assert (history_of_thread gencomm t =
+            history_of_thread (combined_histories (commH s)) t) as Ht3 by
+          now equal_histories.
+    assert (h1 ++ [(t, i, r)] ++ h2 ++ gencomm = ((h1 ++ [(t, i, r)]) ++ h2++ gencomm)) as rw by
+          now rewrite <- app_assoc; simpl.
+    rewrite rw in *.
+    repeat rewrite history_of_thread_app_distributes in Ht2.
+    rewrite history_of_thread_app_distributes in Ht1.
+    repeat rewrite history_of_thread_combined_is_application in Ht1.
+    repeat rewrite history_of_thread_combined_is_application in Ht3.
+    rewrite <- Ht2, Ht3 in Ht1.
+    rewrite app_assoc in Ht1. eapply app_inv_tail in Ht1.
+    unfold history_of_thread in Ht1; simpl in *.
+    fold history_of_thread in Ht1; rewrite Nat.eqb_refl in *;
+      rewrite Ht1; try rewrite <- app_assoc; simpl in *; auto.
   Qed.
 End Histories.
 
