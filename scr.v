@@ -526,21 +526,22 @@ Section SCR.
   Proof.
     Ltac discriminate_commH :=
       match goal with
-      | [|- commH ?s ?t <> ?h2 :: commH ?s ?t] =>
+      | [ n : (?t =? ?t0) = false |- (if _ then _ else commH ?s ?t) <> ?h2 :: commH ?s ?t] =>
+        rewrite n; intuition; assert ([] ++ commH s t = [h2] ++ commH s t) as mytmp;
+        [now simpl | apply app_inv_tail in mytmp; discriminate]
+      | [ |- commH ?s ?t <> ?h2 :: commH ?s ?t] =>
         intuition; assert ([] ++ commH s t = [h2] ++ commH s t) as mytmp;
         [now simpl | apply app_inv_tail in mytmp; discriminate]
-      | [|- ?h1 :: commH ?s ?t <> ?h2 ++ commH ?s ?t] =>
-        intuition; assert ([] ++ h1 :: commH s t = h2 ++ commH s t) as mytmp;
-        [ simpl | apply app_inv_tail in mytmp; discriminate]
+      | [|- ?h1 :: commH ?s ?t <> ?h :: ?h1 :: commH ?s ?t] =>
+        intuition; assert ([] ++ h1 :: commH s t = [h] ++ h1 :: commH s t) as mytmp;
+        [ now simpl | apply app_inv_tail in mytmp; discriminate]
       end.
-
     Ltac solve_tid_neq_ensembles :=
       match goal with
       | [ neq : ?x <> ?t, Hinc : Union tid ?a ?b ?x|- _] =>
         rewrite <- Nat.eqb_neq in *; inversion Hinc;
         unfold In in *; rewrite neq in *; intuition
       end.
-    
     Ltac solve_tid_ensembles :=
       match goal with
       | [ |- Union tid ?a ?b = Singleton tid ?t ] =>
@@ -681,9 +682,7 @@ Section SCR.
           rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
           repeat (split; auto).
           solve_tid_ensembles.
-          intuition. assert ([] ++ (t0,Inv n, r0) :: commH s1 t0
-                                 = [(t0,Inv n0, r)] ++ (t0, Inv n, r0) :: commH s1 t0) by now simpl.
-              apply app_inv_tail in H4. discriminate.
+
         (* t <> t0 *)
         * rewrite <- Nat.eqb_neq in *; rewrite n0 in *.
           rewrite Hs1ycpyt in *.
@@ -699,9 +698,6 @@ Section SCR.
           inversion H4; subst; simpl in *.
           repeat (split; auto).
           solve_tid_ensembles.
-          rewrite n0; intuition;
-            assert ([] ++ commH s1 t = [(t,Inv n1, r)] ++ commH s1 t) as blah by now simpl.
-          apply app_inv_tail in blah; discriminate.
     
       (* X = a :: HX and h = b :: h' *)
       + inversion H; subst; clear H.
@@ -743,10 +739,7 @@ Section SCR.
           rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
           repeat (split; auto).
           solve_tid_ensembles.
-          intuition. assert ([] ++ (t0,Inv n, r0) :: commH s1 t0
-                             = [(t0,Inv n0, r)] ++ (t0, Inv n, r0) :: commH s1 t0) as bleh
-              by now simpl.
-              apply app_inv_tail in bleh. discriminate.
+
         (* t <> t0 *)
         * rewrite <- Nat.eqb_neq in *; rewrite n0 in *.
           rewrite Hs1ycpyt in *.
@@ -762,9 +755,6 @@ Section SCR.
           inversion H2; subst; simpl in *.
           repeat (split; auto).
           solve_tid_ensembles.
-          rewrite n0; intuition;
-            assert ([] ++ commH s1 t = [(t,Inv n1, r)] ++ commH s1 t) as blah by now simpl.
-          apply app_inv_tail in blah; discriminate.
   Qed.
 
   Theorem scalable_commutativity_rule :
