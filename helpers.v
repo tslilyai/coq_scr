@@ -552,17 +552,6 @@ Section Misc.
       remember Y as HY.
       remember ((h' ++ [a]) ++ h) as hist.
 
-      Lemma reordered_ind_trans :
-        forall P : history -> history -> Prop,
-          P [] [] ->
-          (forall (x : action) (t1 t2 : history), reordered t1 t2 -> P t1 t2 -> P (x :: t1) (x :: t2)) ->
-          (forall (a2 a1 : action) (t : list action),
-              swappable a2 a1 -> P (a2 :: a1 :: t) (a1 :: a2 :: t)) ->
-          (forall t1 t2 t3 : history,
-              reordered t1 t2 -> P t1 t2 -> reordered t2 t3 -> P t2 t3 -> P t1 t3) ->
-          forall h h0 : history, reordered h h0 -> P h h0.
-      Proof. Admitted.
-
       induction H0; subst; auto.
       + symmetry in Heqhist; apply app_eq_nil in Heqhist; destruct_conjs.
         apply app_eq_nil in H0; destruct_conjs; discriminate.
@@ -631,9 +620,11 @@ Section Misc.
     intros s h Hgen Hspec.
     destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
     unfold get_state_history in *; simpl in *.
-    pose (state_combined_histories_is_reordered_Y s h Hgen) as Hh'.
-    pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy))
-                                     (combined_histories s.(commH)) Hh') as Hcomm.
+    pose (state_combined_histories_is_reordered_Y h s Hgen) as Hh'.
+    pose (reordered_Y_prefix_correct 
+            (combined_histories s.(commH))
+            (combined_histories s.(Y_copy))
+            Hh') as Hcomm.
   Admitted.
  
 End Misc.
