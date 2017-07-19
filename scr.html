@@ -25,126 +25,6 @@
 <br/>
 
 <br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Helpers</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">next_mode_dec</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>, {<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Commute</span>}<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ {<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Emulate</span>}<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ {<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Replay</span>}.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">inv_of_action_eq</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">a</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">a</span> = (<span class="id" title="var">t</span>, <span class="id" title="var">i</span>, <span class="id" title="var">r</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">action_invocation_eq</span> <span class="id" title="var">a</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">true</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_with_md_has_md</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">mode</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span> = <span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">mode</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_with_md_comp_eq</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">mode</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span> = <span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">X_copy</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">Y_copy</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">preH</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">postH</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">commH</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>).<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_with_md_get_state_history</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">get_state_history</span> <span class="id" title="var">s</span> = <span class="id" title="var">get_state_history</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>)).<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_with_md_same_md_eq</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">mode</span> -&gt; <span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">mode</span> = <span class="id" title="var">s</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_history_corresponds_state_history</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">gencommH</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">gencommH</span> (<span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>)) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) ++ <span class="id" title="var">gencommH</span> ++ <span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>) = <span class="id" title="var">h</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">rev_rev</span> {<span class="id" title="var">A</span>: <span class="id" title="keyword">Type</span>} :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">l1</span> <span class="id" title="var">l2</span> : <span class="id" title="var">list</span> <span class="id" title="var">A</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">rev</span> <span class="id" title="var">l1</span> = <span class="id" title="var">rev</span> <span class="id" title="var">l2</span> &lt;-&gt; <span class="id" title="var">l1</span> = <span class="id" title="var">l2</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">rev_not_nil_or_unit</span> : <span class="id" title="keyword">forall</span> (<span class="id" title="var">x</span> <span class="id" title="var">y</span> : <span class="id" title="var">action</span>) <span class="id" title="var">tl</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">x'</span> <span class="id" title="var">y'</span> <span class="id" title="var">tl'</span>, <span class="id" title="var">rev</span> (<span class="id" title="var">x</span> :: <span class="id" title="var">y</span> :: <span class="id" title="var">tl</span>) = <span class="id" title="var">x'</span> :: <span class="id" title="var">y'</span> :: <span class="id" title="var">tl'</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">state_combined_histories_is_reordered_Y</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) ++ <span class="id" title="var">combined_histories</span> <span class="id" title="var">s</span>.(<span class="id" title="var">commH</span>)) <span class="id" title="var">Y</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">reordered_Y_prefix_correct</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h'</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ <span class="id" title="var">h</span>) <span class="id" title="var">Y</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>).<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">correct_state_correct_generated_history</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> (<span class="id" title="var">get_state_history</span> <span class="id" title="var">s</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Helpers</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">Existance</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_deterministic</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span> = <span class="id" title="var">s'</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_deterministic</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s1</span> <span class="id" title="var">s2</span> <span class="id" title="var">s2'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a</span> <span class="id" title="var">a'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2</span>, <span class="id" title="var">a</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s2</span> = <span class="id" title="var">s2'</span> /\ <span class="id" title="var">a</span> = <span class="id" title="var">a'</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_commute_response_exists</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Commute</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span> <span class="id" title="var">s'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_response_exists</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span> <span class="id" title="var">s'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
- 
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">response_always_exists</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">r</span> = <span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>.<br/>
- 
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Existance</span>.<br/>
-
-<br/>
-
-<br/>
 
 <br/>
 <span class="id" title="keyword">Section</span> <span class="id" title="var">State_Lemmas</span>.<br/>
@@ -200,9 +80,62 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">preH</span>) = <span class="id" title="var">X</span> /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">postH</span>) = [] /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) = [].<br/>
-
+   
 <br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">State_Lemmas</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <span class="id" title="var">Existance</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_deterministic</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s1</span> <span class="id" title="var">s2</span> <span class="id" title="var">s2'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a</span> <span class="id" title="var">a'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2</span>, <span class="id" title="var">a</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s2</span> = <span class="id" title="var">s2'</span> /\ <span class="id" title="var">a</span> = <span class="id" title="var">a'</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_deterministic</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span> = <span class="id" title="var">s'</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_emulate_response_exists</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">md</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">md</span>) <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span> <span class="id" title="var">s'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">get_emulate_response</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)).<br/>
+ 
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_act_response_exists</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span> <span class="id" title="var">s'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)).<br/>
+    
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_response_exists</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span> <span class="id" title="var">s'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">response_always_exists</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">r</span> = <span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>.<br/>
+ 
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Existance</span>.<br/>
+
+<br/>
 
 <br/>
 <span class="id" title="keyword">Section</span> <span class="id" title="var">Correctness</span>.<br/>
@@ -255,24 +188,20 @@
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">mode_generated_replay</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">h'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h</span> <span class="id" title="var">s</span> <span class="id" title="var">h'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span> = <span class="id" title="var">X</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">X_copy</span>) = <span class="id" title="var">h'</span> ++ [(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)] /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Replay</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">mode_generated_commute</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">Yend</span> <span class="id" title="var">Yfront</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">Yend</span> <span class="id" title="var">h</span> <span class="id" title="var">s</span> <span class="id" title="var">Yfront</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">h</span> = <span class="id" title="var">Yend</span> ++ <span class="id" title="var">X</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">Yfront</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">Yend</span>) <span class="id" title="var">Y</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">t'</span>, <span class="id" title="var">s</span>.(<span class="id" title="var">Y_copy</span>) <span class="id" title="var">t'</span> = <span class="id" title="var">history_of_thread</span> (<span class="id" title="var">Yfront</span> ++ [(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)]) <span class="id" title="var">t'</span>) /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Commute</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">history_of_thread_nonempty</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">h'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>, <span class="id" title="var">i</span>, <span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">history_of_thread</span> <span class="id" title="var">Y</span> <span class="id" title="var">t</span> = <span class="id" title="var">history_of_thread</span> <span class="id" title="var">h'</span> <span class="id" title="var">t</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">history_of_thread</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">emulator_conflict_free</span> :<br/>
@@ -289,14 +218,17 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span> /\<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt; <span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">r</span> = <span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">Y'</span> <span class="id" title="var">n</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">h</span> = <span class="id" title="var">skipn</span> <span class="id" title="var">n</span> <span class="id" title="var">Y'</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">reordered</span> <span class="id" title="var">Y'</span> <span class="id" title="var">Y</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span>, <span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">emulator_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>).<br/>
+
+<br/>
 <span class="id" title="keyword">End</span> <span class="id" title="var">SCR</span>.<br/>
+
+<br/>
 </div>
 </div>
 

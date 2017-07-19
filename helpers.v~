@@ -1,0 +1,123 @@
+Require Import Bool Arith List Omega ListSet.
+Require Import Recdef Morphisms.
+Require Import Program.Tactics.
+Require Import Relation_Operators.
+Require FMapList.
+Require FMapFacts.
+Require Import Classical.
+Require Import Coq.Classes.RelationClasses.
+Require Import OrderedType OrderedTypeEx DecidableType.
+Require Import Sorting.Permutation.
+Import ListNotations.
+Require Import OrderedType.
+Require Import Ensembles.
+Require Import Model.
+
+Section Histories.
+  Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
+  Proof.
+    intros.
+    destruct a1 as [[t i] r].
+    destruct a2 as [[t2 i2] r2].
+    unfold swappable in *; auto.
+  Qed.
+
+  Lemma reordered_nil : forall h, reordered h [] -> h = [].
+  Proof.
+    intros.
+    remember [] as N in H.
+    induction H; discriminate || auto.
+  Qed.
+
+  Lemma reordered_sym : forall h1 h2, reordered h1 h2 -> reordered h2 h1.
+  Proof.
+    intros.
+    induction H; eauto.
+    apply ro_perm_swap. apply swappable_sym; auto.
+  Qed.
+
+  Lemma reordered_unit : forall h a, reordered h [a] -> h = [a].
+  Proof.
+    intros.
+    remember [a] as act.
+    induction H; eauto.
+    assert ([x] ++ t2 = x :: t2) as temp by now simpl. rewrite <- temp in *.
+    destruct (app_eq_unit _ _ Heqact) as [Heq | Heq]; destruct_conjs; try discriminate.
+    rewrite H1 in *.
+    apply reordered_nil in H; rewrite H in *; rewrite app_nil_r; auto.
+    inversion Heqact.
+    rewrite (IHreordered2 Heqact) in IHreordered1. apply (IHreordered1 Heqact).
+  Qed.
+
+  Lemma reordered_app_head {t1 t2} l:
+    reordered t1 t2 ->
+    reordered (l++t1) (l++t2).
+  Proof.
+    induction l; auto; intros.
+    rewrite <- app_comm_cons; apply ro_perm_skip; now apply IHl.
+  Qed.
+  
+  Lemma reordered_prefix :
+    forall h1 h2 h3 h4,
+      reordered (h1 ++ h2) h4 -> reordered h2 h3 -> reordered (h1 ++ h3) h4.
+  Proof.
+    intros. generalize dependent h4. generalize dependent h1.
+    induction H0; intros; simpl in *; auto.
+    - pose (IHreordered (h1 ++ [x]) h4) as IHr.
+      repeat rewrite <- app_assoc in *.
+      assert (h1 ++ [x] ++ t1 = h1 ++ x :: t1) as tmp1 by now simpl.
+      assert (h1 ++ [x] ++ t2 = h1 ++ x :: t2) as tmp2 by now simpl.
+      rewrite tmp1, tmp2 in *.
+      now apply IHr.
+    - assert (reordered (h1 ++ a1 :: a2 :: t) (h1 ++ a2 :: a1 :: t)).
+      apply reordered_app_head. apply ro_perm_swap. now apply swappable_sym.
+      apply (ro_perm_trans _ _ _ H1 H0).    
+  Qed.
+  
+  Lemma reordered_in : forall l l' x, reordered l l' -> List.In x l ->List.In x l'.
+  Proof.
+    intros l l' x Hperm; induction Hperm; simpl; tauto.
+  Qed.
+  
+  Lemma reorder_length_eq : (forall h1 h2, reordered h1 h2 -> length h1 = length h2).
+  Proof.    
+    intros.
+    induction H; subst; simpl in *; auto.
+    rewrite IHreordered1, <- IHreordered2; auto.
+  Qed.    
+
+  Lemma reorder_unit_eq : (forall a b, reordered [a] [b] -> a = b).
+  Proof.
+    intros.
+    assert (List.In a [b]).
+    apply (reordered_in _ _ a H). apply in_eq.
+    inversion H0; auto.
+    apply in_inv in H0; destruct H0; try discriminate; subst; auto;
+      inversion H0.
+  Qed.
+
+  Lemma reordered_app_inv_hd :
+    reordered (hd1++tl1) (hd2++tl2) ->
+    reordered tl1 tl2 ->
+    reordered hd1 hd2.
+    
+
+  Lemma history_of_thread_not_nil :
+    forall t i r h,
+      List.In (t,i,r) h -> history_of_thread h t <> [].
+  Proof.
+    intros. induction h. inversion H.
+    apply in_inv in H; destruct H; subst.
+    unfold history_of_thread; simpl. rewrite <- beq_nat_refl in *.
+    intuition.
+    eapply (nil_cons). symmetry in H; eauto.
+    pose (IHh H).
+    unfold history_of_thread. destruct a as [[t' i'] r']. simpl in *.
+    Search (_ =? _ = false).
+    destruct (Nat.eq_dec t' t) as [T | F]; subst;
+      [rewrite <- beq_nat_refl | rewrite <- Nat.eqb_neq in *; rewrite F];
+      fold history_of_thread; auto.
+    intuition.
+    eapply nil_cons; eauto.
+  Qed.
+End Histories.

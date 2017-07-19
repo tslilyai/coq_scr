@@ -1,0 +1,39 @@
+somewhere in memory : full lookup table of all possible histories / valid histories (according to spec)
+SPEC : history -> bool
+
+s : 
+- h[t] = thread-local history
+- commute[t] = thread-local bool
+
+M(a,s):
+    t <- thread(a)
+    if hd(s.h[t]) == COMMUTE:
+        s.commute[t] = true
+        s.h[t] <- tail(s.h[t])
+    if s.h[t] == a:
+        r <- CONTINUE
+    else if a == CONTINUE && is_response(hd(s.h[t])) && thread(hd(s.h[t])) == t:
+        r <- hd(s.h[ht])
+    else if hd(s.h[t]) =/= EMULATE:
+        combined = s.h[t]
+        forall u \in threads:
+            combined = combine(s.h[u], combined)
+            s.h[u] = EMULATE
+    
+    if s.h[t] == EMULATE:
+        forall possible responses R:
+            if SPEC(s.h[t] || R):
+                forall u \in threads:
+                    s.h[u] = s.h[u] || R
+                r <- R      
+                break
+        // CONTINUE??
+
+    else if s.h[t] == COMMUTE:
+        s.h[t] <- tail(s.h[t])
+    else:
+        forall u \in threads:
+            s.h[u] <- tail(s.h[u])
+
+    return (s, r)
+        
