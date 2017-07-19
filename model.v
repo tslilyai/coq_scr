@@ -113,7 +113,7 @@ Section MachineState.
   Definition start_state : state :=
     mkState X (history_of_thread Y) [] (fun tid => []) [] start_mode.
                                         
-  Definition sim_commutes : Prop :=
+  Parameter sim_commutes :
     forall hd tl tl' Z,
       reordered (hd ++ tl) Y ->
       reordered tl' tl ->

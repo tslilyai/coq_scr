@@ -544,8 +544,63 @@ Section Misc.
       reordered (h' ++ h) Y ->
       spec (h ++ X).
   Proof.
-    induction h; intros; induction H; simpl in *.
-  Admitted.
+    induction h; simpl in *; intros.
+    - pose (X_and_Y_in_spec); eapply (spec_prefix_closed); eauto.
+    - assert (reordered ((h' ++ [a]) ++ h) Y).
+      eapply ro_perm_trans; eauto. rewrite <- app_assoc. simpl in *; apply reordered_refl.
+      assert (spec (h++X)). eapply IHh; eauto.
+      remember Y as HY.
+      remember ((h' ++ [a]) ++ h) as hist.
+
+      Lemma reordered_ind_trans :
+        forall P : history -> history -> Prop,
+          P [] [] ->
+          (forall (x : action) (t1 t2 : history), reordered t1 t2 -> P t1 t2 -> P (x :: t1) (x :: t2)) ->
+          (forall (a2 a1 : action) (t : list action),
+              swappable a2 a1 -> P (a2 :: a1 :: t) (a1 :: a2 :: t)) ->
+          (forall t1 t2 t3 : history,
+              reordered t1 t2 -> P t1 t2 -> reordered t2 t3 -> P t2 t3 -> P t1 t3) ->
+          forall h h0 : history, reordered h h0 -> P h h0.
+      Proof. Admitted.
+
+      induction H0; subst; auto.
+      + symmetry in Heqhist; apply app_eq_nil in Heqhist; destruct_conjs.
+        apply app_eq_nil in H0; destruct_conjs; discriminate.
+      + assert (spec ((x :: t2) ++ X)).
+        {
+          rewrite HeqHY. apply (X_and_Y_in_spec).
+        }
+        assert (spec (x :: t1 ++ X)).
+        {
+          eapply (sim_commutes [] (x::t2) (x::t1) []); simpl in *; eauto.
+          rewrite HeqHY. apply reordered_refl.
+          apply ro_perm_skip. auto.
+        }
+        eapply (spec_prefix_closed); eauto.
+        rewrite (app_comm_cons). rewrite Heqhist.
+        do 2 rewrite <- app_assoc; simpl in *; eauto.
+      + assert (spec ((a1 :: a2 :: t) ++ X)).
+        {
+          rewrite HeqHY. apply (X_and_Y_in_spec).
+        }
+        assert (spec (a2 :: a1 :: t ++ X)).
+        {
+          eapply (sim_commutes [] (a1::a2::t) (a2::a1::t) []); simpl in *; eauto.
+          rewrite HeqHY. apply reordered_refl.
+          apply ro_perm_swap; eauto.
+        }
+        eapply (spec_prefix_closed); eauto.
+        assert (a2 :: a1 :: t ++ X = (a2 :: a1 :: t) ++ X).
+        simpl in *. auto.
+        rewrite H4 in *. rewrite Heqhist; simpl in *; do 2 rewrite <- app_assoc in *; eauto.
+      + apply (ro_perm_trans _ _ _ H0_) in H0_0.
+        assert (spec (h' ++ [a] ++ h ++ X)).
+        pose (sim_commutes [] Y (h' ++ a :: h) []); simpl in *.
+        rewrite <- app_assoc in *. rewrite app_comm_cons in *.
+        eapply s; eauto. apply reordered_refl.
+        apply (X_and_Y_in_spec).
+        eapply spec_prefix_closed; eauto.
+  Qed.
 
   Lemma generated_history_corresponds_state_history :
     forall h s,
