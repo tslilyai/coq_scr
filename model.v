@@ -139,14 +139,13 @@ Section Conflict.
 End Conflict.
 
 Section Emulator.
-  Function combine_tid_histories (histories : tid -> history) (t : tid) (acc : history) :=
-    let newacc := (histories t) ++ acc in
+  Function combine_tid_histories (histories : tid -> history) (t : tid) :=
     match t with
-      | 0 => newacc
-      | S t' => combine_tid_histories histories t' newacc
+      | 0 => []
+      | S t' => histories t ++ combine_tid_histories histories t' 
     end.
   Definition combined_histories (histories : tid -> history) :=
-    combine_tid_histories histories num_threads [].
+    combine_tid_histories histories num_threads.
   Definition get_state_history (s : state) :=
     s.(postH) ++ combined_histories s.(commH) ++ s.(preH).
   Definition state_with_md (s : state) (md : mode) :=

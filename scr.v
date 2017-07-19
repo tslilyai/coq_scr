@@ -247,9 +247,9 @@ Section State_Lemmas.
         repeat split; auto.
         exists []; simpl in *; repeat split; auto.
         unfold combined_histories.
-        functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+        functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
         simpl in *; apply reordered_refl.
-        eapply IHl1; eauto.
+        eapply IHl0; eauto.
 
       - assert (md s1 = Replay \/ md s1 = Commute) as Hmds1.
         {
@@ -306,9 +306,9 @@ Section State_Lemmas.
             eapply (state_combined_histories_is_reordered_Y _ _  Hgen); simpl in *.
             exists []; simpl in *; repeat split; auto.
             unfold combined_histories.
-            functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+            functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
             simpl in *; apply reordered_refl.
-            eapply IHl1; eauto.
+            eapply IHl0; eauto.
 
             rewrite rev_unit in *. inversion H6; subst; try discriminate.
 
@@ -365,9 +365,9 @@ Section State_Lemmas.
             eapply (state_combined_histories_is_reordered_Y _ _  Hgen); simpl in *.
             exists []; simpl in *; repeat split; auto.
             unfold combined_histories. rewrite H2 in *.
-            functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+            functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
             simpl in *; apply reordered_refl.
-            eapply IHl1; eauto.
+            eapply IHl0; eauto.
             rewrite <- Heqpres1; auto.
 
         + pose (IHh s1 H4 Hmds1); destruct_conjs.
@@ -388,9 +388,92 @@ Section State_Lemmas.
           rewrite <- Heqs1ycpy, rev_unit in *.
           inversion H1; subst; simpl in *.
           repeat (split; auto).
-          admit. (* XXX TODO *)
+          eapply (state_combined_histories_is_reordered_Y _ _ Hgen); simpl in *; eauto.
           exists ((t,i,r) :: H0); split; auto.
-          admit. (* XXX TODO *)
+          admit.
+          (*
+          Lemma combined_histories_thread_order_preserved :
+            forall f h0 h1 i' r' t,
+              (forall t t' i' r', List.In (t',i',r') (f t) -> t' = t) ->
+              combined_histories f = h0 ++ f t ++ h1 ->
+              ~ List.In (t,i',r') h0 /\ ~ List.In (t,i',r') h1.              
+          Proof.
+            intros f h0 h1 i' r' t Hin. revert h0 h1 i' r' t.
+            unfold combined_histories in *.
+            functional induction (combine_tid_histories f num_threads); intros.
+            Focus 2.
+
+            remember (f (S t')) as fst'. 
+            destruct (fst'); simpl in *. eapply IHl; eauto.
+            assert (
+                (exists h0hd h0tl, combine_tid_histories f t' = h0tl ++ f t ++ h1
+                                       /\ f (S t') = h0hd /\ h0hd ++ h0tl = h0)
+                    \/ (exists fthd fttl, combine_tid_histories f t' = fttl ++ h1
+                                          /\ f (S t') = h0 ++ fthd /\ fthd ++ fttl = f t)
+                    \/ (exists h1hd h1tl, combine_tid_histories f t' = h1tl
+                                          /\ f (S t') = h0++ f t ++ h1hd /\ h1hd ++ h1tl = h1))
+              as tmp.
+            {
+              remember (length (f (S t'))) as len.
+              remember (combine_tid_histories f t') as combinedt'.
+              destruct combinedt'. rewrite app_nil_r in *.
+              rewrite <- Heqfst' in *.
+              right; right. exists h1. exists []. rewrite app_nil_r. repeat split; auto.
+              
+              assert (exists l1 l2,
+                         h0 ++ f t ++ h1 = 
+                          l1 ++ nth len (f (S t') ++ combine_tid_histories f t') (t', i', NoResp)
+                             :: l2
+                         /\ length l1 = len).
+              {
+                rewrite <- H.
+                rewrite <- Heqcombinedt', <- Heqfst'.
+                eapply nth_split; eauto. rewrite <- Heqfst' in *. 
+                rewrite Heqlen. simpl in *. rewrite app_length. simpl in *. omega.
+              }
+              admit.
+            } destruct tmp as [Htmp | [Htmp | Htmp]]; destruct Htmp as [front [back Htmp]];
+              destruct_conjs.
+            pose (IHl back h1 i' r' t H0); destruct_conjs.
+            assert (t' <> t).
+            
+            Print combine_tid_histories_ind.
+
+          Lemma reordered_thread_order :
+            forall f t i r h h1 h2,
+              f t = ((t,i,r) :: h) ->
+              (forall t t' i' r', List.In (t',i',r') (f t) -> t' = t) ->
+              combined_histories f = h1 ++ (t,i,r) :: h2 -> 
+              reordered ((t,i,r) :: h1 ++ h2) (combined_histories f).
+          Proof.
+            intros.
+            assert (forall t' i' r', hd_error h1 = Some (t',i',r')
+                                     -> swappable (t,i,r) (t',i',r')
+                                        \/ (t = t' /\ i = i' /\ r = r')).
+            intros. unfold swappable.
+            unfold combined_histories in *.
+            remember [] as acc in *.
+            functional induction (combine_tid_histories f num_threads acc).
+            - rewrite app_nil_r in *.
+              assert (t = 0).
+              {
+                eapply H0. rewrite H1. apply in_or_app; right. apply in_eq.
+              } 
+              assert (t' = 0).
+              {
+                destruct h1; inversion H2.
+                eapply H0; eauto. rewrite H1. apply in_or_app; left; eauto.
+                rewrite H5; apply in_eq.
+
+              } subst.
+              right. split; auto.
+              induction h1. inversion H2.
+              inversion H2.
+              rewrite H, H4 in H1.
+              inversion H1; subst; auto.
+            - rewrite app_nil_r in *.
+              eapply IHl; eauto.
+           *)  
      Admitted.
 
 End State_Lemmas.
