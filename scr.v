@@ -265,7 +265,15 @@ Section Existance.
     inversion H7; subst.
     eapply emulator_deterministic; eauto.
   Qed.
-  
+
+  Lemma get_emulate_response_exists :
+    forall s h t i md,
+      generated (state_with_md s md) h ->
+      spec ((t,i,NoResp)::h) ->
+      exists rtyp s',
+        get_emulate_response s t i = (s', (t,i,Resp rtyp)).
+  Proof. Admitted.
+    
   Lemma emulator_act_response_exists :
     forall s h t i,
       generated s h ->
@@ -276,15 +284,26 @@ Section Existance.
     intros s h t i Hgen Hspec. revert dependent s. revert dependent t.
     revert dependent i.
     induction h; intros; inversion Hgen; subst.
+
+    Ltac solve_emulate_response :=
+      match goal with
+      | [ Hgen : generated ?s ?h, Heqmds : ?md = md ?s |-
+          exists rtyp s', get_emulate_response ?s0 ?t ?i = _ ] =>
+        eapply get_emulate_response_exists; eauto;
+        assert (generated (state_with_md s0 md) h) as HAH; [
+          unfold state_with_md in *; simpl in *;
+          destruct s; simpl in *; rewrite <- Heqmds in *; auto
+        | apply HAH]
+      | [|- exists rtyp s', get_emulate_response _ _ _ = _] =>
+        eapply get_emulate_response_exists; eauto
+      end.
     
     - unfold start_state in *; unfold start_mode in *; simpl in *.
       unfold emulator_act, next_mode.
-      remember X as HX.
-      destruct HX using rev_ind; simpl in *.
+      remember X as HX; destruct HX using rev_ind; simpl in *.
       remember (history_of_thread Y t) as Yhist.
       destruct (Yhist) using rev_ind; [|rewrite rev_unit]; unfold state_with_md; simpl in *.
-      + unfold get_emulate_response.
-        admit.
+      + solve_emulate_response.
       + remember (action_invocation_eq x t i) as Hacteq.
         destruct Hacteq.
         * unfold get_commute_response; simpl in *. rewrite <- HeqYhist; rewrite rev_unit; eauto.
@@ -302,7 +321,7 @@ Section Existance.
             apply in_or_app; left; eauto.
           }
           destruct H as [rtyp bleh]; discriminate.
-        * admit.
+        * solve_emulate_response.
       + clear IHHX.
         remember (HX ++ [x]) as blah; destruct blah;
           [symmetry in Heqblah; apply app_eq_nil in Heqblah; destruct_conjs; discriminate|
@@ -345,12 +364,83 @@ Section Existance.
           } destruct H as [rtyp bleh]; discriminate.
           destruct H as [rtyp bleh]; rewrite bleh; eauto.
           rewrite rev_unit; eauto.
-        * admit.
+        * solve_emulate_response.
     - unfold emulator_act.
-      unfold next_mode.
-      destruct (md s).
-  Admitted.
-        
+      remember (next_mode s t i) as snextmd.
+      rewrite Heqsnextmd.
+      unfold emulator_act, next_mode in *; remember (md s) as mds; destruct mds.
+      + remember (Y_copy s t) as sycpy. destruct sycpy using rev_ind; subst; simpl in *.
+        * solve_emulate_response.
+        * rewrite rev_unit. 
+          remember (action_invocation_eq x t i) as Hacteq.
+          destruct Hacteq.
+          unfold get_commute_response; simpl in *. rewrite <- Heqsycpy; rewrite rev_unit; eauto.
+          destruct x as [[tx [ix]] rx]; destruct i as [i]. inversion HeqHacteq.
+          simpl in *. symmetry in H0; rewrite andb_true_iff in *;
+                        destruct_conjs; rewrite Nat.eqb_eq in *; subst.
+          destruct rx; eauto.
+          assert (exists rtyp, NoResp = Resp rtyp).
+          {
+            eapply X_and_Y_wf.
+            symmetry in Heqmds.
+            pose (during_commute_state _ ((t0, i0, r)::h) Hgen Heqmds); destruct_conjs.
+            assert (List.In (tx, Inv i, NoResp) Y).
+            assert (List.In (tx, Inv i, NoResp) (history_of_thread
+                                                   (combined_histories (Y_copy s)) tx)).
+            rewrite history_of_thread_combined_is_application.
+            rewrite <- Heqsycpy. apply in_or_app; right. apply in_eq.
+            eapply reordered_in. apply H.
+            apply in_or_app; left.
+            eapply history_of_thread_sublist; eauto.
+            apply in_or_app; left; eauto.
+          }
+          destruct H as [rtyp bleh]; discriminate.
+          solve_emulate_response.
+      + solve_emulate_response.
+      + remember (X_copy s) as sxcpy. destruct sxcpy using rev_ind; simpl in *; auto.
+        * solve_emulate_response.
+        * rewrite rev_unit in *.         
+          remember (action_invocation_eq x t i) as Hacteq. destruct Hacteq.
+
+          destruct sxcpy using rev_ind; unfold get_replay_response, state_with_md in *; simpl in *;
+          symmetry in Heqmds; pose (during_replay_state _ _ Hgen Heqmds); destruct_conjs; subst.
+
+          rewrite <- Heqsxcpy; simpl in *.
+          assert (exists rtyp, x = (t,i,Resp rtyp)).
+          destruct x as [[tx [ix]] rx]; destruct rx.
+          inversion HeqHacteq; destruct i as [i].
+          symmetry in H8; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
+            destruct_conjs; subst.
+          exists n; auto.
+          assert (exists rtyp, NoResp = Resp rtyp) as ha.
+          {
+            eapply X_and_Y_wf.
+            assert (List.In (tx, Inv ix, NoResp) X).
+            rewrite <- H7, <- Heqsxcpy.
+            apply in_or_app; left; apply in_eq.
+            apply in_or_app; right; eauto.
+          } destruct ha as [rtyp bleh]; discriminate.
+          destruct H6 as [rtyp bleh]; rewrite bleh; eauto.
+          
+          repeat rewrite rev_unit, <- Heqsxcpy, rev_unit.
+          assert (exists rtyp, x = (t,i,Resp rtyp)).
+          destruct x as [[tx [ix]] rx]; destruct rx.
+          inversion HeqHacteq; destruct i as [i].
+          symmetry in H8; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
+            destruct_conjs; subst.
+          exists n; auto.
+          assert (exists rtyp, NoResp = Resp rtyp) as ha.
+          {
+            eapply X_and_Y_wf.
+            assert (List.In (tx, Inv ix, NoResp) X).
+            rewrite <- H7, <- Heqsxcpy.
+            apply in_or_app; left. apply in_or_app; right. apply in_eq.
+            apply in_or_app; right; eauto.
+          } destruct ha as [rtyp bleh]; discriminate.
+          destruct H6 as [rtyp bleh]; rewrite bleh; eauto.
+
+          solve_emulate_response.
+  Qed.
   
   Lemma generated_response_exists :
     forall s h t i,
@@ -359,13 +449,10 @@ Section Existance.
       exists rtyp s',
         generated s' ((t,i,Resp rtyp)::h).
   Proof.
-    intros s h t i Hgen Hspec. generalize dependent s.
-    induction h; intros; inversion Hgen; subst.
-    assert 
-    destruct H as [s' [rtyp Hact]].
-    unfold emulator_act, start_state in *. eauto.
-    
-  Admitted.
+    intros s h t i Hgen Hspec.
+    destruct (emulator_act_response_exists _ _ _ _ Hgen Hspec) as [rtyp [s' Hact]].
+    exists rtyp; exists s'; eapply GenCons; eauto.
+  Qed.
 
   Lemma response_always_exists :
     forall s h t i r,
