@@ -32,7 +32,7 @@ Section Histories.
   | Replay : mode.
 
   Parameter num_threads : nat.
-  Parameter tid_le_num_threads : forall tid, tid < num_threads.
+  Parameter tid_le_num_threads : forall tid, tid < num_threads /\ 0 < num_threads.
   
   Definition action : Type := tid * invocation * response.
   Definition action_invocation_eq (a : action) (t : tid) (i : invocation) :=
@@ -114,12 +114,11 @@ Section MachineState.
     mkState X (history_of_thread Y) [] (fun tid => []) [] start_mode.
                                         
   Definition sim_commutes : Prop :=
-    forall n h h' Y' Z,
-      h = skipn n Y' ->
-      reordered Y' Y ->
-      reordered h' h ->
-      spec (Z++h++X) ->
-      spec (Z++h'++X).
+    forall hd tl tl' Z,
+      reordered (hd ++ tl) Y ->
+      reordered tl' tl ->
+      spec (Z++tl++X) ->
+      spec (Z++tl'++X).
 
 End MachineState.
   

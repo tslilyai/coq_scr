@@ -16,22 +16,6 @@ Require Import model.
 Section Histories.
   Hint Constructors reordered.
   
-  Lemma y_copy_state :
-    forall s h t,
-      generated s h ->
-      forall t' i r, List.In (t',i,r) (s.(Y_copy) t) -> t' = t.
-  Proof.
-  Admitted.
-
-  Lemma commH_state :
-    forall s h t,
-      generated s h ->
-      forall t' i r, List.In (t',i,r) (s.(commH) t) -> t' = t.
-  Proof.
-  Admitted.
-
-  Hint Resolve y_copy_state commH_state.
-  
   Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
   Proof.
     intros.
@@ -243,7 +227,8 @@ Section Histories.
       (forall t' i' r', List.In (t', i', r') (f s t) -> t' = t) ->
       history_of_thread (combined_histories (f s)) t = f s t.
   Proof.
-    unfold history_of_thread.    
+    unfold history_of_thread.
+    
   Admitted.
 
   Lemma history_of_thread_end :
@@ -251,23 +236,115 @@ Section Histories.
         (history_of_thread (h ++ [(t,i,r)]) t = h' ++ [(t,i,r)]).
   Proof.
     intros.
-  Admitted.
-
-  
-  Lemma history_of_thread_nonempty :
-    forall h' t i r h,
-      reordered (h' ++ (t, i, r) :: h) Y ->
-      history_of_thread Y t = history_of_thread h' t ++ (t,i,r) :: history_of_thread h t.
-  Proof.
-  Admitted.    
+    induction h; simpl in *. rewrite Nat.eqb_refl. exists []; auto.
+    destruct a as [[ta ia] ra]; simpl in *; auto.
+    destruct (Nat.eq_dec ta t); subst; destruct IHh as [h' IHh]; rewrite IHh;
+      [rewrite Nat.eqb_refl; exists ((t,ia,ra)::h') 
+      | rewrite <- Nat.eqb_neq in *; rewrite n; exists h']; simpl in *; auto.
+  Qed.
 
   Lemma history_of_thread_reordered_eq :
     forall h h' t,
       reordered h h' ->
       history_of_thread h' t = history_of_thread h t.
   Proof.
-  Admitted.
+    intros.
+    induction H; subst; auto.
+    - unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
+      rewrite IHreordered; auto.
+    - destruct a2 as [[t1 i1] r1]; destruct a1 as [[t2 i2] r2]. unfold swappable in *.
+      unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
+      destruct (Nat.eq_dec t1 t), (Nat.eq_dec t2 t); subst; try (now intuition);
+        rewrite <- Nat.eqb_neq in *; try rewrite Nat.eqb_refl; try rewrite n in *; auto.
+    - now rewrite <- IHreordered1.
+  Qed.
+  
+  Lemma history_of_thread_nonempty :
+    forall h' t i r h,
+      reordered (h' ++ (t, i, r) :: h) Y ->
+      history_of_thread Y t = history_of_thread h' t ++ (t,i,r) :: history_of_thread h t.
+  Proof.
+    intros.
+    rewrite (history_of_thread_reordered_eq _ _ t H).
+    rewrite history_of_thread_app_distributes.
+    unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
+    now rewrite Nat.eqb_refl.
+  Qed.
 
+  Lemma history_of_thread_in_teq :
+    forall h t t' i r, List.In (t',i,r) (history_of_thread h t) -> t' = t.
+  Proof.
+    induction h; intros; simpl in *; auto. omega.
+    destruct a as [[ta [ia]] ra]; destruct i as [i]; destruct ra as [ra|];
+      destruct r as [r|]; simpl in *;
+    destruct (Nat.eq_dec ta t), (Nat.eq_dec ia i); try destruct (Nat.eq_dec r ra); subst;
+      try rewrite Nat.eqb_refl in *; try rewrite <- Nat.eqb_neq in *; auto;
+        try apply in_inv in H; try destruct H; try inversion H; try rewrite n in *; subst; auto;
+          eapply IHh; eauto.
+  Qed.
+
+  Lemma y_copy_state :
+    forall h s t,
+      generated s h ->
+      forall t' i r, List.In (t',i,r) (s.(Y_copy) t) -> t' = t.
+  Proof.
+    intros. induction H; subst.
+    unfold start_state in *; simpl in *.
+    eapply history_of_thread_in_teq; eauto.
+    unfold emulator_act in *.
+    destruct (next_mode s1 t0 i0).
+    - unfold get_commute_response in *.
+      unfold state_with_md in *; simpl in *.
+      remember (Y_copy s1 t0) as s1ycpy.
+      destruct s1ycpy using rev_ind; simpl in *; inversion H; subst; simpl in *; auto.
+      rewrite rev_unit in *. inversion H4; subst; simpl in *.
+      clear IHs1ycpy.
+      destruct (Nat.eq_dec t t0); subst;
+        [rewrite Nat.eqb_refl in *; rewrite rev_involutive in *
+        |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
+      eapply IHgenerated.
+      rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
+    - unfold get_emulate_response in *.
+      functional induction (get_emulate_response_helper
+                              (state_with_md s1 Emulate) t0 i0 0 max_response_number);
+        inversion H; subst; auto.
+    - destruct (rev (X_copy s1));
+        unfold get_replay_response, state_with_md in *; simpl in *;
+          [|destruct l];
+          destruct (rev (X_copy s1)); inversion H; subst; auto.
+  Qed.
+  
+  Lemma commH_state :
+    forall s h t,
+      generated s h ->
+      forall t' i r, List.In (t',i,r) (s.(commH) t) -> t' = t.
+  Proof.
+    intros. induction H; subst.
+    unfold start_state in *; simpl in *. omega.
+    unfold emulator_act in *.
+    destruct (next_mode s1 t0 i0).
+    - unfold get_commute_response in *.
+      unfold state_with_md in *; simpl in *.
+      remember (Y_copy s1 t0) as s1ycpy.
+      destruct s1ycpy using rev_ind; simpl in *; inversion H; subst; simpl in *; auto.
+      rewrite rev_unit in *. inversion H4; subst; simpl in *.
+      clear IHs1ycpy.
+      destruct (Nat.eq_dec t t0); subst;
+        [rewrite Nat.eqb_refl in *; rewrite rev_involutive in *
+        |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
+      apply in_inv in H0. destruct H0; [inversion H0; subst|]; auto.
+    - unfold get_emulate_response in *.
+      functional induction (get_emulate_response_helper
+                              (state_with_md s1 Emulate) t0 i0 0 max_response_number);
+        inversion H; subst; auto.
+    - destruct (rev (X_copy s1));
+        unfold get_replay_response, state_with_md in *; simpl in *;
+          [|destruct l];
+          destruct (rev (X_copy s1)); inversion H; subst; auto.
+  Qed.
+
+  Hint Resolve y_copy_state commH_state.
+  
   Lemma state_ycpy_nonempty :
     forall s h h1 h2 t i r gencomm,
       reordered (combined_histories (Y_copy s) ++ combined_histories (commH s)) Y ->
@@ -397,14 +474,6 @@ Section Misc.
   Proof.
     intros. destruct s. unfold state_with_md; simpl in *. rewrite H. auto.
   Qed.
-
-  Lemma generated_history_corresponds_state_history :
-    forall s h,
-      generated s h ->
-      exists gencommH,
-        reordered gencommH (combined_histories s.(commH)) /\
-        s.(postH) ++ gencommH ++ s.(preH) = h.
-  Admitted.
   
   Lemma rev_rev {A: Type} :
     forall l1 l2 : list A,
@@ -431,21 +500,73 @@ Section Misc.
     exists x0; exists a; exists (l0 ++ [y] ++ [x]); simpl in *; auto.
     rewrite <- app_assoc, app_comm_cons in *; simpl in *; auto. 
   Qed.
-  
+
+  Lemma combine_tid_histories_nil :
+    combine_tid_histories (fun _ : tid => []) num_threads = nil.
+  Proof.
+    functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
+  Qed.
+
   Lemma state_combined_histories_is_reordered_Y :
-    forall s h,
+    forall h s,
       generated s h ->
       reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y.
   Proof.
+    induction h; intros; inversion H; subst.
+    - unfold start_state in *; simpl in *.
+      unfold combined_histories in *.
+      rewrite combine_tid_histories_nil, app_nil_r.
+      admit.
+    - pose (IHh s1 H5).
+      unfold emulator_act in *.
+      destruct (next_mode s1 t i) in *; unfold state_with_md in *; simpl in *.
+      + unfold get_commute_response in *; simpl in *.
+        destruct (rev (Y_copy s1 t)); inversion H2; subst; simpl in *; auto.
+        admit.
+      + unfold get_emulate_response in *.
+        functional induction ( get_emulate_response_helper
+         {|
+         X_copy := X_copy s1;
+         Y_copy := Y_copy s1;
+         preH := preH s1;
+         commH := commH s1;
+         postH := postH s1;
+         md := Emulate |} t i 0 max_response_number); inversion H2; subst; auto.
+      + remember (rev (X_copy s1)) as rxcpys1.
+        destruct (rxcpys1); unfold get_replay_response in *; simpl in *; inversion H2; subst; auto.
+        rewrite <- Heqrxcpys1 in *.
+        1,2: inversion H1; subst; simpl in *; auto.
+        rewrite <- Heqrxcpys1 in *. destruct l; inversion H3; subst; simpl in *; auto.
   Admitted.
   
   Lemma reordered_Y_prefix_correct :
-    forall h' h,
+    forall h h',
       reordered (h' ++ h) Y ->
       spec (h ++ X).
   Proof.
+    induction h; intros; induction H; simpl in *.
   Admitted.
-    
+
+  Lemma generated_history_corresponds_state_history :
+    forall h s,
+      generated s h ->
+      exists gencommH,
+        reordered gencommH (combined_histories s.(commH)) /\
+        s.(postH) ++ gencommH ++ s.(preH) = h.
+  Proof.
+    induction h; intros; inversion H; subst.
+    - unfold start_state in *; simpl in *.
+      exists []; split; auto. unfold combined_histories; auto.
+      functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
+      constructor.
+    - pose (IHh s1 H5) as IHs1.
+      unfold emulator_act in *.
+      destruct (next_mode s1 t i) in *; unfold state_with_md in *; simpl in *.
+      + unfold get_commute_response in *; simpl in *.
+        destruct (rev (Y_copy s1 t)). inversion H2; subst; auto.
+        simpl in *. 
+  Admitted.
+
   Lemma correct_state_correct_generated_history :
     forall s h,
       generated s h ->
@@ -453,7 +574,7 @@ Section Misc.
       spec h.
   Proof.
     intros s h Hgen Hspec.
-    destruct (generated_history_corresponds_state_history s h Hgen) as [gencommH [Horder Hh]].
+    destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
     unfold get_state_history in *; simpl in *.
     pose (state_combined_histories_is_reordered_Y s h Hgen) as Hh'.
     pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy))
