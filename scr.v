@@ -14,6 +14,8 @@ Require Import Ensembles.
 Require Import model.
 Require Import helpers.
 
+Hint Resolve y_copy_state commH_state.
+
 Ltac unfold_action_inv_eq :=
     match goal with
       | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
@@ -390,7 +392,6 @@ Section State_Lemmas.
           repeat (split; auto).
           eapply (state_combined_histories_is_reordered_Y _ _ Hgen); simpl in *; eauto.
           exists ((t,i,r) :: H0); split; auto.
-          admit.
           (*
           Lemma combined_histories_thread_order_preserved :
             forall f h0 h1 i' r' t,
@@ -431,7 +432,6 @@ Section State_Lemmas.
                 eapply nth_split; eauto. rewrite <- Heqfst' in *. 
                 rewrite Heqlen. simpl in *. rewrite app_length. simpl in *. omega.
               }
-              admit.
             } destruct tmp as [Htmp | [Htmp | Htmp]]; destruct Htmp as [front [back Htmp]];
               destruct_conjs.
             pose (IHl back h1 i' r' t H0); destruct_conjs.
@@ -625,6 +625,7 @@ Section Existance.
                                                    (combined_histories (Y_copy s)) tx)).
             rewrite history_of_thread_combined_is_application.
             rewrite <- Heqsycpy. apply in_or_app; right. apply in_eq.
+            eauto.
             eapply reordered_in. apply H.
             apply in_or_app; left.
             eapply history_of_thread_sublist; eauto.
@@ -1137,13 +1138,13 @@ Section SCR.
         rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
         unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
 
-        pose (state_ycpy_nonempty s1 (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
+        pose (state_ycpy_nonempty s1 gencomm (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
           as tmp; rewrite <- app_assoc in *; simpl in *.
-        pose (tmp Hreordered Hgcorder) as Hs1ycpyt0. 
+        pose (tmp Hreordered Hgcorder H3) as Hs1ycpyt0. 
 
-        pose (state_ycpy_nonempty s1 h' [(t0, i0, r0)] t i r gencomm Hys1)
+        pose (state_ycpy_nonempty s1 gencomm h' [(t0, i0, r0)] t i r gencomm Hys1)
           as tmp'; simpl in *.
-        pose (tmp' Hreordered Hgcorder) as Hs1ycpyt. 
+        pose (tmp' Hreordered Hgcorder H3) as Hs1ycpyt. 
 
         rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
           simpl in *; destruct i0; simpl in *.
@@ -1194,13 +1195,13 @@ Section SCR.
         rewrite <- HeqHX in *; rewrite Hgencomm in *.
         unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
         apply app_inv_tail in Hgencomm; subst.
-        pose (state_ycpy_nonempty s1 (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
+        pose (state_ycpy_nonempty s1 (gencomm++a0::HX) (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
           as tmp; rewrite <- app_assoc in *; simpl in *.
-        pose (tmp Hreordered Hgcorder) as Hs1ycpyt0. 
+        pose (tmp Hreordered Hgcorder H3) as Hs1ycpyt0. 
 
-        pose (state_ycpy_nonempty s1 h' [(t0, i0, r0)] t i r gencomm Hys1)
+        pose (state_ycpy_nonempty s1 (gencomm++a0::HX) h' [(t0, i0, r0)] t i r gencomm Hys1)
           as tmp'; simpl in *.
-        pose (tmp' Hreordered Hgcorder) as Hs1ycpyt. 
+        pose (tmp' Hreordered Hgcorder H3) as Hs1ycpyt. 
 
         rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
           simpl in *; destruct i0; simpl in *.
@@ -1253,4 +1254,5 @@ Section SCR.
   Qed.
   
 End SCR.
+
 

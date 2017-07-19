@@ -16,6 +16,22 @@ Require Import model.
 Section Histories.
   Hint Constructors reordered.
   
+  Lemma y_copy_state :
+    forall s h t,
+      generated s h ->
+      forall t' i r, List.In (t',i,r) (s.(Y_copy) t) -> t' = t.
+  Proof.
+  Admitted.
+
+  Lemma commH_state :
+    forall s h t,
+      generated s h ->
+      forall t' i r, List.In (t',i,r) (s.(commH) t) -> t' = t.
+  Proof.
+  Admitted.
+
+  Hint Resolve y_copy_state commH_state.
+  
   Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
   Proof.
     intros.
@@ -130,7 +146,7 @@ Section Histories.
   destruct l as [|x l']; simpl in *;
   injection H; intros; subst; clear H.
 
-  Theorem reordered_cons_app : forall l l1 l2 a,
+  Lemma reordered_cons_app : forall l l1 l2 a,
       reordered l (l1 ++ l2) ->
       (forall a0, List.In a0 l1 -> swappable a a0) ->
       reordered (a :: l) (l1 ++ a :: l2).
@@ -157,41 +173,7 @@ Section Histories.
     intros; apply (H _ _ H0 a); auto.
     intros; apply (reordered_ind_bis P); unfold P; clear P; try clear H l l'; simpl; auto.
     intros; destruct l1; simpl in *; discriminate.
-    intros x l l' H IH; intros. admit. (*
-    break_list l1 b l1' H0; break_list l3 c l3' H1.
-    auto.
-    apply ro_perm_trans with (l3'++c::l4); auto.
-    apply ro_perm_trans with (l1'++a::l2); auto using reordered_cons_app.
-    apply perm_skip.
-    apply (IH a l1' l2 l3' l4); auto. *)
-    intros x y l l' Hswap Hp IH; intros.
-    break_list l1 b l1' H; break_list l3 c l3' H0.
-    auto.
-    break_list l3' b l3'' H.
-    auto.
-    apply ro_perm_trans with (c::l3''++b::l4); auto. admit.
-    break_list l1' c l1'' H1.
-    auto.
-    apply ro_perm_trans with (b::l1''++c::l2); auto. admit.
-    break_list l3' d l3'' H; break_list l1' e l1'' H1.
-    auto.
-    apply ro_perm_trans with (e::a::l1''++l2); auto.
-    apply ro_perm_trans with (e::l1''++a::l2); auto.
-    admit.
-    apply ro_perm_trans with (d::a::l3''++l4); auto.
-    apply ro_perm_trans with (d::l3''++a::l4); auto.
-    admit.
-    apply ro_perm_trans with (e::d::l1''++l2); auto.
-    apply ro_perm_skip; apply ro_perm_skip.
-    apply (IH a l1'' l2 l3'' l4); auto.
-    intros.
-    destruct (In_split a l') as (l'1,(l'2,H6)).
-    apply (reordered_in l _ a); auto.
-    subst l.
-    apply in_or_app; right; red; auto.
-    apply ro_perm_trans with (l'1++l'2).
-    apply (H0 _ _ _ _ _ H3 H6).
-    apply (H2 _ _ _ _ _ H6 H4).
+    intros x l l' H IH; intros. admit. 
   Admitted.
 
   Lemma reordered_cons_inv : forall a l1 l2, reordered (a :: l1) (a :: l2) -> reordered l1 l2.
@@ -246,17 +228,30 @@ Section Histories.
   Lemma history_of_thread_app_distributes :
     forall h h' t,
       history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.
-  Proof. Admitted.
+  Proof.
+    induction h; intros.
+    simpl in *; auto.
+    destruct a as [[ta ia] ra].
+    unfold history_of_thread in *. simpl in *. fold history_of_thread in *.
+    repeat rewrite (IHh h' t).
+    destruct (Nat.eq_dec ta t); subst;
+      [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
+  Qed.
 
   Lemma history_of_thread_combined_is_application :
     forall (f : state -> tid -> history) s t,
+      (forall t' i' r', List.In (t', i', r') (f s t) -> t' = t) ->
       history_of_thread (combined_histories (f s)) t = f s t.
-  Proof. Admitted.
+  Proof.
+    unfold history_of_thread.    
+  Admitted.
 
   Lemma history_of_thread_end :
     forall h t i r, exists h',
         (history_of_thread (h ++ [(t,i,r)]) t = h' ++ [(t,i,r)]).
-  Proof. Admitted.
+  Proof.
+    intros.
+  Admitted.
 
   
   Lemma history_of_thread_nonempty :
@@ -274,15 +269,16 @@ Section Histories.
   Admitted.
 
   Lemma state_ycpy_nonempty :
-    forall s h1 h2 t i r gencomm,
+    forall s h h1 h2 t i r gencomm,
       reordered (combined_histories (Y_copy s) ++ combined_histories (commH s)) Y ->
       reordered (h1 ++ [(t,i,r)] ++ h2 ++ gencomm) Y ->
       reordered gencomm (combined_histories (commH s)) ->
+      generated s h ->
       Y_copy s t = (history_of_thread h1 t) ++ [(t,i,r)] ++ history_of_thread h2 t.
   Proof.
     Ltac equal_histories := eapply history_of_thread_reordered_eq; eauto;
                             apply reordered_sym; auto.
-    intros s h1 h2 t i r gencomm Hr1 Hr2 Hr3.
+    intros s h h1 h2 t i r gencomm Hr1 Hr2 Hr3 Hgen.
     assert (reordered (h1 ++ (t,i,r) :: h2) (combined_histories (Y_copy s))).
     {
       eapply reordered_app_inv_prefix; eauto. eapply ro_perm_trans; eauto.
@@ -301,15 +297,16 @@ Section Histories.
     rewrite rw in *.
     repeat rewrite history_of_thread_app_distributes in Ht2.
     rewrite history_of_thread_app_distributes in Ht1.
-    repeat rewrite history_of_thread_combined_is_application in Ht1.
-    repeat rewrite history_of_thread_combined_is_application in Ht3.
+    do 2 rewrite history_of_thread_combined_is_application in Ht1.
+    rewrite history_of_thread_combined_is_application in Ht3.
     rewrite <- Ht2, Ht3 in Ht1.
     rewrite app_assoc in Ht1. eapply app_inv_tail in Ht1.
     unfold history_of_thread in Ht1; simpl in *.
     fold history_of_thread in Ht1; rewrite Nat.eqb_refl in *;
       rewrite Ht1; try rewrite <- app_assoc; simpl in *; auto.
+    all: eauto.
   Qed.
-
+  
   Lemma history_of_thread_sublist :
     forall a t h,
       List.In a (history_of_thread h t) -> List.In a h.
@@ -462,4 +459,6 @@ Section Misc.
     pose (reordered_Y_prefix_correct (combined_histories s.(Y_copy))
                                      (combined_histories s.(commH)) Hh') as Hcomm.
   Admitted.
+ 
 End Misc.
+
