@@ -191,7 +191,7 @@ Section State_Lemmas.
          assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Ht2 by
              now eapply state_with_md_comp_eq.
          rewrite Hs1nextmd in *; unfold get_replay_response in *; rewrite Ht1, Ht2 in *;
-           rewrite Hnil in H1.
+          rewrite Hnil in H1.
          destruct tl; simpl in *; auto;
            inversion H1; subst; simpl in *; try discriminate; repeat (split; auto).
          exists (rev tl ++ [a]); split; auto.
@@ -238,7 +238,160 @@ Section State_Lemmas.
         s.(preH) = X /\
         s.(postH) = [] /\
         s.(X_copy) = [].
-    Admitted.
+    Proof.
+      intros s h Hgen Hmd. revert dependent s.
+      induction h; intros; inversion Hgen; subst; simpl in *.
+      - unfold start_state in *; unfold start_mode in *; simpl in *.
+        remember X as HX; destruct HX; try discriminate.
+        pose (state_combined_histories_is_reordered_Y _ _  Hgen); simpl in *.
+        repeat split; auto.
+        exists []; simpl in *; repeat split; auto.
+        unfold combined_histories.
+        functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+        simpl in *; apply reordered_refl.
+        eapply IHl1; eauto.
+
+      - assert (md s1 = Replay \/ md s1 = Commute) as Hmds1.
+        {
+          unfold emulator_act in H1.
+          remember (next_mode s1 t i) as s1nmd. destruct s1nmd;
+          unfold next_mode in *; remember (md s1) as s1md; destruct s1md; try discriminate.
+          destruct (rev (Y_copy s1 t)); try discriminate.
+          destruct (action_invocation_eq a t i); try discriminate.
+          now right. now left. now right.
+          unfold get_emulate_response in *.
+          functional induction (get_emulate_response_helper
+                                  (state_with_md s1 Emulate) t i 0 max_response_number);
+            inversion H1; subst; simpl in *; try discriminate.
+          eapply IHp; eauto.
+          now left. now right. now left.
+        } destruct Hmds1 as [Hmds1 | Hmds1].
+        + pose (during_replay_state _ _ H4 Hmds1); destruct_conjs; subst; simpl in *.
+          remember (preH s1) as pres1.
+          destruct (pres1); simpl in *; inversion H4; subst.
+
+          * unfold start_state in *; unfold start_mode in *;
+              remember X as HX; destruct HX using rev_ind; try clear IHHX; try discriminate;
+                simpl in *; auto.
+            assert (exists hd tl, HX ++ [x] = hd :: tl) as bleh.
+            {
+              assert (HX ++ [x] <> []).
+              intuition; simpl in *. apply app_eq_nil in H.
+              destruct_conjs; discriminate.
+              destruct (HX++[x]); try discriminate; intuition. exists a. exists l. auto.
+            } destruct bleh as [hd [tl bleh]]; rewrite bleh in *. rewrite <- bleh in *.
+            unfold emulator_act in *. unfold next_mode in *; simpl in *.
+            rewrite rev_unit in *; simpl in *.
+            assert (action_invocation_eq x t i = true) as Hacteq.
+            {
+              remember (action_invocation_eq x t i) as Hacteq.
+              destruct Hacteq; auto. 
+              unfold get_emulate_response, state_with_md in *; simpl in *.
+              functional induction (get_emulate_response_helper
+                                      {|
+                                        X_copy := HX ++ [x];
+                                        Y_copy := history_of_thread Y;
+                                        preH := [];
+                                        commH := fun _ : tid => [];
+                                        postH := [];
+                                        md := Emulate |} t i 0 max_response_number);
+                inversion H1; subst; try discriminate.
+              now eapply IHp.
+            }
+            rewrite Hacteq in *.
+            destruct HX using rev_ind; [simpl in *|rewrite rev_unit in *];
+              unfold get_replay_response, state_with_md in *; simpl in *;
+                inversion H1; subst; simpl in *.
+            repeat (split; auto).
+            eapply (state_combined_histories_is_reordered_Y _ _  Hgen); simpl in *.
+            exists []; simpl in *; repeat split; auto.
+            unfold combined_histories.
+            functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+            simpl in *; apply reordered_refl.
+            eapply IHl1; eauto.
+
+            rewrite rev_unit in *. inversion H6; subst; try discriminate.
+
+          * assert (exists t i r, X_copy s1 = [(t,i,r)]) as s1xcpy.
+            {
+              unfold emulator_act in *.
+              remember (next_mode s1 t i) as s1nmd.
+              destruct s1nmd;
+                unfold next_mode in *; remember (md s1) as s1md; destruct s1md; try discriminate.
+              destruct (rev (X_copy s1)); try discriminate. destruct (action_invocation_eq a t i);
+                                                              discriminate.
+              unfold get_emulate_response, state_with_md in *; simpl in *. clear H8.
+              functional induction (get_emulate_response_helper
+                                      {|
+                                        X_copy := X_copy s1;
+                                        Y_copy := Y_copy s1;
+                                        preH := preH s1;
+                                        commH := commH s1;
+                                        postH := postH s1;
+                                        md := Emulate |} t i 0 max_response_number);
+                inversion H1; subst; try discriminate.
+              now eapply IHp.
+
+              remember (X_copy s1) as s1xcpy. destruct s1xcpy using rev_ind; simpl in *;
+                                                try discriminate.
+              rewrite rev_unit in *. destruct s1xcpy using rev_ind; simpl in *.
+              destruct x as [[tx ix] rx]; exists tx; exists ix; exists rx; auto.
+              rewrite rev_unit in *; unfold get_replay_response in *.
+              destruct (rev (X_copy (state_with_md s1 Replay)));
+                inversion H1; unfold state_with_md in *; simpl in *; subst; discriminate.
+            } destruct s1xcpy as [ts1 [is1 [rs1 Hs1xcpy]]].
+            unfold emulator_act, next_mode in H1.
+            rewrite Hmds1 in *. rewrite Hs1xcpy in *; simpl in *.
+            destruct is1 as [is1]; destruct i as [i].
+            assert ((is1 =? i) && (t =? ts1) = true).
+            {
+              destruct (Nat.eq_dec is1 i), (Nat.eq_dec t ts1); subst;
+                repeat try rewrite Nat.eqb_refl in *; try rewrite <- Nat.eqb_neq in *;
+                  try rewrite n in *; try rewrite n0 in *; simpl in *; auto.
+              all: unfold get_emulate_response in *.
+              1,3: functional induction (get_emulate_response_helper
+                                        (state_with_md s1 Emulate) t (Inv i) 0 max_response_number);
+                inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
+                  try now eapply IHp.
+              functional induction (get_emulate_response_helper
+                                        (state_with_md s1 Emulate) ts1 (Inv i) 0 max_response_number);
+                inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
+                  try now eapply IHp.
+            }
+            rewrite H in *.
+            unfold get_replay_response, state_with_md in *; simpl in *.
+            rewrite Hs1xcpy in *; simpl in *. inversion H1; subst; simpl in *; auto.
+            repeat (split; auto).
+            eapply (state_combined_histories_is_reordered_Y _ _  Hgen); simpl in *.
+            exists []; simpl in *; repeat split; auto.
+            unfold combined_histories. rewrite H2 in *.
+            functional induction (combine_tid_histories (fun _ : tid => []) num_threads []).
+            simpl in *; apply reordered_refl.
+            eapply IHl1; eauto.
+            rewrite <- Heqpres1; auto.
+
+        + pose (IHh s1 H4 Hmds1); destruct_conjs.
+          unfold emulator_act in *. unfold next_mode in *.
+          rewrite Hmds1 in H1.
+          remember (Y_copy s1 t) as s1ycpy.
+          destruct s1ycpy using rev_ind; simpl in *; try rewrite rev_unit in *;
+            [| destruct (action_invocation_eq x t i)].
+          
+          1,3: unfold get_emulate_response in *;
+            functional induction (get_emulate_response_helper
+                                    (state_with_md s1 Emulate) t i 0 max_response_number);
+            inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
+              try now eapply IHp.
+
+          clear IHs1ycpy.
+          unfold get_commute_response, state_with_md in *; simpl in *.
+          rewrite <- Heqs1ycpy, rev_unit in *.
+          inversion H1; subst; simpl in *.
+          repeat (split; auto).
+          admit. (* XXX TODO *)
+          exists ((t,i,r) :: H0); split; auto.
+          admit. (* XXX TODO *)
+     Admitted.
 
 End State_Lemmas.
 
