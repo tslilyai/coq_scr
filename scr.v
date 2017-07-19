@@ -934,17 +934,64 @@ Section SCR.
   Qed.
 
   Lemma mode_generated_commute :
-    forall h s Yend Yfront t i r,
+    forall Yend h s Yfront t i r,
       generated s h ->
       h = Yend ++ X ->
       reordered (Yfront ++ (t,i,r) :: Yend) Y ->
+      (forall t', s.(Y_copy) t' = history_of_thread (Yfront ++ [(t,i,r)]) t') /\
       s.(md) = Commute.
   Proof.
-    induction h; intros; inversion H; subst; simpl in *.
-    - unfold start_mode in *. symmetry in H0; apply app_eq_nil in H0; destruct_conjs.
-      rewrite H2 in *; auto.
-    - 
-  Admitted.
+    induction Yend; intros.
+    simpl in *; subst. remember X as HX. destruct HX; inversion H; subst.
+    - unfold start_state, start_mode in *. rewrite <- HeqHX; auto.
+      simpl in *; split; auto.
+      intros.
+      eapply (history_of_thread_reordered_eq _ _ t' H1).
+    - pose (mode_generated_replay _ s1 [] t0 i0 r0 H6). rewrite app_nil_l in *.
+      apply a in HeqHX. destruct_conjs.
+      unfold emulator_act in *.
+      unfold next_mode in *.
+      rewrite H2 in *. rewrite H0 in *. rewrite app_nil_l in *; simpl in *.
+      destruct i0 as [i0]; simpl in *; repeat rewrite Nat.eqb_refl in *; simpl in *.
+      unfold get_replay_response, state_with_md in *; rewrite H0 in *; simpl in *.
+      inversion H3; subst; simpl in *; split; auto.
+
+      intros.
+      pose (history_of_thread_reordered_eq _ _ t' H1) as tmp. 
+      rewrite history_of_thread_app_distributes in *; simpl in *.
+      assert (Y_copy s1 = fun tid => history_of_thread Y tid).
+      eapply (during_replay_state s1); eauto.
+      now rewrite H4, tmp. 
+    - rewrite H0 in H. inversion H.
+      destruct a as [[ta ia] ra]; inversion H2; subst.
+      assert ((forall t', s1.(Y_copy) t' = history_of_thread
+                                           ((Yfront ++ [(t,i,r)]) ++ [(ta, ia, ra)]) t')
+             /\ md s1 = Commute) as Hmds1.
+      {
+        assert (reordered ((Yfront ++ [(t,i,r)]) ++ (ta, ia, ra) :: Yend) Y).
+        rewrite <- app_assoc; simpl; auto. 
+        eapply (IHYend (Yend ++ X) s1 (Yfront ++ [(t,i,r)]) ta ia ra); eauto.
+      }
+      unfold emulator_act, next_mode in *. destruct_conjs. rewrite H3 in *.
+      pose (H0 ta).
+      rewrite history_of_thread_app_distributes in *. simpl in *. rewrite Nat.eqb_refl in *.
+      rewrite e, rev_unit in *.
+      destruct ia; simpl in *; repeat rewrite Nat.eqb_refl in *; simpl in *.
+      unfold get_commute_response in *.
+      assert (Y_copy s1 = Y_copy (state_with_md s1 Commute)).
+      unfold state_with_md in *; simpl in *; eauto.
+      rewrite H5 in *; unfold state_with_md in *; simpl in *.
+      rewrite e in *; rewrite rev_unit in *.
+      inversion H4; simpl in *; subst.
+      split; auto.
+      intros.
+      destruct (Nat.eq_dec t' ta); subst;
+        [rewrite Nat.eqb_refl in *; rewrite rev_involutive
+        | rewrite <- Nat.eqb_neq in *; rewrite n0 in *]; auto.
+      rewrite (H0 t').
+      rewrite history_of_thread_app_distributes in *; simpl in *.
+      rewrite Nat.eqb_sym in n0. rewrite n0 in *. now rewrite app_nil_r in *.
+  Qed.
     
   (* if we have a SIM-comm region of history, then the emulator produces a
    * conflict-free trace for the SIM-comm part of the history *)
@@ -1078,7 +1125,7 @@ Section SCR.
         (* figure out the state of s *)
         assert (md s1 = Commute) as Hs1md.
         {
-          eapply (mode_generated_commute _ s1 h0 _ t0 i0 r0); eauto.
+          eapply (mode_generated_commute _ _ s1 _ t0 i0 r0); eauto.
           rewrite <- HeqHX; rewrite app_nil_r; auto.
           assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h0 = (h'++ (t,i,r)::(t0,i0,r0)::h0)) as bleh.
           rewrite <- app_assoc. simpl in *; auto.
@@ -1136,7 +1183,7 @@ Section SCR.
         (* figure out the state of s *)
         assert (md s1 = Commute) as Hs1md.
         {
-          eapply (mode_generated_commute _ s1 h _ t0 i0 r0); eauto.
+          eapply (mode_generated_commute _ _ s1 _ t0 i0 r0); eauto.
           rewrite <- HeqHX; auto.
           assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h  = (h'++ (t,i,r)::(t0,i0,r0)::h)) as bleh.
           rewrite <- app_assoc. simpl in *; auto.
