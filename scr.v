@@ -909,20 +909,41 @@ Section SCR.
   Qed.    
 
   Lemma mode_generated_replay :
-    forall s h h' t i r,
+    forall h s h' t i r,
       generated s h ->
       h' ++ (t,i,r) :: h = X ->
+      s.(X_copy) = h' ++ [(t,i,r)] /\
       s.(md) = Replay.
   Proof.
-  Admitted.
+    induction h; intros; inversion H; subst; simpl in *.
+    - unfold start_mode. 
+      assert (X <> []).
+      { rewrite <- H0. intuition. apply app_eq_nil in H1. destruct_conjs; discriminate. }
+      destruct X; intuition.
+    - assert (s1.(X_copy) = (h' ++ [(t,i,r)]) ++ [(t0,i0,r0)] /\ s1.(md) = Replay) as Hmds1.
+      eapply (IHh s1 (h' ++ [(t,i,r)]) t0 i0 r0); eauto. rewrite <- app_assoc. now simpl in *.
+      unfold emulator_act in *.
+      unfold next_mode in *.
+      destruct_conjs.
+      rewrite H1, H2 in *; rewrite rev_unit in *.
+      destruct i0 as [i0]; simpl in *; repeat rewrite Nat.eqb_refl in *; simpl in *.
+      rewrite rev_unit in *.
+      unfold get_replay_response, state_with_md in *; simpl in *.
+      rewrite H1 in *. rewrite rev_unit in *. inversion H3; subst; simpl in *.
+      split; [rewrite rev_involutive|]; auto.
+  Qed.
 
   Lemma mode_generated_commute :
-    forall s h Yend Yfront t i r,
+    forall h s Yend Yfront t i r,
       generated s h ->
       h = Yend ++ X ->
       reordered (Yfront ++ (t,i,r) :: Yend) Y ->
       s.(md) = Commute.
   Proof.
+    induction h; intros; inversion H; subst; simpl in *.
+    - unfold start_mode in *. symmetry in H0; apply app_eq_nil in H0; destruct_conjs.
+      rewrite H2 in *; auto.
+    - 
   Admitted.
     
   (* if we have a SIM-comm region of history, then the emulator produces a
@@ -1021,7 +1042,7 @@ Section SCR.
 
         (* figure out the state of s *)
         assert (md s1 = Replay) as Hs1md by
-              now eapply (mode_generated_replay s1 _ [] t0 i0 r0); eauto.
+              now eapply (mode_generated_replay _ s1 [] t0 i0 r0); eauto.
         destruct (during_replay_state s1 _ H3 Hs1md) as
             [Hpres1 [Hposets1 [Hcomms1 [Hycpys1 [Xend [Hh' Hxcpys1]]]]]].
         assert (Xend = [(t0, i0, r0)]) as HeqXend.
@@ -1057,7 +1078,7 @@ Section SCR.
         (* figure out the state of s *)
         assert (md s1 = Commute) as Hs1md.
         {
-          eapply (mode_generated_commute s1 _ h0 _ t0 i0 r0); eauto.
+          eapply (mode_generated_commute _ s1 h0 _ t0 i0 r0); eauto.
           rewrite <- HeqHX; rewrite app_nil_r; auto.
           assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h0 = (h'++ (t,i,r)::(t0,i0,r0)::h0)) as bleh.
           rewrite <- app_assoc. simpl in *; auto.
@@ -1115,7 +1136,7 @@ Section SCR.
         (* figure out the state of s *)
         assert (md s1 = Commute) as Hs1md.
         {
-          eapply (mode_generated_commute s1 _ h _ t0 i0 r0); eauto.
+          eapply (mode_generated_commute _ s1 h _ t0 i0 r0); eauto.
           rewrite <- HeqHX; auto.
           assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h  = (h'++ (t,i,r)::(t0,i0,r0)::h)) as bleh.
           rewrite <- app_assoc. simpl in *; auto.
