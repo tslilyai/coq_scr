@@ -502,6 +502,42 @@ Section Existance.
     eapply emulator_deterministic; eauto.
   Qed.
 
+  Lemma blah :
+    forall fuel s t i rtyp,
+        spec_oracle ((t,i,(Resp rtyp)) :: get_state_history s) = true ->
+        (forall rtyp', rtyp' < rtyp ->
+                  spec_oracle ((t,i,(Resp rtyp')) :: get_state_history s) = false) ->
+        fuel >= rtyp ->
+        get_emulate_response_helper s t i 0 fuel =
+        get_emulate_response_helper s t i rtyp (fuel - rtyp).
+  Proof.
+    
+  Admitted.
+(*
+  forall fuel s t i rtyp,
+    get_emulate_response_helper s t i 0 (S fuel) = get_emulate_response_helper s t i 0 fuel
+    \/ (exists rtyp, get_emulate_response_helper s t i 0 (S fuel) = (....., Resp rtyp)
+               /\ get_emulate_response_helper s t i 0 fuel = (...., NoResp)).
+  *)
+    Lemma get_emulate_response_helper_eq_more_fuel :
+      forall fuel s t i rtyp,
+        spec_oracle ((t,i,(Resp rtyp)) :: get_state_history s) = true ->
+        (forall rtyp', rtyp' < rtyp ->
+                  spec_oracle ((t,i,(Resp rtyp')) :: get_state_history s) = false) ->
+        fuel >= rtyp ->
+        get_emulate_response_helper s t i 0 fuel = get_emulate_response_helper s t i 0 (S fuel).
+    Proof.
+      
+      induction fuel; intros.
+      Focus 2.
+      
+      
+            eapply H; eauto.
+      inversion H0; subst.
+      - unfold get_emulate_response_helper; simpl in *. rewrite H; eauto.
+      - pose (IHfuel _ _ _ _ H).
+    Admitted.
+    
   Lemma get_emulate_response_exists :
     forall s h t i,
       generated s h ->
@@ -510,68 +546,15 @@ Section Existance.
         get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp)).
   Proof.
     intros. unfold state_with_md in *; simpl in *; unfold get_emulate_response.
-    pose (spec_resp_exists _ _ _ H0) as blah; destruct blah as [rspec [Hrtyp [Hspec Hrtyp']]].
-    remember max_response_number as fuel; generalize dependent max_response_number.
-    Print get_emulate_response_helper_ind.
-    
-    Lemma get_emulate_response_helper_ind1 :
-      forall (s : state) (t : tid) (i : invocation) (P : nat -> nat -> state * action -> Prop),
-       (forall rtyp fuel : nat,
-        let response_action := (t, i, Resp rtyp) in
-        let state_history := get_state_history s in
-        let new_history := response_action :: state_history in
-        spec_oracle ((t,i,Resp rtyp) :: state_history) = true ->
-        (forall n, n > 0 /\ n < fuel -> spec_oracle ((t,i,Resp (rtyp-n)) :: state_history) = false) ->
-        P rtyp fuel
-          ({|
-           X_copy := X_copy s;
-           Y_copy := Y_copy s;
-           preH := preH s;
-           commH := commH s;
-           postH := response_action :: postH s;
-           md := Emulate |}, (t, i, Resp rtyp))) ->
-       (forall rtyp fuel : nat,
-        let response_action := (t, i, Resp rtyp) in
-        let state_history := get_state_history s in
-        let new_history := response_action :: state_history in
-        spec_oracle (response_action :: state_history) = false ->
-        fuel = 0 -> P rtyp 0 (state_with_md s Emulate, (t, i, NoResp))) ->
-       (forall rtyp fuel : nat,
-        let response_action := (t, i, Resp rtyp) in
-        let state_history := get_state_history s in
-        let new_history := response_action :: state_history in
-        spec_oracle (response_action :: state_history) = false ->
-        forall n' : nat,
-        fuel = S n' ->
-        P (S rtyp) n' (get_emulate_response_helper s t i (S rtyp) n') ->
-        P rtyp (S n') (get_emulate_response_helper s t i (S rtyp) n')) ->
-       forall rtyp fuel : nat, P rtyp fuel (get_emulate_response_helper s t i rtyp fuel).
-    Proof.
-      intros. revert rtyp.
-      induction fuel; intros.
-      remember (get_emulate_response_helper s t i rtyp 0) as Hact;
-        remember (get_emulate_response_helper s t i rtyp 0) as Hact';
-        remember Hact as tmp;
-        rewrite HeqHact' in HeqHact;
-        assert (Hact' = tmp) by now rewrite HeqHact; eauto.
-      simpl in HeqHact; rewrite HeqHact in H2. rewrite HeqHact' in H2.
-      remember (spec_oracle ((t, i, Resp rtyp) :: get_state_history s)) as Hso.
-      destruct Hso; eauto; subst.
-      eapply H; eauto. intros. destruct_conjs; omega.
-      eapply H0; eauto.
 
-      remember (get_emulate_response_helper s t i rtyp (S fuel)) as Hact;
-        remember (get_emulate_response_helper s t i rtyp (S fuel)) as Hact';
-        remember Hact as tmp;
-        rewrite HeqHact' in HeqHact;
-        assert (Hact' = tmp) by now rewrite HeqHact; eauto.
-      simpl in HeqHact; rewrite HeqHact in H2. rewrite HeqHact' in H2.
-      rewrite HeqHact. 
-      remember (spec_oracle ((t, i, Resp rtyp) :: get_state_history s)) as Hso.
-      destruct Hso; eauto; subst.
-      eapply H; eauto.
-    Admitted.
-    auto.
+    (* spec stuff *)
+    pose (spec_resp_exists _ _ _ H0) as blah; destruct blah as [rspec [Hrtyp [Hspec Hrtyp']]].
+    rewrite spec_oracle_correct in *.
+    destruct (generated_history_corresponds_state_history _ _ H) as [gencomm [Hgcorder Hheq]];
+      subst.
+
+    remember max_response_number as fuel; generalize dependent max_response_number.
+    remember 0 as rtyp.
 
     induction fuel; intros; subst.
     remember (get_emulate_response_helper
@@ -617,8 +600,24 @@ Section Existance.
     rewrite HeqHact in *.
     
     assert (rspec = fuel \/ rspec < fuel) as Hn' by now inversion Hrtyp; eauto.
-    destruct Hn'; subst.
+    destruct Hn'; subst; eauto.
+   
+    Focus 2.
+    unfold get_emulate_response_helper; simpl.
+    assert (spec_oracle
+              ((t, i, Resp 0)
+                 :: get_state_history
+                 {|
+                   X_copy := X_copy s;
+                   Y_copy := Y_copy s;
+                   preH := preH s;
+                   commH := commH s;
+                   postH := postH s;
+                   md := Emulate |}) = false) as Hso. admit.
+    rewrite Hso. fold get_emulate_response_helper.
+
     
+    eapply IHfuel.
     
   Admitted.
     

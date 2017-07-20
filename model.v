@@ -142,8 +142,9 @@ Section Emulator.
   Function combine_tid_histories (histories : tid -> history) (t : tid) :=
     match t with
       | 0 => []
-      | S t' => histories t ++ combine_tid_histories histories t' 
+      | S t' => histories t' ++ combine_tid_histories histories t' 
     end.
+                                                        
   Definition combined_histories (histories : tid -> history) :=
     combine_tid_histories histories num_threads.
   Definition get_state_history (s : state) :=

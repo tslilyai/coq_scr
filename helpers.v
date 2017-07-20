@@ -15,6 +15,57 @@ Require Import model.
 
 Section Histories.
   Hint Constructors reordered.
+
+  Definition IsHistories (histories: tid -> list action) : Prop :=
+    forall t a, List.In a (histories t) -> thread_of_action a = t.
+
+  Lemma combine_lt:
+    forall histories t,
+      IsHistories histories ->
+      forall a n, t + n = thread_of_action a ->
+           ~ List.In a (combine_tid_histories histories t).
+  Proof.
+    induction t; intros; simpl; auto.
+    intros X.
+    apply in_app_or in X.
+    destruct X.
+    apply H in H1.
+    omega.
+    replace (S t + n) with (t + (S n)) in H0; auto.
+    eapply IHt in H0; eauto.
+    omega.
+  Qed.
+
+  Lemma history_parts:
+    forall histories,
+      IsHistories histories ->
+      forall a t maxt,
+        t < maxt ->
+        thread_of_action a = t ->
+        exists x y,
+          combine_tid_histories histories maxt = x ++ histories t ++ y
+          /\ ~ List.In a x
+          /\ ~ List.In a y.
+  Proof.
+    intros histories IsH a t maxt; induction maxt; intros. omega.
+    destruct (Nat.eq_dec t maxt).
+    - exists [].
+      exists (combine_tid_histories histories maxt).
+      subst.
+      clear H IHmaxt. split; split.
+      apply in_nil.
+      eapply (combine_lt histories (thread_of_action a) IsH a 0) ; eauto.
+    - assert (t < maxt) by omega.
+      pose (IHmaxt H1 H0) as tmp.
+      destruct tmp as [xx [yy HH]].
+      exists (histories maxt ++ xx), yy.
+      destruct_conjs; simpl.
+      rewrite <- app_assoc, <- H2.
+      repeat (split; auto).
+      intro F. 
+      apply in_app_or in F.
+      destruct F; [apply IsH in H5; omega | contradiction].
+  Qed.
   
   Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
   Proof.
@@ -629,3 +680,48 @@ Section Misc.
  
 End Misc.
 
+Section StrongInduction.
+
+  Variable P:nat -> Prop.
+
+  (** The stronger inductive hypothesis given in strong induction. The standard
+  [nat ] induction principle provides only n = pred m, with [P 0] required
+  separately. *)
+  Hypothesis IH : forall m, (forall n, n < m -> P n) -> P m.
+
+  Lemma P0 : P 0.
+  Proof.
+    apply IH; intros.
+    exfalso; inversion H.
+  Qed.
+
+  Hint Resolve P0.
+
+  Lemma pred_increasing : forall n m,
+      n <= m ->
+      Nat.pred n <= Nat.pred m.
+  Proof.
+    induction n; cbn; intros.
+    apply le_0_n.
+    induction H; subst; cbn; eauto.
+    destruct m; eauto.
+  Qed.
+
+  Hint Resolve le_S_n.
+
+  Local Lemma strong_induction_all : forall n,
+      (forall m, m <= n -> P m).
+  Proof.
+    induction n; intros;
+      match goal with
+      | [ H: _ <= _ |- _ ] =>
+        inversion H
+      end; eauto.
+  Qed.
+
+  Theorem strong_induction : forall n, P n.
+  Proof.
+    eauto using strong_induction_all.
+  Qed.
+
+End StrongInduction.
