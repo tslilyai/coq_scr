@@ -31,8 +31,8 @@ Section Histories.
   | Emulate : mode
   | Replay : mode.
 
-  Parameter num_threads : nat.
-  Parameter tid_le_num_threads : forall tid, tid < num_threads /\ 0 < num_threads.
+  Parameter num_threads : tid.
+  Parameter tid_le_num_threads : forall tid : tid, tid < num_threads /\ 0 < num_threads.
   
   Definition action : Type := tid * invocation * response.
   Definition action_invocation_eq (a : action) (t : tid) (i : invocation) :=

@@ -36,35 +36,33 @@ Section Histories.
     omega.
   Qed.
 
-  Lemma history_parts:
+  Lemma combine_tid_histories_parts:
     forall histories,
       IsHistories histories ->
-      forall a t maxt,
+      forall t maxt,
         t < maxt ->
-        thread_of_action a = t ->
         exists x y,
           combine_tid_histories histories maxt = x ++ histories t ++ y
-          /\ ~ List.In a x
-          /\ ~ List.In a y.
+          /\ (forall a, thread_of_action a = t -> (~ List.In a x /\ ~ List.In a y)).
   Proof.
-    intros histories IsH a t maxt; induction maxt; intros. omega.
+    intros histories IsH t maxt; induction maxt; intros. omega.
     destruct (Nat.eq_dec t maxt).
     - exists [].
       exists (combine_tid_histories histories maxt).
       subst.
       clear H IHmaxt. split; split.
-      apply in_nil.
+      apply in_nil. subst.
       eapply (combine_lt histories (thread_of_action a) IsH a 0) ; eauto.
     - assert (t < maxt) by omega.
-      pose (IHmaxt H1 H0) as tmp.
+      pose (IHmaxt H0) as tmp.
       destruct tmp as [xx [yy HH]].
       exists (histories maxt ++ xx), yy.
       destruct_conjs; simpl.
-      rewrite <- app_assoc, <- H2.
-      repeat (split; auto).
+      rewrite <- app_assoc, <- H1.
+      repeat (split; auto); pose (H2 a H3); destruct_conjs; auto.
       intro F. 
-      apply in_app_or in F.
-      destruct F; [apply IsH in H5; omega | contradiction].
+      apply in_app_or in F; 
+      destruct F; [apply IsH in H6; omega | contradiction].
   Qed.
   
   Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
@@ -273,14 +271,62 @@ Section Histories.
       [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
   Qed.
 
+  Lemma history_of_thread_nil :
+    forall h t, (forall a, thread_of_action a = t -> ~List.In a h) ->
+             history_of_thread h t = [].
+  Proof.
+    induction h; intros; eauto.
+    assert (thread_of_action a <> t).
+    {
+      remember (thread_of_action a) as ta.
+      destruct (Nat.eq_dec ta t); subst; auto.
+      intro F. pose (H a F). intuition.
+    }
+    simpl. rewrite <- Nat.eqb_neq in H0. rewrite H0. eapply IHh.
+    intros a0 Heq; pose (H a0 Heq).
+    intuition.
+  Qed.
+
+  Lemma history_of_thread_dummy :
+    forall h t, (forall a, List.In a h -> thread_of_action a = t) ->
+         history_of_thread h t = h.
+  Proof.
+    induction h; intros; auto.
+    simpl.
+    assert (thread_of_action a = t).
+    {
+      eapply H; eauto. apply in_eq.
+    }
+    rewrite <- Nat.eqb_eq in H0; rewrite H0.
+    assert (history_of_thread h t = h).
+    {
+      eapply IHh; eauto. intros. eapply (H a0).
+      apply in_cons. eauto.
+    }
+    rewrite H1; auto.
+  Qed.
+    
   Lemma history_of_thread_combined_is_application :
     forall (f : state -> tid -> history) s t,
       IsHistories (f s) ->
       history_of_thread (combined_histories (f s)) t = f s t.
   Proof.
-    unfold history_of_thread.
-    
-  Admitted.
+    intros.
+    unfold combined_histories.
+    destruct (tid_le_num_threads t) as [HG bleh].
+    destruct (combine_tid_histories_parts (f s) H t num_threads HG) as
+        [xx [yy [Heq Hin]]].
+    rewrite Heq.
+    repeat rewrite history_of_thread_app_distributes.
+    assert (forall a : action, thread_of_action a = t -> ~ List.In a xx) as Hxx by
+          now eapply Hin.
+    assert (forall a : action, thread_of_action a = t -> ~ List.In a yy) as Hyy by
+          now eapply Hin.
+    rewrite (history_of_thread_nil xx t Hxx), (history_of_thread_nil yy t Hyy);
+      rewrite app_nil_r in *; simpl.
+    unfold IsHistories in *.
+    eapply history_of_thread_dummy; eauto.
+  Qed.
 
   Lemma history_of_thread_end :
     forall h t i r, exists h',
