@@ -84,7 +84,8 @@ Section MachineState.
   Parameter spec_resp_exists : forall t i h,
                                   spec ((t,i,NoResp) :: h) ->
                                   exists rtyp, rtyp < max_response_number
-                                               /\ spec ((t,i,Resp rtyp) :: h).
+                                          /\ spec ((t,i,Resp rtyp) :: h)
+                                          /\ forall rtyp', rtyp' < rtyp -> ~spec ((t,i,Resp rtyp)::h).
   Parameter spec_oracle : history -> bool.
   Parameter spec_oracle_correct :
     forall history, spec history <-> spec_oracle history = true.

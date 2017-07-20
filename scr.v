@@ -503,12 +503,124 @@ Section Existance.
   Qed.
 
   Lemma get_emulate_response_exists :
-    forall s h t i md,
-      generated (state_with_md s md) h ->
+    forall s h t i,
+      generated s h ->
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
-        get_emulate_response s t i = (s', (t,i,Resp rtyp)).
-  Proof. Admitted.
+        get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp)).
+  Proof.
+    intros. unfold state_with_md in *; simpl in *; unfold get_emulate_response.
+    pose (spec_resp_exists _ _ _ H0) as blah; destruct blah as [rspec [Hrtyp [Hspec Hrtyp']]].
+    remember max_response_number as fuel; generalize dependent max_response_number.
+    Print get_emulate_response_helper_ind.
+    
+    Lemma get_emulate_response_helper_ind1 :
+      forall (s : state) (t : tid) (i : invocation) (P : nat -> nat -> state * action -> Prop),
+       (forall rtyp fuel : nat,
+        let response_action := (t, i, Resp rtyp) in
+        let state_history := get_state_history s in
+        let new_history := response_action :: state_history in
+        spec_oracle ((t,i,Resp rtyp) :: state_history) = true ->
+        (forall n, n > 0 /\ n < fuel -> spec_oracle ((t,i,Resp (rtyp-n)) :: state_history) = false) ->
+        P rtyp fuel
+          ({|
+           X_copy := X_copy s;
+           Y_copy := Y_copy s;
+           preH := preH s;
+           commH := commH s;
+           postH := response_action :: postH s;
+           md := Emulate |}, (t, i, Resp rtyp))) ->
+       (forall rtyp fuel : nat,
+        let response_action := (t, i, Resp rtyp) in
+        let state_history := get_state_history s in
+        let new_history := response_action :: state_history in
+        spec_oracle (response_action :: state_history) = false ->
+        fuel = 0 -> P rtyp 0 (state_with_md s Emulate, (t, i, NoResp))) ->
+       (forall rtyp fuel : nat,
+        let response_action := (t, i, Resp rtyp) in
+        let state_history := get_state_history s in
+        let new_history := response_action :: state_history in
+        spec_oracle (response_action :: state_history) = false ->
+        forall n' : nat,
+        fuel = S n' ->
+        P (S rtyp) n' (get_emulate_response_helper s t i (S rtyp) n') ->
+        P rtyp (S n') (get_emulate_response_helper s t i (S rtyp) n')) ->
+       forall rtyp fuel : nat, P rtyp fuel (get_emulate_response_helper s t i rtyp fuel).
+    Proof.
+      intros. revert rtyp.
+      induction fuel; intros.
+      remember (get_emulate_response_helper s t i rtyp 0) as Hact;
+        remember (get_emulate_response_helper s t i rtyp 0) as Hact';
+        remember Hact as tmp;
+        rewrite HeqHact' in HeqHact;
+        assert (Hact' = tmp) by now rewrite HeqHact; eauto.
+      simpl in HeqHact; rewrite HeqHact in H2. rewrite HeqHact' in H2.
+      remember (spec_oracle ((t, i, Resp rtyp) :: get_state_history s)) as Hso.
+      destruct Hso; eauto; subst.
+      eapply H; eauto. intros. destruct_conjs; omega.
+      eapply H0; eauto.
+
+      remember (get_emulate_response_helper s t i rtyp (S fuel)) as Hact;
+        remember (get_emulate_response_helper s t i rtyp (S fuel)) as Hact';
+        remember Hact as tmp;
+        rewrite HeqHact' in HeqHact;
+        assert (Hact' = tmp) by now rewrite HeqHact; eauto.
+      simpl in HeqHact; rewrite HeqHact in H2. rewrite HeqHact' in H2.
+      rewrite HeqHact. 
+      remember (spec_oracle ((t, i, Resp rtyp) :: get_state_history s)) as Hso.
+      destruct Hso; eauto; subst.
+      eapply H; eauto.
+    Admitted.
+    auto.
+
+    induction fuel; intros; subst.
+    remember (get_emulate_response_helper
+      {|
+      X_copy := X_copy s;
+      Y_copy := Y_copy s;
+      preH := preH s;
+      commH := commH s;
+      postH := postH s;
+      md := Emulate |} t i 0 0) as Hact;
+      remember (get_emulate_response_helper
+      {|
+      X_copy := X_copy s;
+      Y_copy := Y_copy s;
+      preH := preH s;
+      commH := commH s;
+      postH := postH s;
+      md := Emulate |} t i 0 0) as Hact';
+      remember Hact as tmp;
+      rewrite HeqHact' in HeqHact;
+      assert (Hact' = tmp) by now rewrite HeqHact; eauto.
+
+    Focus 2.
+    remember (get_emulate_response_helper
+      {|
+      X_copy := X_copy s;
+      Y_copy := Y_copy s;
+      preH := preH s;
+      commH := commH s;
+      postH := postH s;
+      md := Emulate |} t i 0 (S fuel)) as Hact;
+      remember (get_emulate_response_helper
+      {|
+      X_copy := X_copy s;
+      Y_copy := Y_copy s;
+      preH := preH s;
+      commH := commH s;
+      postH := postH s;
+      md := Emulate |} t i 0 (S fuel)) as Hact';
+      remember Hact as tmp;
+      rewrite HeqHact' in HeqHact;
+      assert (Hact' = tmp) by now rewrite HeqHact; eauto.
+    rewrite HeqHact in *.
+    
+    assert (rspec = fuel \/ rspec < fuel) as Hn' by now inversion Hrtyp; eauto.
+    destruct Hn'; subst.
+    
+    
+  Admitted.
     
   Lemma emulator_act_response_exists :
     forall s h t i,
@@ -525,13 +637,14 @@ Section Existance.
       match goal with
       | [ Hgen : generated ?s ?h, Heqmds : ?md = md ?s |-
           exists rtyp s', get_emulate_response ?s0 ?t ?i = _ ] =>
-        eapply get_emulate_response_exists; eauto;
+        eapply (get_emulate_response_exists s); eauto;
         assert (generated (state_with_md s0 md) h) as HAH; [
           unfold state_with_md in *; simpl in *;
           destruct s; simpl in *; rewrite <- Heqmds in *; auto
         | apply HAH]
-      | [|- exists rtyp s', get_emulate_response _ _ _ = _] =>
-        eapply get_emulate_response_exists; eauto
+      | [ Hgen : generated ?s ?h |- exists rtyp s', get_emulate_response _ _ _ = _] =>
+        eapply (get_emulate_response_exists s); eauto;
+        unfold state_with_md in *
       end.
     
     - unfold start_state in *; unfold start_mode in *; simpl in *.
@@ -752,7 +865,7 @@ Section Correctness.
       intros. unfold emulator_act in *. unfold next_mode in *.
       rewrite H in *.
       unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper (state_with_md s Emulate)
+      functional induction (get_emulate_response_helper (state_with_md s Emulate) 
                                                         t i 0 max_response_number); eauto.
       inversion H0; auto.
       inversion H0; auto.
