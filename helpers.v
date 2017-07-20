@@ -275,7 +275,7 @@ Section Histories.
 
   Lemma history_of_thread_combined_is_application :
     forall (f : state -> tid -> history) s t,
-      (forall t' i' r', List.In (t', i', r') (f s t) -> t' = t) ->
+      IsHistories (f s) ->
       history_of_thread (combined_histories (f s)) t = f s t.
   Proof.
     unfold history_of_thread.
@@ -335,29 +335,31 @@ Section Histories.
   Qed.
 
   Lemma y_copy_state :
-    forall h s t,
+    forall s h,
       generated s h ->
-      forall t' i r, List.In (t',i,r) (s.(Y_copy) t) -> t' = t.
+      IsHistories s.(Y_copy).
   Proof.
-    intros. induction H; subst.
+    intros. induction H; subst; unfold IsHistories; intros.
     unfold start_state in *; simpl in *.
+    destruct a as [[ta ia] ra].
     eapply history_of_thread_in_teq; eauto.
+
     unfold emulator_act in *.
-    destruct (next_mode s1 t0 i0).
+    destruct (next_mode s1 t i).
     - unfold get_commute_response in *.
       unfold state_with_md in *; simpl in *.
-      remember (Y_copy s1 t0) as s1ycpy.
+      remember (Y_copy s1 t) as s1ycpy.
       destruct s1ycpy using rev_ind; simpl in *; inversion H; subst; simpl in *; auto.
       rewrite rev_unit in *. inversion H4; subst; simpl in *.
       clear IHs1ycpy.
-      destruct (Nat.eq_dec t t0); subst;
+      destruct (Nat.eq_dec t0 t); subst;
         [rewrite Nat.eqb_refl in *; rewrite rev_involutive in *
         |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
       eapply IHgenerated.
       rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
     - unfold get_emulate_response in *.
       functional induction (get_emulate_response_helper
-                              (state_with_md s1 Emulate) t0 i0 0 max_response_number);
+                              (state_with_md s1 Emulate) t i 0 max_response_number);
         inversion H; subst; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
@@ -366,27 +368,27 @@ Section Histories.
   Qed.
   
   Lemma commH_state :
-    forall s h t,
+    forall s h,
       generated s h ->
-      forall t' i r, List.In (t',i,r) (s.(commH) t) -> t' = t.
+      IsHistories s.(commH).
   Proof.
-    intros. induction H; subst.
+    intros. induction H; subst; unfold IsHistories; intros.
     unfold start_state in *; simpl in *. omega.
     unfold emulator_act in *.
-    destruct (next_mode s1 t0 i0).
+    destruct (next_mode s1 t i).
     - unfold get_commute_response in *.
       unfold state_with_md in *; simpl in *.
-      remember (Y_copy s1 t0) as s1ycpy.
+      remember (Y_copy s1 t) as s1ycpy.
       destruct s1ycpy using rev_ind; simpl in *; inversion H; subst; simpl in *; auto.
       rewrite rev_unit in *. inversion H4; subst; simpl in *.
       clear IHs1ycpy.
-      destruct (Nat.eq_dec t t0); subst;
+      destruct (Nat.eq_dec t0 t); subst;
         [rewrite Nat.eqb_refl in *; rewrite rev_involutive in *
         |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
-      apply in_inv in H0. destruct H0; [inversion H0; subst|]; auto.
+      apply in_inv in H2. destruct H2; [inversion H2; subst|]; auto.
     - unfold get_emulate_response in *.
       functional induction (get_emulate_response_helper
-                              (state_with_md s1 Emulate) t0 i0 0 max_response_number);
+                              (state_with_md s1 Emulate) t i 0 max_response_number);
         inversion H; subst; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
