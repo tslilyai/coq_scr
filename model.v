@@ -52,7 +52,9 @@ Section Histories.
     match a1, a2 with
       | (t, _, _), (t',_, _) => t <> t'
     end.
-  Inductive reordered : relation history :=
+  Definition reordered (h h' : history) :=
+    history_of_thread h = history_of_thread h'.
+(*  Inductive reordered : relation history :=
   | ro_perm_nil : reordered [] []
   | ro_perm_skip : forall x t1 t2,
                      reordered t1 t2 ->
@@ -64,7 +66,7 @@ Section Histories.
                       reordered t1 t2 ->
                       reordered t2 t3 ->
                       reordered t1 t3.
-  Hint Constructors reordered.
+  Hint Constructors reordered.*)
 End Histories.
 
 Section MachineState.

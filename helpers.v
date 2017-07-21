@@ -14,7 +14,7 @@ Require Import Ensembles.
 Require Import model.
 
 Section Histories.
-  Hint Constructors reordered.
+(*  Hint Constructors reordered. *)
 
   Definition IsHistories (histories: tid -> list action) : Prop :=
     forall t a, List.In a (histories t) -> thread_of_action a = t.
@@ -72,11 +72,12 @@ Section Histories.
     destruct a2 as [[t2 i2] r2].
     unfold swappable in *; auto.
   Qed.
-
+(*
   Lemma reordered_nil : forall h, reordered h [] -> h = [].
   Proof.
     intros.
     remember [] as N in H.
+    unfold reordered in *. subst. simpl in *.
     induction H; discriminate || auto.
   Qed.
 
@@ -238,7 +239,7 @@ Section Histories.
     assert (reordered (hd1 ++ tl1) (hd2 ++ tl1)) by now eapply ro_perm_trans; eauto.
     eapply reordered_app_inv_hd; eauto.
   Qed.
-    
+*)    
   Lemma history_of_thread_not_nil :
     forall t i r h,
       List.In (t,i,r) h -> history_of_thread h t <> [].
@@ -340,9 +341,9 @@ Section Histories.
       | rewrite <- Nat.eqb_neq in *; rewrite n; exists h']; simpl in *; auto.
   Qed.
 
-  Lemma history_of_thread_reordered_eq :
+  Lemma history_of_thread_eq_iff_reordered :
     forall h h' t,
-      reordered h h' ->
+      reordered h h' <->
       history_of_thread h' t = history_of_thread h t.
   Proof.
     intros.
@@ -606,6 +607,95 @@ Section Misc.
     functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
   Qed.
 
+  Lemma in_history_iff_in_thread_history :
+    forall h a, List.In a h <-> exists t, List.In a (history_of_thread h t).
+  Proof.
+    intros; split.
+    - destruct a as [[tt ti] tr].
+      exists tt.
+      destruct (in_split _ h H) as [l1 [l2 Hin]].
+      rewrite Hin.
+      rewrite history_of_thread_app_distributes; apply in_or_app.
+      right. simpl. rewrite Nat.eqb_refl. apply in_eq.
+    - intros. destruct H as [t Hin].
+      induction h. simpl in *; inversion Hin; subst; eauto.
+      simpl in *.
+      destruct a as [[t1 [i1]] r1]. destruct a0 as [[t2 [i2]] r2].
+      destruct (Nat.eq_dec t1 t2), (Nat.eq_dec i1 i2), r1, r2;
+        try destruct (Nat.eq_dec n n0); subst;
+        try (left; auto; fail); right; simpl in *;
+          try rewrite Nat.eq_refl in *;
+          destruct (t2 =? t);
+          try (apply in_inv in Hin; destruct Hin; [inversion H; symmetry in H1; contradiction | auto]);
+          try apply (IHh Hin).
+  Qed.
+        
+  Lemma history_of_thread_all_nil :
+    forall h, (forall t, history_of_thread h t = []) -> h = [].
+  Proof.
+    intros.
+    destruct h. auto.
+    assert (List.In a (a::h)) as Hin by now apply in_eq.
+    apply (in_history_iff_in_thread_history (a :: h) a) in Hin. destruct Hin as [t Htin].
+    rewrite (H t) in *. inversion Htin.
+  Qed.
+
+  Lemma history_of_thread_reapp :
+    forall h t,
+      history_of_thread (history_of_thread h t) t = history_of_thread h t.
+  Proof.
+    induction h; intros.
+    simpl in *; auto.
+    remember (thread_of_action a =? t) as ta.
+    destruct (ta); simpl; rewrite <- Heqta; auto.
+    simpl; rewrite <- Heqta.
+    rewrite (IHh t); auto.
+  Qed.    
+    
+  Lemma reordered_thread_order :
+    forall h h',
+      (forall t, history_of_thread h t = history_of_thread h' t) ->
+      reordered h h'.
+  Proof.
+    induction h; intros.
+    simpl in *.
+    assert (h' = []) by now eapply history_of_thread_all_nil; eauto.
+    subst; constructor.
+
+    assert (List.In a h').
+    {
+      assert (List.In a (a::h)) by now apply in_eq.
+      apply (in_history_iff_in_thread_history _ _) in H0.
+      destruct H0. rewrite (H x) in H0.
+      eapply (in_history_iff_in_thread_history _ _); eauto.
+    }
+    destruct (in_split a h' H0) as [l1 [l2 Hh']]; subst.
+    eapply in_history_iff_in_thread_history in H0. destruct H0.
+    destruct a as [[ta ia] ra].
+    apply history_of_thread_in_teq in H0; subst.
+    assert ((forall t : tid, x =? t = false -> history_of_thread h t = history_of_thread (l1 ++ l2) t)).
+    {
+      intros. pose (H t) as Ht.
+      rewrite history_of_thread_app_distributes in *.
+      simpl in *. rewrite H0 in *; auto.
+    }
+    assert (reordered h (List.filter (fun a => eqb ((thread_of_action a) =? x) false) (l1 ++ l2))).
+    {
+      eapply IHh. intros.
+      pose (H0 t).
+      admit.
+    }
+    assert (reordered 
+    pose (H x). rewrite history_of_thread_app_distributes in *.
+    simpl in *. rewrite Nat.eqb_refl in *.
+    assert (forall a, List.In a l1 -> thread_of_action a <> x).
+    destruct (Nat.eq_dec x t).
+    
+    simpl in *.
+    remember (thread_of_action a =? t) as Htaeq.
+    apply IHh l2 
+  Admitted.
+    
   Lemma state_combined_histories_is_reordered_Y :
     forall h s,
       generated s h ->
@@ -615,6 +705,8 @@ Section Misc.
     - unfold start_state in *; simpl in *.
       unfold combined_histories in *.
       rewrite combine_tid_histories_nil, app_nil_r.
+      Search (combine_tid_histories).
+      
       admit.
     - pose (IHh s1 H5).
       unfold emulator_act in *.
