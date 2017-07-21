@@ -392,89 +392,22 @@ Section State_Lemmas.
           repeat (split; auto).
           eapply (state_combined_histories_is_reordered_Y _ _ Hgen); simpl in *; eauto.
           exists ((t,i,r) :: H0); split; auto.
-          (*
-          Lemma combined_histories_thread_order_preserved :
-            forall f h0 h1 i' r' t,
-              (forall t t' i' r', List.In (t',i',r') (f t) -> t' = t) ->
-              combined_histories f = h0 ++ f t ++ h1 ->
-              ~ List.In (t,i',r') h0 /\ ~ List.In (t,i',r') h1.              
-          Proof.
-            intros f h0 h1 i' r' t Hin. revert h0 h1 i' r' t.
-            unfold combined_histories in *.
-            functional induction (combine_tid_histories f num_threads); intros.
-            Focus 2.
-
-            remember (f (S t')) as fst'. 
-            destruct (fst'); simpl in *. eapply IHl; eauto.
-            assert (
-                (exists h0hd h0tl, combine_tid_histories f t' = h0tl ++ f t ++ h1
-                                       /\ f (S t') = h0hd /\ h0hd ++ h0tl = h0)
-                    \/ (exists fthd fttl, combine_tid_histories f t' = fttl ++ h1
-                                          /\ f (S t') = h0 ++ fthd /\ fthd ++ fttl = f t)
-                    \/ (exists h1hd h1tl, combine_tid_histories f t' = h1tl
-                                          /\ f (S t') = h0++ f t ++ h1hd /\ h1hd ++ h1tl = h1))
-              as tmp.
-            {
-              remember (length (f (S t'))) as len.
-              remember (combine_tid_histories f t') as combinedt'.
-              destruct combinedt'. rewrite app_nil_r in *.
-              rewrite <- Heqfst' in *.
-              right; right. exists h1. exists []. rewrite app_nil_r. repeat split; auto.
-              
-              assert (exists l1 l2,
-                         h0 ++ f t ++ h1 = 
-                          l1 ++ nth len (f (S t') ++ combine_tid_histories f t') (t', i', NoResp)
-                             :: l2
-                         /\ length l1 = len).
-              {
-                rewrite <- H.
-                rewrite <- Heqcombinedt', <- Heqfst'.
-                eapply nth_split; eauto. rewrite <- Heqfst' in *. 
-                rewrite Heqlen. simpl in *. rewrite app_length. simpl in *. omega.
-              }
-            } destruct tmp as [Htmp | [Htmp | Htmp]]; destruct Htmp as [front [back Htmp]];
-              destruct_conjs.
-            pose (IHl back h1 i' r' t H0); destruct_conjs.
-            assert (t' <> t).
-            
-            Print combine_tid_histories_ind.
-
-          Lemma reordered_thread_order :
-            forall f t i r h h1 h2,
-              f t = ((t,i,r) :: h) ->
-              (forall t t' i' r', List.In (t',i',r') (f t) -> t' = t) ->
-              combined_histories f = h1 ++ (t,i,r) :: h2 -> 
-              reordered ((t,i,r) :: h1 ++ h2) (combined_histories f).
-          Proof.
-            intros.
-            assert (forall t' i' r', hd_error h1 = Some (t',i',r')
-                                     -> swappable (t,i,r) (t',i',r')
-                                        \/ (t = t' /\ i = i' /\ r = r')).
-            intros. unfold swappable.
-            unfold combined_histories in *.
-            remember [] as acc in *.
-            functional induction (combine_tid_histories f num_threads acc).
-            - rewrite app_nil_r in *.
-              assert (t = 0).
-              {
-                eapply H0. rewrite H1. apply in_or_app; right. apply in_eq.
-              } 
-              assert (t' = 0).
-              {
-                destruct h1; inversion H2.
-                eapply H0; eauto. rewrite H1. apply in_or_app; left; eauto.
-                rewrite H5; apply in_eq.
-
-              } subst.
-              right. split; auto.
-              induction h1. inversion H2.
-              inversion H2.
-              rewrite H, H4 in H1.
-              inversion H1; subst; auto.
-            - rewrite app_nil_r in *.
-              eapply IHl; eauto.
-           *)  
-     Admitted.
+          unfold reordered in *; intros.
+          rewrite history_of_thread_combined_is_application in *; eauto.
+          simpl in *.
+          destruct (Nat.eq_dec t t0); subst;
+            [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *];
+            pose (H8 t0); rewrite history_of_thread_combined_is_application in *; eauto.
+          rewrite e; eauto.
+          rewrite Nat.eqb_sym in n.
+          rewrite n in *; auto.
+          pose (commH_state s1 _ H4).
+          unfold IsHistories in *; intros; simpl in *; auto.
+          destruct (Nat.eq_dec t1 t); subst;
+            [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *].
+          inversion H7; subst; auto.
+          eapply i0; eauto.
+    Qed.
 
 End State_Lemmas.
 
@@ -502,16 +435,6 @@ Section Existance.
     eapply emulator_deterministic; eauto.
   Qed.
 
-  Lemma blah :
-    forall fuel s t i rtyp,
-        spec_oracle ((t,i,(Resp rtyp)) :: get_state_history s) = true ->
-        (forall rtyp', rtyp' < rtyp ->
-                  spec_oracle ((t,i,(Resp rtyp')) :: get_state_history s) = false) ->
-        fuel >= rtyp ->
-        get_emulate_response_helper s t i 0 fuel =
-        get_emulate_response_helper s t i rtyp (fuel - rtyp).
-  Proof.
-  Admitted.
 (*
   forall fuel s t i rtyp,
     get_emulate_response_helper s t i 0 (S fuel) = get_emulate_response_helper s t i 0 fuel
@@ -550,64 +473,6 @@ Section Existance.
     remember 0 as rtyp.
 
     induction fuel; intros; subst.
-    remember (get_emulate_response_helper
-      {|
-      X_copy := X_copy s;
-      Y_copy := Y_copy s;
-      preH := preH s;
-      commH := commH s;
-      postH := postH s;
-      md := Emulate |} t i 0 0) as Hact;
-      remember (get_emulate_response_helper
-      {|
-      X_copy := X_copy s;
-      Y_copy := Y_copy s;
-      preH := preH s;
-      commH := commH s;
-      postH := postH s;
-      md := Emulate |} t i 0 0) as Hact';
-      remember Hact as tmp;
-      rewrite HeqHact' in HeqHact;
-      assert (Hact' = tmp) by now rewrite HeqHact; eauto.
-
-    Focus 2.
-    remember (get_emulate_response_helper
-      {|
-      X_copy := X_copy s;
-      Y_copy := Y_copy s;
-      preH := preH s;
-      commH := commH s;
-      postH := postH s;
-      md := Emulate |} t i 0 (S fuel)) as Hact;
-      remember (get_emulate_response_helper
-      {|
-      X_copy := X_copy s;
-      Y_copy := Y_copy s;
-      preH := preH s;
-      commH := commH s;
-      postH := postH s;
-      md := Emulate |} t i 0 (S fuel)) as Hact';
-      remember Hact as tmp;
-      rewrite HeqHact' in HeqHact;
-      assert (Hact' = tmp) by now rewrite HeqHact; eauto.
-    rewrite HeqHact in *.
-    
-    assert (rspec = fuel \/ rspec < fuel) as Hn' by now inversion Hrtyp; eauto.
-    destruct Hn'; subst; eauto.
-   
-    Focus 2.
-    unfold get_emulate_response_helper; simpl.
-    assert (spec_oracle
-              ((t, i, Resp 0)
-                 :: get_state_history
-                 {|
-                   X_copy := X_copy s;
-                   Y_copy := Y_copy s;
-                   preH := preH s;
-                   commH := commH s;
-                   postH := postH s;
-                   md := Emulate |}) = false) as Hso. admit.
-    rewrite Hso. fold get_emulate_response_helper.
   Admitted.
     
   Lemma emulator_act_response_exists :
