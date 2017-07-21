@@ -558,6 +558,84 @@ Section Misc.
       rewrite <- app_assoc. simpl. auto.
   Qed. 
 
+  Lemma not_emulate_postH_nil :
+    forall h s,
+      generated s h ->
+      s.(md) <> Emulate ->
+      s.(postH) = [].
+    Proof.
+      induction h; intros; inversion H; subst.
+      unfold start_state in *; simpl in *; auto.
+      assert (s1.(md) <> Emulate). admit.
+      pose (IHh s1 H6 H1).
+      unfold emulator_act in *.
+      assert (next_mode s1 t i <> Emulate). admit.
+      remember (next_mode s1 t i) as s1nextmd.
+      destruct s1nextmd; intuition.
+      unfold get_commute_response, state_with_md in *; simpl in *.
+      destruct (rev (Y_copy s1 t)); inversion H3; subst; auto.
+      remember (rev (X_copy s1)) as xcpy.
+      destruct xcpy; unfold get_replay_response, state_with_md in *;
+        simpl in *. rewrite <- Heqxcpy in *; simpl in *; inversion H3; subst; auto.
+      destruct xcpy; rewrite <- Heqxcpy in *; simpl in *; inversion H3; subst; auto.
+    Admitted.
+
+    
+  Lemma emulate_response_state :
+    forall h s t i s' a,
+      generated s h ->
+      spec ((t,i,NoResp) :: h) ->
+      get_emulate_response (state_with_md s Emulate) t i = (s', a) ->
+      s.(commH) = s'.(commH) /\ s'.(postH) = a :: s.(postH) /\ s'.(preH) = s.(preH).
+  Proof.
+    intros.
+    unfold get_emulate_response in *; simpl in *.
+    functional induction (get_emulate_response_helper (state_with_md s Emulate)
+                                                      t i 0 max_response_number);
+      unfold state_with_md in *; simpl in *;
+        inversion H1; subst; auto.
+  Qed.
+
+  Lemma replay_response_state :
+    forall h s t i,
+      generated s h ->
+      spec ((t,i,NoResp) :: h) ->
+      next_mode s t i = Replay ->
+      s.(postH) = start_state.(postH)
+      /\ s.(commH) = start_state.(commH).
+  Proof.
+    induction h; intros; inversion H; subst; simpl in *; auto.
+    remember (next_mode s1 t0 i0) as s1nmd.
+    assert (next_mode s1 t0 i0 = Replay).
+    {
+      destruct s1nmd; unfold emulator_act in H4; rewrite <- Heqs1nmd in *; auto.
+      - unfold get_commute_response, state_with_md in *; simpl in *.
+        destruct (rev (Y_copy s1 t0)); inversion H4; subst; simpl in *; auto.
+        all: unfold next_mode in H1; simpl in *.
+        destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a t i)]; discriminate.
+        destruct (t =? t0); destruct (rev (rev l)). discriminate.
+        destruct (action_invocation_eq a t i); discriminate.
+        destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a t i)]; discriminate.
+        destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
+      - unfold get_emulate_response in *.
+        functional induction (get_emulate_response_helper (state_with_md s1 Emulate)
+                                                          t0 i0 0 max_response_number);
+          unfold next_mode in H1; inversion H4; subst; simpl in *; auto.
+    }
+    
+    assert (postH s1 = [] /\ commH s1 = (fun _ : tid => [])).
+    {
+      eapply IHh; eauto. 
+    }
+    unfold emulator_act in *.
+    rewrite H2 in *.
+    remember (rev (X_copy s1)) as xcpyrev.
+    destruct xcpyrev; unfold get_replay_response, state_with_md in *; simpl in *.
+    rewrite <- Heqxcpyrev in *. inversion H4; subst; auto.
+    destruct xcpyrev. rewrite <- Heqxcpyrev in *. inversion H4; subst; auto.
+    rewrite <- Heqxcpyrev in *; inversion H4; subst; auto.
+  Qed.
+
   Lemma generated_history_corresponds_state_history :
     forall h s,
       generated s h ->
@@ -570,13 +648,77 @@ Section Misc.
       exists []; split; auto. unfold combined_histories; auto.
       functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
       constructor.
-    - pose (IHh s1 H5) as IHs1.
+    - pose (IHh s1 H5) as IHs1; destruct IHs1 as [gencomm IHs1]; destruct_conjs.
       unfold emulator_act in *.
-      destruct (next_mode s1 t i) in *; unfold state_with_md in *; simpl in *.
+      remember (next_mode s1 t i) as s1nmd.
+      destruct (s1nmd); unfold state_with_md in *; simpl in *.
       + unfold get_commute_response in *; simpl in *.
-        destruct (rev (Y_copy s1 t)). inversion H2; subst; auto.
-        simpl in *. 
-  Admitted.
+        remember (Y_copy s1 t) as s1ycpy.
+        destruct (s1ycpy) using rev_ind. inversion H2; subst; simpl in *; auto.
+        * unfold next_mode in *; simpl in *.
+          destruct (md s1); try discriminate. rewrite <- Heqs1ycpy in *; simpl in *; discriminate.
+          destruct (rev (X_copy s1)); [|destruct (action_invocation_eq a t i)]; discriminate.
+        * clear IHh0. 
+          rewrite rev_unit in *; inversion H2; subst;
+            unfold reordered in *; simpl in *; destruct_conjs.
+          exists ((t,i,r) :: gencomm); split; intros.
+          -- pose (H0 t). pose (H0 t0).
+             rewrite history_of_thread_combined_is_application in *; eauto.
+             destruct (Nat.eq_dec t0 t); subst; simpl in *;
+               [rewrite Nat.eqb_refl in *| rewrite <- Nat.eqb_neq in *; rewrite n in *].
+             now rewrite e.
+             rewrite Nat.eqb_sym in n. rewrite n. auto.
+
+             pose (commH_state _ _ H5).
+             unfold IsHistories in *; intros.
+             destruct (Nat.eq_dec t1 t); subst; simpl in *;
+               [rewrite Nat.eqb_refl in *| rewrite <- Nat.eqb_neq in *; rewrite n in *].
+             inversion H1; subst; auto. eapply i0; eauto.
+          -- assert (postH s1 = []).
+             eapply not_emulate_postH_nil; eauto.
+             unfold next_mode in Heqs1nmd.
+             remember (md s1) as s1md. destruct s1md; try discriminate.
+             rewrite H1 in *; simpl in *; auto.
+      + exists gencomm.
+        split; auto.
+        -- assert (commH s1 = commH s). eapply emulate_response_state; eauto.
+           rewrite <- H3. auto.
+        -- assert (postH s = (t,i,r) :: postH s1 /\ preH s = preH s1).
+           eapply emulate_response_state; eauto.
+           destruct_conjs; subst.
+           rewrite H3, H6; simpl in *; auto.
+      + exists gencomm.
+        assert (commH s1 = commH s /\ postH s1 = postH s).
+        {
+           remember (rev (X_copy s1)) as rxcpy.
+           destruct rxcpy; unfold get_replay_response in *; simpl in *.
+           rewrite <- Heqrxcpy in *; simpl in *.
+           inversion H2; subst; auto.
+           destruct rxcpy; try rewrite <- Heqrxcpy in *; simpl in *;
+             inversion H2; subst; auto.
+        } destruct_conjs.
+        split.
+        -- now rewrite <- H3. 
+        -- assert (postH s1 = [] /\ (commH s1 = (fun _ : tid => []))).
+           {
+             pose replay_response_state.
+             unfold start_state in *; simpl in *.
+             eapply a; eauto.
+           } destruct_conjs.
+           rewrite H8 in H0. unfold reordered in *.
+           assert (combined_histories (fun _ : tid => []) = []).
+           unfold combined_histories.
+           functional induction ( combine_tid_histories (fun _ : tid => []) num_threads); auto.
+           rewrite H9 in *.
+           assert (gencomm = []) by now eapply history_of_thread_all_nil; eauto.
+           rewrite H10, <- H6, H7 in *. simpl in *.
+
+           remember (rev (X_copy s1)) as xcpyrev.
+           destruct xcpyrev; unfold get_replay_response, state_with_md in *; simpl in *.
+           rewrite <- Heqxcpyrev in *. inversion H2; subst; auto.
+           destruct xcpyrev. rewrite <- Heqxcpyrev in *. inversion H2; subst; auto.
+           rewrite <- Heqxcpyrev in *; inversion H2; subst; auto.
+  Qed.           
 
   Lemma correct_state_correct_generated_history :
     forall s h,
@@ -586,6 +728,7 @@ Section Misc.
   Proof.
     intros s h Hgen Hspec.
     destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
+    unfold reordered in *.
     unfold get_state_history in *; simpl in *.
     pose (state_combined_histories_is_reordered_Y h s Hgen) as Hh'.
     pose (reordered_Y_prefix_correct 
@@ -593,6 +736,7 @@ Section Misc.
             (combined_histories s.(Y_copy))
             Hh') as Hcomm.
   Admitted.
+  
  
 End Misc.
 

@@ -165,7 +165,8 @@ Section Emulator.
       (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Emulate,
        (t, i, Resp rtyp))
     else match fuel with
-           | 0 => (state_with_md s Emulate, (t, i, NoResp)) (* should never reach this *)
+         | 0 => (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH)
+                ((t,i,NoResp) :: s.(postH)) Emulate, (t, i, NoResp)) (* should never reach this *)
            | S n' => get_emulate_response_helper s t i (S rtyp) n'
          end.
 
@@ -184,7 +185,8 @@ Section Emulator.
   Definition get_replay_response (s : state) (t: tid) (i : invocation) : state * action :=
     match rev s.(X_copy) with
     | hd::tl => (mkState (rev tl) s.(Y_copy) (hd::s.(preH)) s.(commH) s.(postH) s.(md), hd)
-    | _ => (s, (t,i,NoResp)) (* should never hit this *)
+    | _ => (mkState s.(X_copy) s.(Y_copy) ((t,i,NoResp)::s.(preH)) s.(commH) s.(postH) s.(md),
+           (t,i,NoResp)) (* should never hit this *)
     end.
   Definition next_mode (s : state) (t: tid) (i: invocation) : mode :=
     match s.(md) with
