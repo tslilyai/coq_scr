@@ -62,16 +62,7 @@ Section Histories.
       apply in_app_or in F; 
       destruct F; [apply IsH in H6; omega | contradiction].
   Qed.
-  
-  Lemma swappable_sym : forall a1 a2, swappable a1 a2 -> swappable a2 a1.
-  Proof.
-    intros.
-    destruct a1 as [[t i] r].
-    destruct a2 as [[t2 i2] r2].
-    unfold swappable in *; auto.
-  Qed.
-
-  
+    
   Lemma history_of_thread_app_distributes :
     forall h h' t,
       history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.

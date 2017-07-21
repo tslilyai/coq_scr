@@ -48,13 +48,15 @@ Section Histories.
       | a :: tl => if thread_of_action a =? t then a :: history_of_thread tl t
                    else history_of_thread tl t
     end.
+  Definition reordered (h h' : history) :=
+    forall t, history_of_thread h t = history_of_thread h' t.
+  
+(* 
   Definition swappable (a1 a2 : action) :=
     match a1, a2 with
       | (t, _, _), (t',_, _) => t <> t'
     end.
-  Definition reordered (h h' : history) :=
-    forall t, history_of_thread h t = history_of_thread h' t.
-(*  Inductive reordered : relation history :=
+ Inductive reordered : relation history :=
   | ro_perm_nil : reordered [] []
   | ro_perm_skip : forall x t1 t2,
                      reordered t1 t2 ->
