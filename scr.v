@@ -250,7 +250,7 @@ Section State_Lemmas.
         exists []; simpl in *; repeat split; auto.
         unfold combined_histories.
         functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
-        simpl in *; apply reordered_refl.
+        unfold reordered; simpl in *. auto.
         eapply IHl0; eauto.
 
       - assert (md s1 = Replay \/ md s1 = Commute) as Hmds1.
@@ -309,7 +309,7 @@ Section State_Lemmas.
             exists []; simpl in *; repeat split; auto.
             unfold combined_histories.
             functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
-            simpl in *; apply reordered_refl.
+            unfold reordered; simpl in *; auto.
             eapply IHl0; eauto.
 
             rewrite rev_unit in *. inversion H6; subst; try discriminate.
@@ -368,7 +368,7 @@ Section State_Lemmas.
             exists []; simpl in *; repeat split; auto.
             unfold combined_histories. rewrite H2 in *.
             functional induction (combine_tid_histories (fun _ : tid => []) num_threads).
-            simpl in *; apply reordered_refl.
+            unfold reordered; simpl in *; auto.
             eapply IHl0; eauto.
             rewrite <- Heqpres1; auto.
 
@@ -511,7 +511,6 @@ Section Existance.
         get_emulate_response_helper s t i 0 fuel =
         get_emulate_response_helper s t i rtyp (fuel - rtyp).
   Proof.
-    
   Admitted.
 (*
   forall fuel s t i rtyp,
@@ -530,12 +529,6 @@ Section Existance.
       
       induction fuel; intros.
       Focus 2.
-      
-      
-            eapply H; eauto.
-      inversion H0; subst.
-      - unfold get_emulate_response_helper; simpl in *. rewrite H; eauto.
-      - pose (IHfuel _ _ _ _ H).
     Admitted.
     
   Lemma get_emulate_response_exists :
@@ -615,10 +608,6 @@ Section Existance.
                    postH := postH s;
                    md := Emulate |}) = false) as Hso. admit.
     rewrite Hso. fold get_emulate_response_helper.
-
-    
-    eapply IHfuel.
-    
   Admitted.
     
   Lemma emulator_act_response_exists :
@@ -739,7 +728,7 @@ Section Existance.
             rewrite <- Heqsycpy. apply in_or_app; right. apply in_eq.
             eauto.
             eapply reordered_in. apply H.
-            apply in_or_app; left.
+            apply in_or_app. left.
             eapply history_of_thread_sublist; eauto.
             apply in_or_app; left; eauto.
           }
@@ -1058,8 +1047,6 @@ Section SCR.
     simpl in *; subst. remember X as HX. destruct HX; inversion H; subst.
     - unfold start_state, start_mode in *. rewrite <- HeqHX; auto.
       simpl in *; split; auto.
-      intros.
-      eapply (history_of_thread_reordered_eq _ _ t' H1).
     - pose (mode_generated_replay _ s1 [] t0 i0 r0 H6). rewrite app_nil_l in *.
       apply a in HeqHX. destruct_conjs.
       unfold emulator_act in *.
@@ -1174,14 +1161,18 @@ Section SCR.
         clear IHYhist.
         assert (action_invocation_eq x t i = true) as Heq.
         {
-          pose (history_of_thread_nonempty _ _ _ _ _ Hreordered) as Hnonempty;
-          simpl in *.
-          rewrite Hnonempty in *; simpl in *.
           assert (rev (Yhist ++ [x]) = rev ((history_of_thread h' t) ++ [(t,i,r)])).
-          rewrite HeqYhist; simpl in *; auto.
-          repeat rewrite rev_unit in *. destruct x as [[t' [i']] r'].
-          inversion H; subst; auto.
-          unfold action_invocation_eq; simpl in *; repeat rewrite <- beq_nat_refl; auto.
+          {
+            rewrite HeqYhist; simpl in *; auto.
+            repeat rewrite rev_unit in *. destruct x as [[t' [i']] r'].
+            unfold reordered in Hreordered.
+            pose (Hreordered t).
+            rewrite history_of_thread_app_distributes in e; simpl in *.
+            rewrite Nat.eqb_refl in *. rewrite <- e.
+            rewrite rev_unit; auto.
+          }
+          repeat rewrite rev_unit in H; inversion H; subst; auto.
+          unfold action_invocation_eq; destruct i; simpl in *; repeat rewrite <- beq_nat_refl; auto.
         }
         rewrite Heq in *.
         unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
@@ -1225,11 +1216,13 @@ Section SCR.
         (* now figure out the state of s' *)        
         unfold emulator_act in *; unfold next_mode in *; simpl in *.
         rewrite Hycpys1 in *.
-        pose (history_of_thread_nonempty _ _ _ _ _ Hreordered) as HYhist.
-        rewrite HYhist in *. rewrite rev_unit in *.
+        unfold reordered in *.
+        pose (Hreordered t) as HYhist; rewrite history_of_thread_app_distributes in *;
+          simpl in *; rewrite Nat.eqb_refl in *; simpl in *.
+        rewrite <- HYhist in *. rewrite rev_unit in *.
         destruct i; simpl in *. repeat rewrite Nat.eqb_refl in *; simpl in *.
         unfold get_commute_response in *; simpl in *.
-        rewrite HYhist in *; rewrite rev_unit in *; simpl in *.
+        rewrite <- HYhist in *; rewrite rev_unit in *; simpl in *.
         inversion Hact; subst; simpl in *.
         repeat (split; auto); solve_tid_ensembles.
 

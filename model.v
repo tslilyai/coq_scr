@@ -53,7 +53,7 @@ Section Histories.
       | (t, _, _), (t',_, _) => t <> t'
     end.
   Definition reordered (h h' : history) :=
-    history_of_thread h = history_of_thread h'.
+    forall t, history_of_thread h t = history_of_thread h' t.
 (*  Inductive reordered : relation history :=
   | ro_perm_nil : reordered [] []
   | ro_perm_skip : forall x t1 t2,

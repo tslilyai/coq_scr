@@ -14,8 +14,6 @@ Require Import Ensembles.
 Require Import model.
 
 Section Histories.
-(*  Hint Constructors reordered. *)
-
   Definition IsHistories (histories: tid -> list action) : Prop :=
     forall t a, List.In a (histories t) -> thread_of_action a = t.
 
@@ -72,174 +70,20 @@ Section Histories.
     destruct a2 as [[t2 i2] r2].
     unfold swappable in *; auto.
   Qed.
-(*
-  Lemma reordered_nil : forall h, reordered h [] -> h = [].
-  Proof.
-    intros.
-    remember [] as N in H.
-    unfold reordered in *. subst. simpl in *.
-    induction H; discriminate || auto.
-  Qed.
 
-  Lemma reordered_refl : forall h, reordered h h.
-  Proof.
-    intros; induction h; eauto.
-  Qed.
-
-  Lemma reordered_sym : forall h1 h2, reordered h1 h2 -> reordered h2 h1.
-  Proof.
-    intros.
-    induction H; eauto.
-    apply ro_perm_swap. apply swappable_sym; auto.
-  Qed.
-
-  Lemma reordered_unit : forall h a, reordered h [a] -> h = [a].
-  Proof.
-    intros.
-    remember [a] as act.
-    induction H; eauto.
-    assert ([x] ++ t2 = x :: t2) as temp by now simpl. rewrite <- temp in *.
-    destruct (app_eq_unit _ _ Heqact) as [Heq | Heq]; destruct_conjs; try discriminate.
-    rewrite H1 in *.
-    apply reordered_nil in H; rewrite H in *; rewrite app_nil_r; auto.
-    inversion Heqact.
-    rewrite (IHreordered2 Heqact) in IHreordered1. apply (IHreordered1 Heqact).
-  Qed.
-
-  Lemma reordered_app_head {t1 t2} l:
-    reordered t1 t2 ->
-    reordered (l++t1) (l++t2).
-  Proof.
-    induction l; auto; intros.
-    rewrite <- app_comm_cons; apply ro_perm_skip; now apply IHl.
-  Qed.
   
-  Lemma reordered_prefix :
-    forall h1 h2 h3 h4,
-      reordered (h1 ++ h2) h4 -> reordered h2 h3 -> reordered (h1 ++ h3) h4.
+  Lemma history_of_thread_app_distributes :
+    forall h h' t,
+      history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.
   Proof.
-    intros. generalize dependent h4. generalize dependent h1.
-    induction H0; intros; simpl in *; auto.
-    - pose (IHreordered (h1 ++ [x]) h4) as IHr.
-      repeat rewrite <- app_assoc in *.
-      assert (h1 ++ [x] ++ t1 = h1 ++ x :: t1) as tmp1 by now simpl.
-      assert (h1 ++ [x] ++ t2 = h1 ++ x :: t2) as tmp2 by now simpl.
-      rewrite tmp1, tmp2 in *.
-      now apply IHr.
-    - assert (reordered (h1 ++ a1 :: a2 :: t) (h1 ++ a2 :: a1 :: t)).
-      apply reordered_app_head. apply ro_perm_swap. now apply swappable_sym.
-      apply (ro_perm_trans _ _ _ H1 H0).    
+    induction h; intros.
+    simpl in *; auto.
+    destruct a as [[ta ia] ra].
+    unfold history_of_thread in *. simpl in *. fold history_of_thread in *.
+    repeat rewrite (IHh h' t).
+    destruct (Nat.eq_dec ta t); subst;
+      [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
   Qed.
-  
-  Lemma reordered_in : forall l l' x, reordered l l' -> List.In x l ->List.In x l'.
-  Proof.
-    intros l l' x Hperm; induction Hperm; simpl; tauto.
-  Qed.
-  
-  Lemma reorder_length_eq : (forall h1 h2, reordered h1 h2 -> length h1 = length h2).
-  Proof.    
-    intros.
-    induction H; subst; simpl in *; auto.
-    rewrite IHreordered1, <- IHreordered2; auto.
-  Qed.    
-
-  Lemma reorder_unit_eq : (forall a b, reordered [a] [b] -> a = b).
-  Proof.
-    intros.
-    assert (List.In a [b]).
-    apply (reordered_in _ _ a H). apply in_eq.
-    inversion H0; auto.
-    apply in_inv in H0; destruct H0; try discriminate; subst; auto;
-      inversion H0.
-  Qed.
-
-  Hint Resolve reordered_sym reordered_refl swappable_sym.
-  Theorem reordered_ind_bis :
-    forall P : history -> history -> Prop,
-      P [] [] ->
-      (forall x l l', reordered l l' -> P l l' -> P (x :: l) (x :: l')) ->
-      (forall x y l l', swappable x y ->
-                        reordered l l' ->
-                        P l l' ->
-                        P (y :: x :: l) (x :: y :: l')) ->
-      (forall l l' l'', reordered l l' -> P l l' -> reordered l' l'' -> P l' l'' -> P l l'') ->
-      forall l l', reordered l l' -> P l l'.
-  Proof.
-    intros P Hnil Hskip Hswap Htrans.
-    induction 1; auto.
-    apply Htrans with (a1::a2::t); auto.
-    apply Hswap; auto.
-    induction t; auto.
-    apply Hskip; auto.
-    apply Hskip; auto.
-    induction t; auto.
-    eauto.
-  Qed.
-
-  Ltac break_list l x l' H :=
-  destruct l as [|x l']; simpl in *;
-  injection H; intros; subst; clear H.
-
-  Lemma reordered_cons_app : forall l l1 l2 a,
-      reordered l (l1 ++ l2) ->
-      (forall a0, List.In a0 l1 -> swappable a a0) ->
-      reordered (a :: l) (l1 ++ a :: l2).
-  Proof.
-    intros l l1; revert l.
-    induction l1.
-    simpl.
-    intros; apply ro_perm_skip; auto.
-    simpl; intros.
-    apply ro_perm_trans with (a0::a::l1++l2).
-    apply ro_perm_skip; auto.
-    apply ro_perm_trans with (a::a0::l1++l2).
-    apply ro_perm_swap; auto.
-    apply ro_perm_skip; auto.
-  Qed.
-  Hint Resolve reordered_cons_app.
-
-  Theorem reordered_app_inv : forall l1 l2 l3 l4 a,
-      reordered (l1++a::l2) (l3++a::l4) -> reordered (l1++l2) (l3++l4).
-  Proof.
-    set (P:=fun l l' => 
-             forall a l1 l2 l3 l4, l=l1++a::l2 -> l'=l3++a::l4 -> reordered (l1++l2) (l3++l4)).
-    cut (forall l l', reordered l l' -> P l l').
-    intros; apply (H _ _ H0 a); auto.
-    intros; apply (reordered_ind_bis P); unfold P; clear P; try clear H l l'; simpl; auto.
-    intros; destruct l1; simpl in *; discriminate.
-    intros x l l' H IH; intros. admit. 
-  Admitted.
-
-  Lemma reordered_cons_inv : forall a l1 l2, reordered (a :: l1) (a :: l2) -> reordered l1 l2.
-  Proof.
-    intros. exact (reordered_app_inv [] l1 [] l2 a H).
-  Qed.
-  
-  Lemma reordered_app_inv_hd :
-    forall l l1 l2, reordered (l1++l) (l2++l) -> reordered l1 l2.
-  Proof.
-    induction l.
-    intros l1 l2. do 2 rewrite app_nil_r; auto.
-    intros.
-    apply IHl.
-    now apply reordered_app_inv in H.
-  Qed.
-    
-  Lemma reordered_app_inv_prefix :
-    forall hd1 hd2 tl1 tl2,
-    reordered (hd1++tl1) (hd2++tl2) ->
-    reordered tl1 tl2 ->
-    reordered hd1 hd2.
-  Proof.
-    intros.
-    assert (reordered (hd2++tl1) (hd1++tl1)).
-    {
-      eapply reordered_prefix; apply reordered_sym in H; apply reordered_sym in H0; eauto.
-    }
-    assert (reordered (hd1 ++ tl1) (hd2 ++ tl1)) by now eapply ro_perm_trans; eauto.
-    eapply reordered_app_inv_hd; eauto.
-  Qed.
-*)    
   Lemma history_of_thread_not_nil :
     forall t i r h,
       List.In (t,i,r) h -> history_of_thread h t <> [].
@@ -257,19 +101,6 @@ Section Histories.
       fold history_of_thread; auto.
     intuition.
     eapply nil_cons; eauto.
-  Qed.
-
-  Lemma history_of_thread_app_distributes :
-    forall h h' t,
-      history_of_thread (h ++ h') t = history_of_thread h t ++ history_of_thread h' t.
-  Proof.
-    induction h; intros.
-    simpl in *; auto.
-    destruct a as [[ta ia] ra].
-    unfold history_of_thread in *. simpl in *. fold history_of_thread in *.
-    repeat rewrite (IHh h' t).
-    destruct (Nat.eq_dec ta t); subst;
-      [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
   Qed.
 
   Lemma history_of_thread_nil :
@@ -308,14 +139,14 @@ Section Histories.
   Qed.
     
   Lemma history_of_thread_combined_is_application :
-    forall (f : state -> tid -> history) s t,
-      IsHistories (f s) ->
-      history_of_thread (combined_histories (f s)) t = f s t.
+    forall (histories : tid -> history) t,
+      IsHistories histories ->
+      history_of_thread (combined_histories histories) t = histories t.
   Proof.
     intros.
     unfold combined_histories.
     destruct (tid_le_num_threads t) as [HG bleh].
-    destruct (combine_tid_histories_parts (f s) H t num_threads HG) as
+    destruct (combine_tid_histories_parts histories H t num_threads HG) as
         [xx [yy [Heq Hin]]].
     rewrite Heq.
     repeat rewrite history_of_thread_app_distributes.
@@ -341,34 +172,6 @@ Section Histories.
       | rewrite <- Nat.eqb_neq in *; rewrite n; exists h']; simpl in *; auto.
   Qed.
 
-  Lemma history_of_thread_eq_iff_reordered :
-    forall h h' t,
-      reordered h h' <->
-      history_of_thread h' t = history_of_thread h t.
-  Proof.
-    intros.
-    induction H; subst; auto.
-    - unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
-      rewrite IHreordered; auto.
-    - destruct a2 as [[t1 i1] r1]; destruct a1 as [[t2 i2] r2]. unfold swappable in *.
-      unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
-      destruct (Nat.eq_dec t1 t), (Nat.eq_dec t2 t); subst; try (now intuition);
-        rewrite <- Nat.eqb_neq in *; try rewrite Nat.eqb_refl; try rewrite n in *; auto.
-    - now rewrite <- IHreordered1.
-  Qed.
-  
-  Lemma history_of_thread_nonempty :
-    forall h' t i r h,
-      reordered (h' ++ (t, i, r) :: h) Y ->
-      history_of_thread Y t = history_of_thread h' t ++ (t,i,r) :: history_of_thread h t.
-  Proof.
-    intros.
-    rewrite (history_of_thread_reordered_eq _ _ t H).
-    rewrite history_of_thread_app_distributes.
-    unfold history_of_thread in *; simpl in *; fold history_of_thread in *.
-    now rewrite Nat.eqb_refl.
-  Qed.
-
   Lemma history_of_thread_in_teq :
     forall h t t' i r, List.In (t',i,r) (history_of_thread h t) -> t' = t.
   Proof.
@@ -380,7 +183,60 @@ Section Histories.
         try apply in_inv in H; try destruct H; try inversion H; try rewrite n in *; subst; auto;
           eapply IHh; eauto.
   Qed.
+  
+  Lemma history_of_thread_reordered_eq :
+    forall h h' t,
+      reordered h h' ->
+      history_of_thread h' t = history_of_thread h t.
+  Proof.
+    unfold reordered in *; auto.
+  Qed.
 
+  Lemma reordered_sym : forall h1 h2, reordered h1 h2 -> reordered h2 h1.
+  Proof.
+    intros. unfold reordered in *. auto.
+  Qed.
+
+  Lemma reordered_prefix :
+    forall h1 h2 h3 h4,
+      reordered (h1 ++ h2) h4 -> reordered h2 h3 -> reordered (h1 ++ h3) h4.
+  Proof.
+    unfold reordered; intros.
+    pose (H t).
+    rewrite history_of_thread_app_distributes in *. now rewrite <- H0.
+  Qed.
+
+  Lemma in_history_of_thread :
+    forall x h t,
+      List.In x (history_of_thread h t) -> List.In x h.
+  Proof.
+    induction h; intros; auto.
+    simpl in *.
+    destruct (thread_of_action a =? t). inversion H; auto.
+    right; eapply IHh; eauto.
+    right; eapply IHh; eauto.
+  Qed.
+       
+  Lemma reordered_in : forall l l' x, reordered l l' -> List.In x l ->List.In x l'.
+  Proof.
+    intros.
+    unfold reordered in *.
+    destruct x as [[tx ix] rx].
+    pose (H tx).
+
+    assert (List.In (tx,ix,rx) (history_of_thread l tx)).
+    {
+      apply in_split in H0.
+      destruct H0 as [l1 [l2 H0]]; subst.
+      rewrite history_of_thread_app_distributes; simpl.
+      rewrite Nat.eqb_refl in *.
+      apply in_or_app; right.
+      apply in_eq.
+    }
+    rewrite e in H1.
+    eapply in_history_of_thread; eauto.
+  Qed.
+  
   Lemma y_copy_state :
     forall s h,
       generated s h ->
@@ -453,37 +309,20 @@ Section Histories.
       generated s h ->
       Y_copy s t = (history_of_thread h1 t) ++ [(t,i,r)] ++ history_of_thread h2 t.
   Proof.
-    Ltac equal_histories := eapply history_of_thread_reordered_eq; eauto;
-                            apply reordered_sym; auto.
+    unfold reordered.
     intros s h h1 h2 t i r gencomm Hr1 Hr2 Hr3 Hgen.
-    assert (reordered (h1 ++ (t,i,r) :: h2) (combined_histories (Y_copy s))).
-    {
-      eapply reordered_app_inv_prefix; eauto. eapply ro_perm_trans; eauto.
-      rewrite <- app_assoc; eauto.
-    }
-    assert (history_of_thread
-              (combined_histories (Y_copy s) ++ combined_histories (commH s)) t
-            = history_of_thread Y t) as Ht1 by now equal_histories.
-    assert (history_of_thread (h1 ++ [(t, i, r)] ++ h2 ++ gencomm) t
-            = history_of_thread Y t) as Ht2 by now equal_histories.
-    assert (history_of_thread gencomm t =
-            history_of_thread (combined_histories (commH s)) t) as Ht3 by
-          now equal_histories.
-    assert (h1 ++ [(t, i, r)] ++ h2 ++ gencomm = ((h1 ++ [(t, i, r)]) ++ h2++ gencomm)) as rw by
-          now rewrite <- app_assoc; simpl.
-    rewrite rw in *.
-    repeat rewrite history_of_thread_app_distributes in Ht2.
-    rewrite history_of_thread_app_distributes in Ht1.
-    do 2 rewrite history_of_thread_combined_is_application in Ht1.
-    rewrite history_of_thread_combined_is_application in Ht3.
-    rewrite <- Ht2, Ht3 in Ht1.
-    rewrite app_assoc in Ht1. eapply app_inv_tail in Ht1.
-    unfold history_of_thread in Ht1; simpl in *.
-    fold history_of_thread in Ht1; rewrite Nat.eqb_refl in *;
-      rewrite Ht1; try rewrite <- app_assoc; simpl in *; auto.
-    all: eauto.
-  Qed.
-  
+    pose (Hr1 t); pose (Hr2 t); pose (Hr3 t).
+    repeat rewrite history_of_thread_app_distributes in *.
+    do 2 rewrite history_of_thread_combined_is_application in *; eauto.
+    rewrite e1 in *.
+    rewrite <- e in *.
+    replace (history_of_thread h1 t ++
+                               history_of_thread [(t, i, r)] t ++ history_of_thread h2 t ++ commH s t)
+    with ((history_of_thread h1 t ++ [(t, i, r)] ++ history_of_thread h2 t) ++ commH s t) in e0.
+    eapply app_inv_tail; eauto.
+    simpl in *. rewrite Nat.eqb_refl. simpl in *. rewrite <- app_assoc. auto.
+  Qed.    
+
   Lemma history_of_thread_sublist :
     forall a t h,
       List.In a (history_of_thread h t) -> List.In a h.
@@ -515,6 +354,8 @@ Section Histories.
 End Histories.
 
 Section Misc.
+  Hint Resolve commH_state y_copy_state.
+  
   Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
                                       + {next_mode s t i = Emulate}
                                       + {next_mode s t i = Replay}.
@@ -652,50 +493,6 @@ Section Misc.
     rewrite (IHh t); auto.
   Qed.    
     
-  Lemma reordered_thread_order :
-    forall h h',
-      (forall t, history_of_thread h t = history_of_thread h' t) ->
-      reordered h h'.
-  Proof.
-    induction h; intros.
-    simpl in *.
-    assert (h' = []) by now eapply history_of_thread_all_nil; eauto.
-    subst; constructor.
-
-    assert (List.In a h').
-    {
-      assert (List.In a (a::h)) by now apply in_eq.
-      apply (in_history_iff_in_thread_history _ _) in H0.
-      destruct H0. rewrite (H x) in H0.
-      eapply (in_history_iff_in_thread_history _ _); eauto.
-    }
-    destruct (in_split a h' H0) as [l1 [l2 Hh']]; subst.
-    eapply in_history_iff_in_thread_history in H0. destruct H0.
-    destruct a as [[ta ia] ra].
-    apply history_of_thread_in_teq in H0; subst.
-    assert ((forall t : tid, x =? t = false -> history_of_thread h t = history_of_thread (l1 ++ l2) t)).
-    {
-      intros. pose (H t) as Ht.
-      rewrite history_of_thread_app_distributes in *.
-      simpl in *. rewrite H0 in *; auto.
-    }
-    assert (reordered h (List.filter (fun a => eqb ((thread_of_action a) =? x) false) (l1 ++ l2))).
-    {
-      eapply IHh. intros.
-      pose (H0 t).
-      admit.
-    }
-    assert (reordered 
-    pose (H x). rewrite history_of_thread_app_distributes in *.
-    simpl in *. rewrite Nat.eqb_refl in *.
-    assert (forall a, List.In a l1 -> thread_of_action a <> x).
-    destruct (Nat.eq_dec x t).
-    
-    simpl in *.
-    remember (thread_of_action a =? t) as Htaeq.
-    apply IHh l2 
-  Admitted.
-    
   Lemma state_combined_histories_is_reordered_Y :
     forall h s,
       generated s h ->
@@ -703,32 +500,54 @@ Section Misc.
   Proof.
     induction h; intros; inversion H; subst.
     - unfold start_state in *; simpl in *.
-      unfold combined_histories in *.
-      rewrite combine_tid_histories_nil, app_nil_r.
-      Search (combine_tid_histories).
-      
-      admit.
+      unfold reordered; intros.
+      rewrite history_of_thread_app_distributes.
+      rewrite history_of_thread_combined_is_application in *.
+      rewrite history_of_thread_combined_is_application in *.
+      rewrite app_nil_r in *; eauto.
+      all: unfold IsHistories; intros. inversion H0.
+      destruct a as [[ta ia] ra]; simpl in *.
+      eapply history_of_thread_in_teq; eauto.
     - pose (IHh s1 H5).
       unfold emulator_act in *.
       destruct (next_mode s1 t i) in *; unfold state_with_md in *; simpl in *.
       + unfold get_commute_response in *; simpl in *.
-        destruct (rev (Y_copy s1 t)); inversion H2; subst; simpl in *; auto.
-        admit.
+        remember (Y_copy s1 t) as s1ycpy.
+        destruct s1ycpy using rev_ind; try rewrite rev_unit in *; simpl in *;
+          inversion H2; subst; simpl in *; auto. clear IHs1ycpy.
+        unfold reordered in *; intros.
+        pose (r0 t0).
+        rewrite history_of_thread_app_distributes in *.
+        do 2 rewrite history_of_thread_combined_is_application in *;
+          try rewrite rev_involutive.
+        destruct (Nat.eq_dec t0 t); subst;
+          [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
+        rewrite <- Heqs1ycpy in e. rewrite <- e. rewrite <- app_assoc. now simpl; auto.
+        all: eauto; unfold IsHistories; intros;
+          pose (commH_state s1 _ H5);
+          pose (y_copy_state s1 _ H5);
+          unfold IsHistories in *.          
+        all: destruct (Nat.eq_dec t1 t); subst;
+            [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
+          inversion H0; subst. now simpl.
+          eapply i0; eauto.
+          eapply i1; eauto.
+          rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
       + unfold get_emulate_response in *.
-        functional induction ( get_emulate_response_helper
+        functional induction (get_emulate_response_helper
          {|
          X_copy := X_copy s1;
          Y_copy := Y_copy s1;
          preH := preH s1;
          commH := commH s1;
          postH := postH s1;
-         md := Emulate |} t i 0 max_response_number); inversion H2; subst; auto.
+         md := Emulate |} t i 0 max_response_number); inversion H2; subst; simpl in *; auto.
       + remember (rev (X_copy s1)) as rxcpys1.
         destruct (rxcpys1); unfold get_replay_response in *; simpl in *; inversion H2; subst; auto.
         rewrite <- Heqrxcpys1 in *.
         1,2: inversion H1; subst; simpl in *; auto.
         rewrite <- Heqrxcpys1 in *. destruct l; inversion H3; subst; simpl in *; auto.
-  Admitted.
+  Qed.
   
   Lemma reordered_Y_prefix_correct :
     forall h h',
@@ -738,49 +557,15 @@ Section Misc.
     induction h; simpl in *; intros.
     - pose (X_and_Y_in_spec); eapply (spec_prefix_closed); eauto.
     - assert (reordered ((h' ++ [a]) ++ h) Y).
-      eapply ro_perm_trans; eauto. rewrite <- app_assoc. simpl in *; apply reordered_refl.
-      assert (spec (h++X)). eapply IHh; eauto.
-      remember Y as HY.
-      remember ((h' ++ [a]) ++ h) as hist.
-
-      induction H0; subst; auto.
-      + symmetry in Heqhist; apply app_eq_nil in Heqhist; destruct_conjs.
-        apply app_eq_nil in H0; destruct_conjs; discriminate.
-      + assert (spec ((x :: t2) ++ X)).
-        {
-          rewrite HeqHY. apply (X_and_Y_in_spec).
-        }
-        assert (spec (x :: t1 ++ X)).
-        {
-          eapply (sim_commutes [] (x::t2) (x::t1) []); simpl in *; eauto.
-          rewrite HeqHY. apply reordered_refl.
-          apply ro_perm_skip. auto.
-        }
-        eapply (spec_prefix_closed); eauto.
-        rewrite (app_comm_cons). rewrite Heqhist.
-        do 2 rewrite <- app_assoc; simpl in *; eauto.
-      + assert (spec ((a1 :: a2 :: t) ++ X)).
-        {
-          rewrite HeqHY. apply (X_and_Y_in_spec).
-        }
-        assert (spec (a2 :: a1 :: t ++ X)).
-        {
-          eapply (sim_commutes [] (a1::a2::t) (a2::a1::t) []); simpl in *; eauto.
-          rewrite HeqHY. apply reordered_refl.
-          apply ro_perm_swap; eauto.
-        }
-        eapply (spec_prefix_closed); eauto.
-        assert (a2 :: a1 :: t ++ X = (a2 :: a1 :: t) ++ X).
-        simpl in *. auto.
-        rewrite H4 in *. rewrite Heqhist; simpl in *; do 2 rewrite <- app_assoc in *; eauto.
-      + apply (ro_perm_trans _ _ _ H0_) in H0_0.
-        assert (spec (h' ++ [a] ++ h ++ X)).
-        pose (sim_commutes [] Y (h' ++ a :: h) []); simpl in *.
-        rewrite <- app_assoc in *. rewrite app_comm_cons in *.
-        eapply s; eauto. apply reordered_refl.
-        apply (X_and_Y_in_spec).
-        eapply spec_prefix_closed; eauto.
-  Qed.
+      rewrite <- app_assoc. simpl in *. auto.
+      assert (spec (Y++X)) by apply X_and_Y_in_spec.
+      assert (spec ((h' ++ a :: h) ++ X)).
+      pose (sim_commutes [] Y (h' ++ a :: h) []).
+      unfold reordered in *; simpl in *. eapply s; eauto.
+      replace ((h' ++ a :: h) ++ X) with (h' ++ a :: h ++ X) in H2; simpl; auto.
+      eapply spec_prefix_closed; eauto.
+      rewrite <- app_assoc. simpl. auto.
+  Qed. 
 
   Lemma generated_history_corresponds_state_history :
     forall h s,
@@ -820,48 +605,3 @@ Section Misc.
  
 End Misc.
 
-Section StrongInduction.
-
-  Variable P:nat -> Prop.
-
-  (** The stronger inductive hypothesis given in strong induction. The standard
-  [nat ] induction principle provides only n = pred m, with [P 0] required
-  separately. *)
-  Hypothesis IH : forall m, (forall n, n < m -> P n) -> P m.
-
-  Lemma P0 : P 0.
-  Proof.
-    apply IH; intros.
-    exfalso; inversion H.
-  Qed.
-
-  Hint Resolve P0.
-
-  Lemma pred_increasing : forall n m,
-      n <= m ->
-      Nat.pred n <= Nat.pred m.
-  Proof.
-    induction n; cbn; intros.
-    apply le_0_n.
-    induction H; subst; cbn; eauto.
-    destruct m; eauto.
-  Qed.
-
-  Hint Resolve le_S_n.
-
-  Local Lemma strong_induction_all : forall n,
-      (forall m, m <= n -> P m).
-  Proof.
-    induction n; intros;
-      match goal with
-      | [ H: _ <= _ |- _ ] =>
-        inversion H
-      end; eauto.
-  Qed.
-
-  Theorem strong_induction : forall n, P n.
-  Proof.
-    eauto using strong_induction_all.
-  Qed.
-
-End StrongInduction.
