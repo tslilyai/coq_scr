@@ -51,24 +51,6 @@ Section Histories.
   Definition reordered (h h' : history) :=
     forall t, history_of_thread h t = history_of_thread h' t.
   
-(* 
-  Definition swappable (a1 a2 : action) :=
-    match a1, a2 with
-      | (t, _, _), (t',_, _) => t <> t'
-    end.
- Inductive reordered : relation history :=
-  | ro_perm_nil : reordered [] []
-  | ro_perm_skip : forall x t1 t2,
-                     reordered t1 t2 ->
-                     reordered (x::t1) (x::t2)
-  | ro_perm_swap : forall a2 a1 t,
-                     swappable a2 a1 ->
-                     reordered (a2 :: a1 :: t) (a1 :: a2 :: t)
-  | ro_perm_trans : forall t1 t2 t3,
-                      reordered t1 t2 ->
-                      reordered t2 t3 ->
-                      reordered t1 t3.
-  Hint Constructors reordered.*)
 End Histories.
 
 Section MachineState.
@@ -89,7 +71,7 @@ Section MachineState.
                                   spec ((t,i,NoResp) :: h) ->
                                   exists rtyp, rtyp < max_response_number
                                           /\ spec ((t,i,Resp rtyp) :: h)
-                                          /\ forall rtyp', rtyp' < rtyp -> ~spec ((t,i,Resp rtyp)::h).
+                                          /\ forall rtyp', rtyp' < rtyp -> ~spec ((t,i,Resp rtyp')::h).
   Parameter spec_oracle : history -> bool.
   Parameter spec_oracle_correct :
     forall history, spec history <-> spec_oracle history = true.

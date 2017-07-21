@@ -1,4 +1,3 @@
-
 Require Import Bool Arith List Omega ListSet.
 Require Import Recdef Morphisms.
 Require Import Program.Tactics.
@@ -83,44 +82,150 @@ Section Existance.
     eapply emulator_deterministic; eauto.
   Qed.
 
-(*
-  forall fuel s t i rtyp,
-    get_emulate_response_helper s t i 0 (S fuel) = get_emulate_response_helper s t i 0 fuel
-    \/ (exists rtyp, get_emulate_response_helper s t i 0 (S fuel) = (....., Resp rtyp)
-               /\ get_emulate_response_helper s t i 0 fuel = (...., NoResp)).
-  *)
-    Lemma get_emulate_response_helper_eq_more_fuel :
-      forall fuel s t i rtyp,
-        spec_oracle ((t,i,(Resp rtyp)) :: get_state_history s) = true ->
-        (forall rtyp', rtyp' < rtyp ->
-                  spec_oracle ((t,i,(Resp rtyp')) :: get_state_history s) = false) ->
-        fuel >= rtyp ->
-        get_emulate_response_helper s t i 0 fuel = get_emulate_response_helper s t i 0 (S fuel).
-    Proof.
-      
-      induction fuel; intros.
-      Focus 2.
-    Admitted.
+  Lemma more_fuel_same_resp :
+    forall fuel s t i r0 s' rtyp,
+    get_emulate_response_helper s t i r0 fuel = (s', (t,i,Resp rtyp)) ->
+    get_emulate_response_helper s t i r0 (S fuel) = (s', (t,i,Resp rtyp)).
+  Proof.
+    induction fuel; intros.
+    unfold get_emulate_response_helper in *.
+    remember (spec_oracle ((t,i,Resp r0)::get_state_history s)) as Hspec.
+    destruct Hspec; inversion H; subst; auto.
+    remember (spec_oracle ((t, i, Resp r0) :: get_state_history s)) as Hso.
+    destruct Hso. auto.
+    unfold get_emulate_response_helper; simpl.
+    fold get_emulate_response_helper. 
+    unfold get_emulate_response_helper in H. fold get_emulate_response_helper in H.
+    rewrite <- HeqHso in *. auto.
+    assert (rtyp > r0).
+    unfold get_emulate_response_helper in H. rewrite <- HeqHso in *.
+    fold get_emulate_response_helper in H.
+    admit.
+  Admitted.
+
+  Definition response_of (sa:state * action) :=
+    match sa with
+    | (s, (t,i,r)) => r
+    end.
+
+  Lemma getckjabfbafjbdsakjfs:
+    forall s t i x,
+      response_of (get_emulate_response_helper s t i x 0) = Resp x
+      \/ response_of (get_emulate_response_helper s t i x 0) = NoResp.
+  Proof.
+  Admitted.
+
+  Lemma proved:
+    forall s t i x f h,
+      generated s h ->
+      ~ spec ((t,i,(Resp x)) :: h) ->
+      response_of (get_emulate_response_helper s t i (S x) f) =
+      response_of (get_emulate_response_helper s t i x (S f)).
+  Proof.
+    unfold get_emulate_response_helper; simpl; fold get_emulate_response_helper.
+    intros.
+    assert ( spec_oracle ((t, i, Resp x) :: get_state_history s) = false). admit.
+    rewrite H1. auto.
+  Admitted.
+(*  
+  Lemma jfdsnfkjsafkjakjfhs:
+    forall s t i x f,
+      response_of (get_emulate_response_helper s t i x f) = NoResp
+      \/ response_of (get_emulate_response_helper s t i x f) =
+        response_of (get_emulate_response_helper s t i x (S f)).
     
-  Lemma get_emulate_response_exists :
+    
+  Lemma fdnkjsanfnakjfnsa:
+    forall s t i x f y,
+      response_of (get_emulate_response_helper s t i x f) = Resp y
+      -> response_of (get_emulate_response_helper s t i x (S f)) = Resp y.
+  Proof.
+  Admitted.
+
+    Lemma get_emulate_response_helper_results:
+    forall s t i f,
+      response_of (get_emulate_response_helper s t i 0 f) =
+      response_of (get_emulate_response_helper s t i 0 (S f))
+      \/ response_of (get_emulate_response_helper s t i 0 (S f)) = Resp (S f).
+    
+    Lemma get_emulate_response_not_exists_step :
+    forall s h t i f,
+      response_of (get_emulate_response_helper s t i 0 f) = NoResp ->
+      ~ spec ((t,i,Resp (S f))::h) ->
+      response_of (get_emulate_response_helper s t i 0 (S f)) = NoResp.
+  Proof.
+    intros.
+  *)  
+    Lemma get_emulate_response_exists :
     forall s h t i,
       generated s h ->
       spec ((t,i,NoResp)::h) ->
-      exists rtyp s',
-        get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp)).
+      exists rtyp s', get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp)).
   Proof.
-    intros. unfold state_with_md in *; simpl in *; unfold get_emulate_response.
-
+    intros.
+    
     (* spec stuff *)
     pose (spec_resp_exists _ _ _ H0) as blah; destruct blah as [rspec [Hrtyp [Hspec Hrtyp']]].
-    rewrite spec_oracle_correct in *.
-    destruct (generated_history_corresponds_state_history _ _ H) as [gencomm [Hgcorder Hheq]];
-      subst.
+    exists rspec.
+    exists (fst (get_emulate_response (state_with_md s Emulate) t i)).
 
-    remember max_response_number as fuel; generalize dependent max_response_number.
-    remember 0 as rtyp.
+    remember max_response_number as fuel.
+    clear Heqfuel.
+    revert fuel Hrtyp.
+    induction fuel; intros.
+    inversion Hrtyp.
+    inversion Hrtyp; auto.
+    clear Hrtyp IHfuel.
+    subst.
+    revert fuel Hrtyp' Hspec.
 
-    induction fuel; intros; subst.
+    induction fuel.
+    - intros Hrtyp' Hspec.
+      unfold get_emulate_response, get_emulate_response_helper;
+        unfold state_with_md.
+      remember max_response_number as mrn.
+      assert (spec_oracle
+                ((t, i, Resp 0)
+                   :: get_state_history
+                   {|
+                     X_copy := X_copy s;
+                     Y_copy := Y_copy s;
+                     preH := preH s;
+                     commH := commH s;
+                     postH := postH s;
+                     md := Emulate |}) = true).
+      admit.
+      destruct mrn; simpl in *.
+      rewrite H1. simpl; auto.
+      fold get_emulate_response_helper; simpl.
+      rewrite H1; simpl; auto.
+    - intros Hrtyp' Hspec.
+      pose proved.
+      unfold get_emulate_response.
+      assert (response_of (get_emulate_response_helper s t i n 1) =
+              response_of (get_emulate_response_helper s t i 1 fuel)).
+      {
+        
+      }
+      auto.
+      Focus 2.
+      generalize dependent max_response_number.
+      induction fuel; intros; subst.
+      inversion Hrtyp; subst.
+      inversion Hrtyp; subst.
+      unfold get_emulate_response_helper; simpl in *; fold get_emulate_response_helper.
+    - clear IHfuel Hrtyp. admit.
+    - assert (exists (rtyp : nat) (s' : state),
+                 get_emulate_response_helper
+                   {|
+                     X_copy := X_copy s;
+                     Y_copy := Y_copy s;
+                     preH := preH s;
+                     commH := commH s;
+                     postH := postH s;
+                     md := Emulate |} t i 0 fuel = (s', (t, i, Resp rtyp))).
+      eapply IHfuel; eauto. destruct_conjs.
+      erewrite more_fuel_same_resp; eauto.
   Admitted.
     
   Lemma emulator_act_response_exists :
