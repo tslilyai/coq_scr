@@ -238,7 +238,7 @@ Section Histories.
     destruct a as [[ta ia] ra].
     eapply history_of_thread_in_teq; eauto.
 
-    unfold emulator_act in *.
+    unfold machine_act in *.
     destruct (next_mode s1 t i).
     - unfold get_commute_response in *.
       unfold state_with_md in *; simpl in *.
@@ -268,7 +268,7 @@ Section Histories.
   Proof.
     intros. induction H; subst; unfold IsHistories; intros.
     unfold start_state in *; simpl in *. omega.
-    unfold emulator_act in *.
+    unfold machine_act in *.
     destruct (next_mode s1 t i).
     - unfold get_commute_response in *.
       unfold state_with_md in *; simpl in *.
@@ -501,7 +501,7 @@ Section Misc.
       destruct a as [[ta ia] ra]; simpl in *.
       eapply history_of_thread_in_teq; eauto.
     - pose (IHh s1 H5).
-      unfold emulator_act in *.
+      unfold machine_act in *.
       destruct (next_mode s1 t i) in *; unfold state_with_md in *; simpl in *.
       + unfold get_commute_response in *; simpl in *.
         remember (Y_copy s1 t) as s1ycpy.
@@ -599,7 +599,7 @@ Section State_Lemmas.
         unfold next_mode in *; simpl in *.
         destruct (rev (history_of_thread Y t));
           [|destruct (action_invocation_eq a t i)]; discriminate.
-      - unfold emulator_act in H. destruct (next_mode s1 t0 i0).
+      - unfold machine_act in H. destruct (next_mode s1 t0 i0).
         + unfold get_commute_response in H.
           destruct (rev (Y_copy (state_with_md s1 Commute) t0));
             inversion H; subst;
@@ -631,12 +631,12 @@ Section State_Lemmas.
     Lemma current_mode_replay_implies_last_mode_replay :
       forall s s' t i h a,
         generated s h ->
-        emulator_act s t i = (s', a) ->
+        machine_act s t i = (s', a) ->
         s'.(md) = Replay ->
         s.(md) = Replay.
     Proof.
       intros s s' t i h a Hgen Hact Hmd.
-      unfold emulator_act in Hact.
+      unfold machine_act in Hact.
       remember (next_mode s t i) as nextmd in Hact.
       destruct nextmd.
       - unfold get_commute_response in Hact.
@@ -671,7 +671,7 @@ Section State_Lemmas.
       induction h; intros; inversion Hgen; subst; auto.
       - unfold start_state; simpl; repeat (split; auto).
         exists X; split; [apply app_nil_r | ]; auto.
-      -  unfold emulator_act in H1.
+      -  unfold machine_act in H1.
          assert (next_mode s1 t i = Replay) as Hs1nextmd.
          {
            destruct (next_mode s1 t i); auto.
@@ -760,7 +760,7 @@ Section State_Lemmas.
 
       - assert (md s1 = Replay \/ md s1 = Commute) as Hmds1.
         {
-          unfold emulator_act in H1.
+          unfold machine_act in H1.
           remember (next_mode s1 t i) as s1nmd. destruct s1nmd;
           unfold next_mode in *; remember (md s1) as s1md; destruct s1md; try discriminate.
           destruct (rev (Y_copy s1 t)); try discriminate.
@@ -787,7 +787,7 @@ Section State_Lemmas.
               destruct_conjs; discriminate.
               destruct (HX++[x]); try discriminate; intuition. exists a. exists l. auto.
             } destruct bleh as [hd [tl bleh]]; rewrite bleh in *. rewrite <- bleh in *.
-            unfold emulator_act in *. unfold next_mode in *; simpl in *.
+            unfold machine_act in *. unfold next_mode in *; simpl in *.
             rewrite rev_unit in *; simpl in *.
             assert (action_invocation_eq x t i = true) as Hacteq.
             {
@@ -821,7 +821,7 @@ Section State_Lemmas.
 
           * assert (exists t i r, X_copy s1 = [(t,i,r)]) as s1xcpy.
             {
-              unfold emulator_act in *.
+              unfold machine_act in *.
               remember (next_mode s1 t i) as s1nmd.
               destruct s1nmd;
                 unfold next_mode in *; remember (md s1) as s1md; destruct s1md; try discriminate.
@@ -847,7 +847,7 @@ Section State_Lemmas.
               destruct (rev (X_copy (state_with_md s1 Replay)));
                 inversion H1; unfold state_with_md in *; simpl in *; subst; discriminate.
             } destruct s1xcpy as [ts1 [is1 [rs1 Hs1xcpy]]].
-            unfold emulator_act, next_mode in H1.
+            unfold machine_act, next_mode in H1.
             rewrite Hmds1 in *. rewrite Hs1xcpy in *; simpl in *.
             destruct is1 as [is1]; destruct i as [i].
             assert ((is1 =? i) && (t =? ts1) = true).
@@ -878,7 +878,7 @@ Section State_Lemmas.
             rewrite <- Heqpres1; auto.
 
         + pose (IHh s1 H4 Hmds1); destruct_conjs.
-          unfold emulator_act in *. unfold next_mode in *.
+          unfold machine_act in *. unfold next_mode in *.
           rewrite Hmds1 in H1.
           remember (Y_copy s1 t) as s1ycpy.
           destruct s1ycpy using rev_ind; simpl in *; try rewrite rev_unit in *;
@@ -924,7 +924,7 @@ Section State_Lemmas.
       unfold start_state in *; simpl in *; auto.
       assert (s1.(md) <> Oracle).
       {
-        unfold emulator_act in *.
+        unfold machine_act in *.
         unfold next_mode in *.
         remember (md s1) as mds1. destruct mds1; subst; try discriminate.
         unfold get_oracle_response in *.
@@ -933,10 +933,10 @@ Section State_Lemmas.
           inversion H3; subst; auto.
       }
       pose (IHh s1 H6 H1).
-      unfold emulator_act in *.
+      unfold machine_act in *.
       assert (next_mode s1 t i <> Oracle).
       {
-        unfold emulator_act in *.
+        unfold machine_act in *.
         remember (next_mode s1 t i) as mds1. destruct mds1; subst; try discriminate.
         unfold get_oracle_response in *.
         functional induction (get_oracle_response_helper
@@ -980,7 +980,7 @@ Section State_Lemmas.
     remember (next_mode s1 t0 i0) as s1nmd.
     assert (next_mode s1 t0 i0 = Replay).
     {
-      destruct s1nmd; unfold emulator_act in H4; rewrite <- Heqs1nmd in *; auto.
+      destruct s1nmd; unfold machine_act in H4; rewrite <- Heqs1nmd in *; auto.
       - unfold get_commute_response, state_with_md in *; simpl in *.
         destruct (rev (Y_copy s1 t0)); inversion H4; subst; simpl in *; auto.
         all: unfold next_mode in H1; simpl in *.
@@ -999,7 +999,7 @@ Section State_Lemmas.
     {
       eapply IHh; eauto. 
     }
-    unfold emulator_act in *.
+    unfold machine_act in *.
     rewrite H2 in *.
     remember (rev (X_copy s1)) as xcpyrev.
     destruct xcpyrev; unfold get_replay_response, state_with_md in *; simpl in *.
@@ -1021,7 +1021,7 @@ Section State_Lemmas.
       functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
       constructor.
     - pose (IHh s1 H5) as IHs1; destruct IHs1 as [gencomm IHs1]; destruct_conjs.
-      unfold emulator_act in *.
+      unfold machine_act in *.
       remember (next_mode s1 t i) as s1nmd.
       destruct (s1nmd); unfold state_with_md in *; simpl in *.
       + unfold get_commute_response in *; simpl in *.
@@ -1107,7 +1107,7 @@ Section State_Lemmas.
       destruct X; intuition.
     - assert (s1.(X_copy) = (h' ++ [(t,i,r)]) ++ [(t0,i0,r0)] /\ s1.(md) = Replay) as Hmds1.
       eapply (IHh s1 (h' ++ [(t,i,r)]) t0 i0 r0); eauto. rewrite <- app_assoc. now simpl in *.
-      unfold emulator_act in *.
+      unfold machine_act in *.
       unfold next_mode in *.
       destruct_conjs.
       rewrite H1, H2 in *; rewrite rev_unit in *.
@@ -1132,7 +1132,7 @@ Section State_Lemmas.
       simpl in *; split; auto.
     - pose (mode_generated_replay _ s1 [] t0 i0 r0 H6). rewrite app_nil_l in *.
       apply a in HeqHX. destruct_conjs.
-      unfold emulator_act in *.
+      unfold machine_act in *.
       unfold next_mode in *.
       rewrite H2 in *. rewrite H0 in *. rewrite app_nil_l in *; simpl in *.
       destruct i0 as [i0]; simpl in *; repeat rewrite Nat.eqb_refl in *; simpl in *.
@@ -1155,7 +1155,7 @@ Section State_Lemmas.
         rewrite <- app_assoc; simpl; auto. 
         eapply (IHYend (Yend ++ X) s1 (Yfront ++ [(t,i,r)]) ta ia ra); eauto.
       }
-      unfold emulator_act, next_mode in *. destruct_conjs. rewrite H3 in *.
+      unfold machine_act, next_mode in *. destruct_conjs. rewrite H3 in *.
       pose (H0 ta).
       rewrite history_of_thread_app_distributes in *. simpl in *. rewrite Nat.eqb_refl in *.
       rewrite e, rev_unit in *.
@@ -1187,7 +1187,7 @@ Section State_Lemmas.
         exists a, h, []; split; auto. rewrite app_nil_r; auto.
         
       - pose (IHh s1 H5) as e; destruct e; clear IHh;
-          unfold emulator_act in *; remember (next_mode s1 t i) as s1nextmd.
+          unfold machine_act in *; remember (next_mode s1 t i) as s1nextmd.
         + destruct s1nextmd; symmetry in Heqs1nextmd; auto. 
           * left; pose (commute_mode_state s1 _ _ Heqs1nextmd).
             assert (md s = Commute).

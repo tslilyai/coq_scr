@@ -125,7 +125,7 @@ Section Conflict.
    s1.(postH) = s2.(postH).
 End Conflict.
 
-Section Emulator.
+Section Machine.
   Function combine_tid_histories (histories : tid -> history) (t : tid) :=
     match t with
       | 0 => []
@@ -195,7 +195,7 @@ Section Emulator.
                                 else Oracle
                   end
     end.
-  Definition emulator_act (s : state) (t: tid) (i : invocation) : (state * action) :=
+  Definition machine_act (s : state) (t: tid) (i : invocation) : (state * action) :=
     let mode := next_mode s t i in
     match mode with
       | Oracle => get_oracle_response (state_with_md s Oracle) t i
@@ -210,9 +210,9 @@ Section Emulator.
   Inductive generated : state -> history -> Prop := (* XXX: not sure about this *)
   | GenNil : generated start_state []
   | GenCons : forall s1 s2 t i r h,
-                emulator_act s1 t i = (s2, (t,i,r)) ->
+                machine_act s1 t i = (s2, (t,i,r)) ->
                 spec ((t,i,NoResp) :: h) ->
                 generated s1 h ->
                 generated s2 ((t,i,r)::h).
 
-End Emulator.
+End Machine.

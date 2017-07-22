@@ -60,10 +60,10 @@ Ltac unfold_action_inv_eq :=
 
 Section Existance.
       
-  Lemma emulator_deterministic :
+  Lemma machine_deterministic :
     forall s1 s2 s2' t i a a',
-      emulator_act s1 t i = (s2, a) ->
-      emulator_act s1 t i = (s2', a') ->
+      machine_act s1 t i = (s2, a) ->
+      machine_act s1 t i = (s2', a') ->
       s2 = s2' /\ a = a'.
   Proof.
     intros. rewrite H in H0; inversion H0; auto.
@@ -79,7 +79,7 @@ Section Existance.
     induction h; intros; inversion H; inversion H0; auto; subst.
     assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
     inversion H7; subst.
-    eapply emulator_deterministic; eauto.
+    eapply machine_deterministic; eauto.
   Qed.
 
   Lemma get_oracle_response_exists' :
@@ -208,12 +208,12 @@ Section Existance.
       omega.
   Qed.
     
-  Lemma emulator_act_response_exists :
+  Lemma machine_act_response_exists :
     forall s h t i,
       generated s h ->
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
-        emulator_act s t i = (s', (t,i,Resp rtyp)).
+        machine_act s t i = (s', (t,i,Resp rtyp)).
   Proof.
     intros s h t i Hgen Hspec. revert dependent s. revert dependent t.
     revert dependent i.
@@ -234,7 +234,7 @@ Section Existance.
       end.
     
     - unfold start_state in *; unfold start_mode in *; simpl in *.
-      unfold emulator_act, next_mode.
+      unfold machine_act, next_mode.
       remember X as HX; destruct HX using rev_ind; simpl in *.
       remember (history_of_thread Y t) as Yhist.
       destruct (Yhist) using rev_ind; [|rewrite rev_unit]; unfold state_with_md; simpl in *.
@@ -300,10 +300,10 @@ Section Existance.
           destruct H as [rtyp bleh]; rewrite bleh; eauto.
           rewrite rev_unit; eauto.
         * solve_oracle_response.
-    - unfold emulator_act.
+    - unfold machine_act.
       remember (next_mode s t i) as snextmd.
       rewrite Heqsnextmd.
-      unfold emulator_act, next_mode in *; remember (md s) as mds; destruct mds.
+      unfold machine_act, next_mode in *; remember (md s) as mds; destruct mds.
       + remember (Y_copy s t) as sycpy. destruct sycpy using rev_ind; subst; simpl in *.
         * solve_oracle_response.
         * rewrite rev_unit. 
@@ -386,7 +386,7 @@ Section Existance.
         generated s' ((t,i,Resp rtyp)::h).
   Proof.
     intros s h t i Hgen Hspec.
-    destruct (emulator_act_response_exists _ _ _ _ Hgen Hspec) as [rtyp [s' Hact]].
+    destruct (machine_act_response_exists _ _ _ _ Hgen Hspec) as [rtyp [s' Hact]].
     exists rtyp; exists s'; eapply GenCons; eauto.
   Qed.
 
@@ -411,7 +411,7 @@ Section Existance.
     try eapply IHHgen'; eauto.
 
     all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
-    all : pose (emulator_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
+    all : pose (machine_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
       as Heq; destruct Heq as [Hseq Haeq]; auto.
     all : inversion Haeq.
   Qed.
@@ -422,7 +422,7 @@ End Existance.
     match goal with
       | [ H : (_, (?t, ?i, NoResp)) = (_, ?a'),
               Hspec : spec ((?t, ?i, NoResp) :: ?h),
-                      Hact : emulator_act ?s ?t ?i = (?s', ?a') |- _ ] =>
+                      Hact : machine_act ?s ?t ?i = (?s', ?a') |- _ ] =>
         let M := fresh "SO" in
         assert (exists rtyp, a' = (t, i, Resp rtyp)) as M; [
             now apply (response_always_exists s h t i s' a') |
@@ -445,10 +445,10 @@ Section Correctness.
     Lemma oracle_mode_preservation :
       forall s t i s' a',
         s.(md) = Oracle ->
-        emulator_act s t i = (s', a') ->
+        machine_act s t i = (s', a') ->
         s'.(md) = Oracle.
     Proof.
-      intros. unfold emulator_act in *. unfold next_mode in *.
+      intros. unfold machine_act in *. unfold next_mode in *.
       rewrite H in *.
       unfold get_oracle_response in *.
       functional induction (get_oracle_response_helper (state_with_md s Oracle) t i 0); eauto.
@@ -488,8 +488,8 @@ Section Correctness.
         }
         assert (generated s' ((t, i, Resp rtyp0) :: h)) as Hnewgen.
         {
-          assert (emulator_act s t i = (s', (t,i,Resp rtyp))).
-          unfold emulator_act in *. rewrite Hnextmd. apply Hact'.
+          assert (machine_act s t i = (s', (t,i,Resp rtyp))).
+          unfold machine_act in *. rewrite Hnextmd. apply Hact'.
           eapply GenCons; eauto.
           inversion Hact; subst; auto.
         }
@@ -531,9 +531,9 @@ Section Correctness.
       unfold next_mode in *.
       destruct (md s); [right | discriminate | left]; auto.
     }
-    assert (emulator_act s t i = (s', (t,i,Resp rtyp))) as Hemact.
+    assert (machine_act s t i = (s', (t,i,Resp rtyp))) as Hemact.
     {
-      unfold emulator_act. rewrite Hnextmd; auto.
+      unfold machine_act. rewrite Hnextmd; auto.
     }
     assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
     assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
@@ -589,7 +589,7 @@ End Correctness.
 
 Section SCR.
 
-  Lemma emulator_correct :
+  Lemma machine_correct :
     forall s h,
       generated s h ->
       spec h.
@@ -598,7 +598,7 @@ Section SCR.
     induction Hgen'.
     apply spec_nonempty.
     pose H as Hact.
-    unfold emulator_act in Hact.
+    unfold machine_act in Hact.
     assert (generated s2 ((t,i,r)::h)). eapply GenCons; eauto.
     destruct (next_mode_dec s1 t i) as [[Hnextmd | Hnextmd] | Hnextmd];
       rewrite Hnextmd in Hact.
@@ -612,14 +612,14 @@ Section SCR.
       all: eapply get_replay_response_correct; eauto.
   Qed.    
     
-  (* if we have a SIM-comm region of history, then the emulator produces a
+  (* if we have a SIM-comm region of history, then the machine produces a
    * conflict-free trace for the SIM-comm part of the history *)
-  Lemma emulator_conflict_free :
+  Lemma machine_conflict_free :
     forall s s' h t i r,
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
-      emulator_act s t i = (s', (t,i,r)) ->
+      machine_act s t i = (s', (t,i,r)) ->
       conflict_free_step t s s'.
   Proof.
     Ltac discriminate_commH :=
@@ -659,7 +659,7 @@ Section SCR.
 
     (* we've generated [] so far *)
     - unfold start_state, start_mode in *; destruct X; simpl in *;
-         unfold emulator_act in Hact;
+         unfold machine_act in Hact;
          unfold next_mode in *; subst; simpl in *.
       (* X = [] *)
       + rewrite app_nil_r in *; subst.
@@ -722,7 +722,7 @@ Section SCR.
           repeat rewrite tmp in *. rewrite <- H in *.
           apply app_inv_tail in HeqHX; auto.
         }
-        subst. unfold emulator_act in H0.
+        subst. unfold machine_act in H0.
         unfold next_mode in H0; rewrite Hs1md in *. rewrite HeqXend in *.
         simpl in *. destruct i0; simpl in *.
         repeat rewrite Nat.eqb_refl in *; simpl in *.
@@ -733,7 +733,7 @@ Section SCR.
         inversion H0; subst; simpl in *.
         
         (* now figure out the state of s' *)        
-        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        unfold machine_act in *; unfold next_mode in *; simpl in *.
         rewrite Hycpys1 in *.
         unfold reordered in *.
         pose (Hreordered t) as HYhist; rewrite history_of_thread_app_distributes in *;
@@ -760,7 +760,7 @@ Section SCR.
             [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
         destruct hist as [gencomm [Hgencomm Hgcorder]].
         rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
-        unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
+        unfold machine_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
 
         pose (state_ycpy_nonempty s1 gencomm (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
           as tmp; rewrite <- app_assoc in *; simpl in *.
@@ -775,7 +775,7 @@ Section SCR.
         repeat rewrite Nat.eqb_refl in *; simpl in *.
         unfold get_commute_response in *; simpl in *.
         rewrite Hs1ycpyt0 in *; rewrite rev_unit in *; inversion H0; subst; simpl in *.
-        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        unfold machine_act in *; unfold next_mode in *; simpl in *.
         destruct (Nat.eq_dec t t0); subst; rewrite rev_involutive in *.
 
         (* t = t0 *)
@@ -817,7 +817,7 @@ Section SCR.
         destruct (during_commute_state s1 _ H3 Hs1md) as [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
         destruct hist as [gencomm [Hgencomm Hgcorder]].
         rewrite <- HeqHX in *; rewrite Hgencomm in *.
-        unfold emulator_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
+        unfold machine_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
         apply app_inv_tail in Hgencomm; subst.
         pose (state_ycpy_nonempty s1 (gencomm++a0::HX) (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
           as tmp; rewrite <- app_assoc in *; simpl in *.
@@ -832,7 +832,7 @@ Section SCR.
         repeat rewrite Nat.eqb_refl in *; simpl in *.
         unfold get_commute_response in *; simpl in *.
         rewrite Hs1ycpyt0 in *; rewrite rev_unit in *; inversion H0; subst; simpl in *.
-        unfold emulator_act in *; unfold next_mode in *; simpl in *.
+        unfold machine_act in *; unfold next_mode in *; simpl in *.
         destruct (Nat.eq_dec t t0); subst; rewrite rev_involutive in *.
 
         (* t = t0 *)
@@ -870,11 +870,11 @@ Section SCR.
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
-      emulator_act s t i = (s', (t,i,r)) ->
+      machine_act s t i = (s', (t,i,r)) ->
       conflict_free_step t s s').
   Proof.
-    intros; split. split; [eapply emulator_correct | eapply response_always_exists]; eauto.
-    eapply emulator_conflict_free; eauto.
+    intros; split. split; [eapply machine_correct | eapply response_always_exists]; eauto.
+    eapply machine_conflict_free; eauto.
   Qed.
   
 End SCR.
