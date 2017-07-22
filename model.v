@@ -14,10 +14,11 @@ Require Import Ensembles.
 
 Section Histories.
   Definition tid : Type := nat.
+  Definition rtyp : Type := nat.
   Inductive invocation : Type :=
-    | Inv : nat -> invocation.
+  | Inv : nat -> invocation.
   Inductive response : Type :=
-  | Resp : nat -> response
+  | Resp : rtyp -> response
   | NoResp.
   Definition invocation_eq (a1 a2: invocation) :=
     match a1, a2 with | Inv n, Inv n' => (n =? n') end.
@@ -54,7 +55,7 @@ Section Histories.
 End Histories.
 
 Section MachineState.
-  Parameter max_response_number : nat.
+  Parameter max_response_number : rtyp.
   Parameter spec : history -> Prop.
   Parameter spec_nonempty : spec [].
   Parameter spec_prefix_closed : forall h h1 h2,
@@ -137,23 +138,33 @@ Section Emulator.
     s.(postH) ++ combined_histories s.(commH) ++ s.(preH).
   Definition state_with_md (s : state) (md : mode) :=
     mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) s.(postH) md.
-             
-  Function get_emulate_response_helper (s : state) (t: tid) (i : invocation)
-           (rtyp : nat) (fuel : nat) : state * action :=
+
+  Definition termination (n : nat) := max_response_number - n.
+  Function get_emulate_response_helper (s : state) (t: tid) (i : invocation) (rtyp : nat)
+           {measure termination rtyp} :
+    state * action :=
     let response_action := (t, i, Resp rtyp) in
     let state_history := get_state_history s in
     let new_history := response_action :: state_history in
     if spec_oracle (response_action :: state_history) then
       (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Emulate,
        (t, i, Resp rtyp))
-    else match fuel with
-         | 0 => (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH)
-                ((t,i,NoResp) :: s.(postH)) Emulate, (t, i, NoResp)) (* should never reach this *)
-           | S n' => get_emulate_response_helper s t i (S rtyp) n'
-         end.
+    else if Nat.ltb rtyp max_response_number
+         then get_emulate_response_helper s t i (S rtyp)
+         else (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) ((t,i,NoResp) :: s.(postH)) Emulate,
+               (t, i, NoResp)) (* should never reach this *).
+  Proof.
+    intros.
+    unfold termination.
+    rewrite Nat.sub_succ_r. unfold Nat.pred.
+    remember (max_response_number - rtyp0) as diff; destruct diff; try omega.
+    rewrite Nat.ltb_lt in *.
+    pose (Nat.sub_gt _ _ teq0).
+    rewrite Heqdiff in *; omega.
+  Defined.
 
   Definition get_emulate_response (s : state) (t: tid) (i : invocation) : state * action :=
-    get_emulate_response_helper s t i 0 max_response_number.
+    get_emulate_response_helper s t i 0.
   Definition get_commute_response (s : state) (t: tid) (i: invocation) : state * action :=
     match rev (s.(Y_copy) t) with
       | hd::tl => (mkState s.(X_copy)

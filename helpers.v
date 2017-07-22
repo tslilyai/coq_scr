@@ -253,7 +253,7 @@ Section Histories.
       rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
     - unfold get_emulate_response in *.
       functional induction (get_emulate_response_helper
-                              (state_with_md s1 Emulate) t i 0 max_response_number);
+                              (state_with_md s1 Emulate) t i 0);
         inversion H; subst; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
@@ -282,7 +282,7 @@ Section Histories.
       apply in_inv in H2. destruct H2; [inversion H2; subst|]; auto.
     - unfold get_emulate_response in *.
       functional induction (get_emulate_response_helper
-                              (state_with_md s1 Emulate) t i 0 max_response_number);
+                              (state_with_md s1 Emulate) t i 0);
         inversion H; subst; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
@@ -454,11 +454,12 @@ Section Misc.
       simpl in *.
       destruct a as [[t1 [i1]] r1]. destruct a0 as [[t2 [i2]] r2].
       destruct (Nat.eq_dec t1 t2), (Nat.eq_dec i1 i2), r1, r2;
-        try destruct (Nat.eq_dec n n0); subst;
+        try destruct (Nat.eq_dec r r0); subst;
         try (left; auto; fail); right; simpl in *;
           try rewrite Nat.eq_refl in *;
           destruct (t2 =? t);
-          try (apply in_inv in Hin; destruct Hin; [inversion H; symmetry in H1; contradiction | auto]);
+          try (apply in_inv in Hin; destruct Hin;
+               [inversion H; symmetry in H1; contradiction | auto]);
           try apply (IHh Hin).
   Qed.
         
@@ -532,7 +533,7 @@ Section Misc.
          preH := preH s1;
          commH := commH s1;
          postH := postH s1;
-         md := Emulate |} t i 0 max_response_number); inversion H2; subst; simpl in *; auto.
+         md := Emulate |} t i 0); inversion H2; subst; simpl in *; auto.
       + remember (rev (X_copy s1)) as rxcpys1.
         destruct (rxcpys1); unfold get_replay_response in *; simpl in *; inversion H2; subst; auto.
         rewrite <- Heqrxcpys1 in *.
@@ -611,8 +612,7 @@ Section State_Lemmas.
           destruct (rev (Y_copy s1 t));
             [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
         + unfold get_emulate_response in H.
-          functional induction (get_emulate_response_helper (state_with_md s1 Emulate) t0 i0 0
-                                                          max_response_number);
+          functional induction (get_emulate_response_helper (state_with_md s1 Emulate) t0 i0 0);
           inversion H; subst; simpl in *; auto.
         + unfold get_replay_response in H. remember (X_copy s1) as s1xcpy.
           destruct (s1xcpy).
@@ -645,7 +645,7 @@ Section State_Lemmas.
         unfold state_with_md in *; simpl in *; auto; discriminate.
       - unfold get_emulate_response in *.
         functional induction (get_emulate_response_helper
-                                (state_with_md s Emulate) t i 0 max_response_number);
+                                (state_with_md s Emulate) t i 0);
           unfold state_with_md in *; simpl in *;
           inversion Hact; subst; simpl in *; try discriminate.
         now apply IHp.
@@ -679,7 +679,7 @@ Section State_Lemmas.
              destruct (rev (Y_copy s1 t)) in *; inversion H1; subst; discriminate.
            - unfold get_emulate_response in *.
              functional induction (get_emulate_response_helper
-                                     (state_with_md s1 Emulate) t i 0 max_response_number);
+                                     (state_with_md s1 Emulate) t i 0);
                inversion H1; subst; try discriminate.
              now eapply IHp.
          }
@@ -768,7 +768,7 @@ Section State_Lemmas.
           now right. now left. now right.
           unfold get_emulate_response in *.
           functional induction (get_emulate_response_helper
-                                  (state_with_md s1 Emulate) t i 0 max_response_number);
+                                  (state_with_md s1 Emulate) t i 0);
             inversion H1; subst; simpl in *; try discriminate.
           eapply IHp; eauto.
           now left. now right. now left.
@@ -801,7 +801,7 @@ Section State_Lemmas.
                                         preH := [];
                                         commH := fun _ : tid => [];
                                         postH := [];
-                                        md := Emulate |} t i 0 max_response_number);
+                                        md := Emulate |} t i 0);
                 inversion H1; subst; try discriminate.
               now eapply IHp.
             }
@@ -835,7 +835,7 @@ Section State_Lemmas.
                                         preH := preH s1;
                                         commH := commH s1;
                                         postH := postH s1;
-                                        md := Emulate |} t i 0 max_response_number);
+                                        md := Emulate |} t i 0);
                 inversion H1; subst; try discriminate.
               now eapply IHp.
 
@@ -857,11 +857,11 @@ Section State_Lemmas.
                   try rewrite n in *; try rewrite n0 in *; simpl in *; auto.
               all: unfold get_emulate_response in *.
               1,3: functional induction (get_emulate_response_helper
-                                        (state_with_md s1 Emulate) t (Inv i) 0 max_response_number);
+                                        (state_with_md s1 Emulate) t (Inv i) 0);
                 inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
                   try now eapply IHp.
               functional induction (get_emulate_response_helper
-                                        (state_with_md s1 Emulate) ts1 (Inv i) 0 max_response_number);
+                                        (state_with_md s1 Emulate) ts1 (Inv i) 0);
                 inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
                   try now eapply IHp.
             }
@@ -886,7 +886,7 @@ Section State_Lemmas.
           
           1,3: unfold get_emulate_response in *;
             functional induction (get_emulate_response_helper
-                                    (state_with_md s1 Emulate) t i 0 max_response_number);
+                                    (state_with_md s1 Emulate) t i 0);
             inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
               try now eapply IHp.
 
@@ -929,7 +929,7 @@ Section State_Lemmas.
         remember (md s1) as mds1. destruct mds1; subst; try discriminate.
         unfold get_emulate_response in *.
         functional induction (get_emulate_response_helper
-                                (state_with_md s1 Emulate) t i 0 max_response_number);
+                                (state_with_md s1 Emulate) t i 0);
           inversion H3; subst; auto.
       }
       pose (IHh s1 H6 H1).
@@ -940,7 +940,7 @@ Section State_Lemmas.
         remember (next_mode s1 t i) as mds1. destruct mds1; subst; try discriminate.
         unfold get_emulate_response in *.
         functional induction (get_emulate_response_helper
-                                (state_with_md s1 Emulate) t i 0 max_response_number);
+                                (state_with_md s1 Emulate) t i 0);
           inversion H3; subst; auto.
       }
       remember (next_mode s1 t i) as s1nextmd.
@@ -963,7 +963,7 @@ Section State_Lemmas.
     intros.
     unfold get_emulate_response in *; simpl in *.
     functional induction (get_emulate_response_helper (state_with_md s Emulate)
-                                                      t i 0 max_response_number);
+                                                      t i 0);
       unfold state_with_md in *; simpl in *;
         inversion H1; subst; auto.
   Qed.
@@ -991,7 +991,7 @@ Section State_Lemmas.
         destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
       - unfold get_emulate_response in *.
         functional induction (get_emulate_response_helper (state_with_md s1 Emulate)
-                                                          t0 i0 0 max_response_number);
+                                                          t0 i0 0);
           unfold next_mode in H1; inversion H4; subst; simpl in *; auto.
     }
     
@@ -1271,23 +1271,22 @@ Section State_Lemmas.
     Qed.
 
     Lemma correct_state_correct_generated_history :
-    forall s h,
+    forall s h x,
       generated s h ->
-      spec (get_state_history s) ->
-      spec h.
+      spec (x :: get_state_history s) <-> spec (x :: h).
   Proof.
-    intros s h Hgen Hspec.
-
-    unfold get_state_history in *; simpl in *.
-    pose (state_combined_histories_is_reordered_Y h s Hgen) as Hh'.
+    intros s h x Hgen. split; intros Hspec;
+    unfold get_state_history in *; simpl in *;
+    pose (state_combined_histories_is_reordered_Y h s Hgen) as Hh';
     pose (reordered_Y_prefix_correct 
             (combined_histories s.(commH))
             (combined_histories s.(Y_copy))
-            Hh') as Hcomm.
+            Hh') as Hcomm;
     destruct (preHs h s Hgen);
-    destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]];
-    rewrite <- Hh.
-    - rewrite H.
+    destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
+
+    - rewrite <- Hh.
+      rewrite H. rewrite app_comm_cons in *.
       eapply sim_commutes; eauto.
       rewrite H in Hspec. auto.
     - unfold reordered in *.
@@ -1298,6 +1297,21 @@ Section State_Lemmas.
       simpl in *.
       symmetry in Horder.
       rewrite (history_of_thread_all_nil _ Horder) in *. simpl in *; auto.
+    - rewrite H, <- Hh in *. apply reordered_sym in Horder.
+      assert (reordered (combined_histories (Y_copy s) ++ gencommH) Y).
+      {
+        eapply reordered_prefix; eauto.
+      }
+      rewrite app_comm_cons in *.
+      eapply sim_commutes; eauto. 
+    - unfold reordered in *.
+      destruct_conjs; subst.
+      apply app_inv_head in Hh. rewrite <- app_nil_l in Hh.
+      apply app_inv_tail in Hh. subst; simpl in *.
+      unfold reordered in *.
+      simpl in *. symmetry in Horder.
+      rewrite (history_of_thread_all_nil _ Horder) in *.
+      simpl in *. auto.
   Qed.
   
 End State_Lemmas.
