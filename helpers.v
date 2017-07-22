@@ -1273,7 +1273,7 @@ Section State_Lemmas.
     Lemma correct_state_correct_generated_history :
     forall s h x,
       generated s h ->
-      spec (x :: get_state_history s) <-> spec (x :: h).
+      spec (x ++ get_state_history s) <-> spec (x ++ h).
   Proof.
     intros s h x Hgen. split; intros Hspec;
     unfold get_state_history in *; simpl in *;
@@ -1286,7 +1286,7 @@ Section State_Lemmas.
     destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
 
     - rewrite <- Hh.
-      rewrite H. rewrite app_comm_cons in *.
+      rewrite H. rewrite app_assoc in *.
       eapply sim_commutes; eauto.
       rewrite H in Hspec. auto.
     - unfold reordered in *.
@@ -1302,7 +1302,7 @@ Section State_Lemmas.
       {
         eapply reordered_prefix; eauto.
       }
-      rewrite app_comm_cons in *.
+      rewrite app_assoc in *.
       eapply sim_commutes; eauto. 
     - unfold reordered in *.
       destruct_conjs; subst.

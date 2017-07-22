@@ -101,7 +101,7 @@ Section Existance.
       assert (~spec ((t,i,Resp (rspec - S n))::h)).
       eapply H4. omega.
       intuition.
-      pose (correct_state_correct_generated_history _ _ (t,i,Resp (rspec-S n)) H0).
+      pose (correct_state_correct_generated_history _ _ [(t,i,Resp (rspec-S n))] H0).
       erewrite <- state_with_md_get_state_history in *; eauto.
       remember (spec_oracle ((t, i, Resp (rspec - S n)) :: get_state_history s)) as so; destruct so.
       symmetry in Heqso. rewrite <- spec_oracle_correct in *.
@@ -145,7 +145,7 @@ Section Existance.
       assert (spec_oracle ((t, i, Resp rspec) :: get_state_history (state_with_md s Emulate)) = true).
       {
         erewrite <- state_with_md_get_state_history.
-        pose (correct_state_correct_generated_history _ _ (t,i,Resp rspec) H).
+        pose (correct_state_correct_generated_history _ _ [(t,i,Resp rspec)] H).
         rewrite <- spec_oracle_correct.
         rewrite i0. auto.
       }
@@ -156,25 +156,57 @@ Section Existance.
       assert (spec_oracle ((t, i, Resp 0) :: get_state_history (state_with_md s Emulate)) = true).
       rewrite <- state_with_md_get_state_history in *.
       rewrite <- spec_oracle_correct.
+      replace ((t,i,Resp 0) :: get_state_history s) with ([(t,i,Resp 0)] ++ get_state_history s).
       eapply correct_state_correct_generated_history; eauto.
+      simpl in *; auto.
       rewrite H2. eauto.
     - assert (get_emulate_response_helper (state_with_md s Emulate) t i 0 =
-              get_emulate_response_helper (state_with_md s Emulate) t i 1).
-      destruct (Nat.eqb_eq rspec 0); subst;
-      do 2 rewrite get_emulate_response_helper_equation.
-      rewrite <- state_with_md_get_state_history in *.
-      assert ( spec_oracle ((t, i, Resp 0) :: get_state_history s) = false) as tmp1. admit.
-      assert (0 <? max_response_number = true) as tmp3. admit.
-      assert ( spec_oracle ((t, i, Resp 1) :: get_state_history s) = false) as tmp2. admit.
-      assert (1 <? max_response_number = true) as tmp4. admit.
-      rewrite tmp1, tmp2, tmp3, tmp4.
-      auto.
+              get_emulate_response_helper (state_with_md s Emulate) t i 1) as Hah.
+      {
+        assert (spec_oracle ((t, i, Resp 0) :: get_state_history s) = false) as tmp1.
+        {
+          pose (Hrtyp' 0).
+          intuition.
+          pose (correct_state_correct_generated_history _ _ [(t,i,Resp 0)] H).
+          repeat rewrite spec_oracle_correct in *.
+          rewrite <- i0 in *.
+          remember (spec_oracle ((t, i, Resp 0) :: get_state_history s)) as blah;
+            destruct blah; auto.
+          assert (False). eapply n; eauto. omega.
+          intuition.
+        }
+        assert (0 <? max_response_number = true) as tmp3 by (rewrite Nat.ltb_lt; omega).
 
-      rewrite H2.
+        destruct (Nat.eq_dec rspec 0); subst;
+          do 2 rewrite get_emulate_response_helper_equation;
+          rewrite <- state_with_md_get_state_history in *.
+        + assert (spec_oracle ((t,i, Resp 1) :: (get_state_history s)) = true) as tmp2 by
+                now rewrite <- spec_oracle_correct,
+                (correct_state_correct_generated_history _ _ [(t,i,Resp 1)] H).
+          rewrite tmp1, tmp3, tmp2. auto.
+        + assert ( spec_oracle ((t, i, Resp 1) :: get_state_history s) = false) as tmp2.
+          {
+            pose (Hrtyp' 1).
+            intuition.
+            pose (correct_state_correct_generated_history _ _ [(t,i,Resp 1)] H).
+            repeat rewrite spec_oracle_correct in *.
+            rewrite <- i0 in *.
+            remember (spec_oracle ((t, i, Resp 1) :: get_state_history s)) as blah;
+              destruct blah; auto.
+            assert (False). eapply n0; eauto. omega.
+            intuition.
+          }
+          assert (1 <? max_response_number = true) as tmp4 by
+                (rewrite Nat.ltb_lt; omega).
+          rewrite tmp1, tmp2, tmp3, tmp4.
+        auto.
+      }
+
+      rewrite Hah.
       replace 1 with (S rspec - rspec) in *.
       erewrite (get_emulate_response_exists' (S rspec)); eauto.
       omega.
-  Admitted.
+  Qed.
     
   Lemma emulator_act_response_exists :
     forall s h t i,
@@ -239,7 +271,7 @@ Section Existance.
           inversion HeqHacteq; destruct i as [i].
           symmetry in H0; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
             destruct_conjs; subst.
-          exists n; auto.
+          exists r; auto.
           assert (exists rtyp, NoResp = Resp rtyp).
           {
             eapply X_and_Y_wf.
@@ -256,7 +288,7 @@ Section Existance.
           inversion HeqHacteq; destruct i as [i].
           symmetry in H0; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
             destruct_conjs; subst.
-          exists n; auto.
+          exists r; auto.
           assert (exists rtyp, NoResp = Resp rtyp).
           {
             eapply X_and_Y_wf.
@@ -315,7 +347,7 @@ Section Existance.
           inversion HeqHacteq; destruct i as [i].
           symmetry in H8; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
             destruct_conjs; subst.
-          exists n; auto.
+          exists r0; auto.
           assert (exists rtyp, NoResp = Resp rtyp) as ha.
           {
             eapply X_and_Y_wf.
@@ -332,7 +364,7 @@ Section Existance.
           inversion HeqHacteq; destruct i as [i].
           symmetry in H8; rewrite andb_true_iff in *; repeat rewrite Nat.eqb_eq in *;
             destruct_conjs; subst.
-          exists n; auto.
+          exists r0; auto.
           assert (exists rtyp, NoResp = Resp rtyp) as ha.
           {
             eapply X_and_Y_wf.
@@ -374,8 +406,8 @@ Section Existance.
     inversion Hgenexists; subst.
 
     remember (action_invocation_eq (t,i,r) t0 i0) as Heq.
-    destruct Heq, i, i0, r, r0; try destruct (Nat.eq_dec n1 n2); unfold_action_inv_eq;
-    subst; inversion Hin; try inversion H1; try (now exists n2); try (now exists n1);
+    destruct Heq, i, i0, r, r0; try destruct (Nat.eq_dec r r0); unfold_action_inv_eq;
+    subst; inversion Hin; try inversion H1; try (now exists r0); try (now exists r);
     try eapply IHHgen'; eauto.
 
     all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
@@ -419,8 +451,7 @@ Section Correctness.
       intros. unfold emulator_act in *. unfold next_mode in *.
       rewrite H in *.
       unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper (state_with_md s Emulate) 
-                                                        t i 0 max_response_number); eauto.
+      functional induction (get_emulate_response_helper (state_with_md s Emulate) t i 0); eauto.
       inversion H0; auto.
       inversion H0; auto.
     Qed.
@@ -438,7 +469,7 @@ Section Correctness.
       auto.
       unfold get_emulate_response in Hact.
       functional induction (get_emulate_response_helper
-                              (state_with_md s Emulate) t i 0 max_response_number).
+                              (state_with_md s Emulate) t i 0).
       - assert (spec (get_state_history (state_with_md s Emulate))) as Hprefix.
         {
           rewrite <- (spec_oracle_correct
@@ -451,7 +482,9 @@ Section Correctness.
         }
         assert (spec h).
         {
-          eapply correct_state_correct_generated_history; eauto.
+          replace ((t,i,NoResp) :: h) with ([(t,i,NoResp)] ++ h) in Hspec.
+          eapply spec_prefix_closed in Hspec; eauto.
+          simpl; auto.
         }
         assert (generated s' ((t, i, Resp rtyp0) :: h)) as Hnewgen.
         {
@@ -461,7 +494,9 @@ Section Correctness.
           inversion Hact; subst; auto.
         }
         inversion Hact; subst; auto.
+        replace ((t, i, Resp rtyp) :: h) with ([(t,i,Resp rtyp)] ++ h).
         eapply correct_state_correct_generated_history; eauto.
+        simpl; auto.
         assert ((t,i,Resp rtyp) :: get_state_history (state_with_md s Emulate) =
                 get_state_history {|
               X_copy := X_copy s;
@@ -472,8 +507,9 @@ Section Correctness.
               md := Emulate |}).
         unfold get_state_history in *; simpl in *. auto.
         rewrite H0 in e. apply spec_oracle_correct in e; auto.
-      - rewrite (state_with_md_same_md_eq) in Hact; auto. inversion Hact.
+        simpl; auto.
       - now apply IHp in Hact.
+      - inversion Hact.
     Qed.
   
   Lemma get_commute_response_correct :
