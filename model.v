@@ -29,7 +29,7 @@ Section Histories.
     end.
   Inductive mode : Type :=
   | Commute : mode
-  | Emulate : mode
+  | Oracle : mode
   | Replay : mode.
 
   Parameter num_threads : tid.
@@ -140,18 +140,18 @@ Section Emulator.
     mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) s.(postH) md.
 
   Definition termination (n : nat) := max_response_number - n.
-  Function get_emulate_response_helper (s : state) (t: tid) (i : invocation) (rtyp : nat)
+  Function get_oracle_response_helper (s : state) (t: tid) (i : invocation) (rtyp : nat)
            {measure termination rtyp} :
     state * action :=
     let response_action := (t, i, Resp rtyp) in
     let state_history := get_state_history s in
     let new_history := response_action :: state_history in
     if spec_oracle (response_action :: state_history) then
-      (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Emulate,
+      (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Oracle,
        (t, i, Resp rtyp))
     else if Nat.ltb rtyp max_response_number
-         then get_emulate_response_helper s t i (S rtyp)
-         else (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) ((t,i,NoResp) :: s.(postH)) Emulate,
+         then get_oracle_response_helper s t i (S rtyp)
+         else (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) ((t,i,NoResp) :: s.(postH)) Oracle,
                (t, i, NoResp)) (* should never reach this *).
   Proof.
     intros.
@@ -163,8 +163,8 @@ Section Emulator.
     rewrite Heqdiff in *; omega.
   Defined.
 
-  Definition get_emulate_response (s : state) (t: tid) (i : invocation) : state * action :=
-    get_emulate_response_helper s t i 0.
+  Definition get_oracle_response (s : state) (t: tid) (i : invocation) : state * action :=
+    get_oracle_response_helper s t i 0.
   Definition get_commute_response (s : state) (t: tid) (i: invocation) : state * action :=
     match rev (s.(Y_copy) t) with
       | hd::tl => (mkState s.(X_copy)
@@ -183,22 +183,22 @@ Section Emulator.
     end.
   Definition next_mode (s : state) (t: tid) (i: invocation) : mode :=
     match s.(md) with
-      | Emulate => Emulate
+      | Oracle => Oracle
       | Commute => match rev (s.(Y_copy) t) with
-                     | [] => Emulate
+                     | [] => Oracle
                      | hd :: tl => if action_invocation_eq hd t i then Commute
-                                   else Emulate
+                                   else Oracle
                    end
       | Replay => match rev s.(X_copy) with
-                  | [] => Emulate
+                  | [] => Oracle
                   | hd :: tl => if action_invocation_eq hd t i then Replay
-                                else Emulate
+                                else Oracle
                   end
     end.
   Definition emulator_act (s : state) (t: tid) (i : invocation) : (state * action) :=
     let mode := next_mode s t i in
     match mode with
-      | Emulate => get_emulate_response (state_with_md s Emulate) t i
+      | Oracle => get_oracle_response (state_with_md s Oracle) t i
       | Commute => get_commute_response (state_with_md s Commute) t i
       | Replay => match rev (s.(X_copy)) with
                   | [hd] => get_replay_response (state_with_md s Commute) t i

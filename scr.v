@@ -82,21 +82,21 @@ Section Existance.
     eapply emulator_deterministic; eauto.
   Qed.
 
-  Lemma get_emulate_response_exists' :
+  Lemma get_oracle_response_exists' :
     forall rspec n s h t i,
       n < rspec ->
       generated s h ->
       spec ((t,i,NoResp)::h) ->
-      spec ((t,i,Resp rspec) :: h) ->
+      spec ((t,i,Resp rspec) :: h) ->x
       rspec < max_response_number ->
       (forall rtyp' : nat, rtyp' < rspec -> ~ spec ((t, i, Resp rtyp') :: h)) ->
-      get_emulate_response_helper (state_with_md s Emulate) t i (rspec - n) =
-      get_emulate_response_helper (state_with_md s Emulate) t i rspec.
+      get_oracle_response_helper (state_with_md s Oracle) t i (rspec - n) =
+      get_oracle_response_helper (state_with_md s Oracle) t i rspec.
   Proof.
     induction n; intros.
     rewrite <- minus_n_O. auto.
-    rewrite get_emulate_response_helper_equation.
-    assert (spec_oracle ((t, i, Resp (rspec - S n)) :: get_state_history (state_with_md s Emulate)) = false).
+    rewrite get_oracle_response_helper_equation.
+    assert (spec_oracle ((t, i, Resp (rspec - S n)) :: get_state_history (state_with_md s Oracle)) = false).
     {
       assert (~spec ((t,i,Resp (rspec - S n))::h)).
       eapply H4. omega.
@@ -124,25 +124,25 @@ Section Existance.
     omega.
   Qed.
 
-  Lemma get_emulate_response_exists :
+  Lemma get_oracle_response_exists :
     forall s h t i,
       generated s h ->
       spec ((t,i,NoResp)::h) ->
-      exists rtyp s', get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp)).
+      exists rtyp s', get_oracle_response (state_with_md s Oracle) t i = (s', (t,i,Resp rtyp)).
   Proof.
     intros.
     
     (* spec stuff *)
     pose (spec_resp_exists _ _ _ H0) as blah; destruct blah as [rspec [Hrtyp [Hspec Hrtyp']]].
     
-    unfold get_emulate_response.
+    unfold get_oracle_response.
     exists rspec.
     assert (exists s',
-               get_emulate_response_helper (state_with_md s Emulate) t i rspec =
+               get_oracle_response_helper (state_with_md s Oracle) t i rspec =
                (s', (t,i,Resp rspec))).
     {
-      rewrite get_emulate_response_helper_equation.
-      assert (spec_oracle ((t, i, Resp rspec) :: get_state_history (state_with_md s Emulate)) = true).
+      rewrite get_oracle_response_helper_equation.
+      assert (spec_oracle ((t, i, Resp rspec) :: get_state_history (state_with_md s Oracle)) = true).
       {
         erewrite <- state_with_md_get_state_history.
         pose (correct_state_correct_generated_history _ _ [(t,i,Resp rspec)] H).
@@ -152,16 +152,16 @@ Section Existance.
       rewrite H1. eauto.
     }
     destruct rspec.
-    - rewrite get_emulate_response_helper_equation.
-      assert (spec_oracle ((t, i, Resp 0) :: get_state_history (state_with_md s Emulate)) = true).
+    - rewrite get_oracle_response_helper_equation.
+      assert (spec_oracle ((t, i, Resp 0) :: get_state_history (state_with_md s Oracle)) = true).
       rewrite <- state_with_md_get_state_history in *.
       rewrite <- spec_oracle_correct.
       replace ((t,i,Resp 0) :: get_state_history s) with ([(t,i,Resp 0)] ++ get_state_history s).
       eapply correct_state_correct_generated_history; eauto.
       simpl in *; auto.
       rewrite H2. eauto.
-    - assert (get_emulate_response_helper (state_with_md s Emulate) t i 0 =
-              get_emulate_response_helper (state_with_md s Emulate) t i 1) as Hah.
+    - assert (get_oracle_response_helper (state_with_md s Oracle) t i 0 =
+              get_oracle_response_helper (state_with_md s Oracle) t i 1) as Hah.
       {
         assert (spec_oracle ((t, i, Resp 0) :: get_state_history s) = false) as tmp1.
         {
@@ -178,7 +178,7 @@ Section Existance.
         assert (0 <? max_response_number = true) as tmp3 by (rewrite Nat.ltb_lt; omega).
 
         destruct (Nat.eq_dec rspec 0); subst;
-          do 2 rewrite get_emulate_response_helper_equation;
+          do 2 rewrite get_oracle_response_helper_equation;
           rewrite <- state_with_md_get_state_history in *.
         + assert (spec_oracle ((t,i, Resp 1) :: (get_state_history s)) = true) as tmp2 by
                 now rewrite <- spec_oracle_correct,
@@ -204,7 +204,7 @@ Section Existance.
 
       rewrite Hah.
       replace 1 with (S rspec - rspec) in *.
-      erewrite (get_emulate_response_exists' (S rspec)); eauto.
+      erewrite (get_oracle_response_exists' (S rspec)); eauto.
       omega.
   Qed.
     
@@ -219,17 +219,17 @@ Section Existance.
     revert dependent i.
     induction h; intros; inversion Hgen; subst.
 
-    Ltac solve_emulate_response :=
+    Ltac solve_oracle_response :=
       match goal with
       | [ Hgen : generated ?s ?h, Heqmds : ?md = md ?s |-
-          exists rtyp s', get_emulate_response ?s0 ?t ?i = _ ] =>
-        eapply (get_emulate_response_exists s); eauto;
+          exists rtyp s', get_oracle_response ?s0 ?t ?i = _ ] =>
+        eapply (get_oracle_response_exists s); eauto;
         assert (generated (state_with_md s0 md) h) as HAH; [
           unfold state_with_md in *; simpl in *;
           destruct s; simpl in *; rewrite <- Heqmds in *; auto
         | apply HAH]
-      | [ Hgen : generated ?s ?h |- exists rtyp s', get_emulate_response _ _ _ = _] =>
-        eapply (get_emulate_response_exists s); eauto;
+      | [ Hgen : generated ?s ?h |- exists rtyp s', get_oracle_response _ _ _ = _] =>
+        eapply (get_oracle_response_exists s); eauto;
         unfold state_with_md in *
       end.
     
@@ -238,7 +238,7 @@ Section Existance.
       remember X as HX; destruct HX using rev_ind; simpl in *.
       remember (history_of_thread Y t) as Yhist.
       destruct (Yhist) using rev_ind; [|rewrite rev_unit]; unfold state_with_md; simpl in *.
-      + solve_emulate_response.
+      + solve_oracle_response.
       + remember (action_invocation_eq x t i) as Hacteq.
         destruct Hacteq.
         * unfold get_commute_response; simpl in *. rewrite <- HeqYhist; rewrite rev_unit; eauto.
@@ -256,7 +256,7 @@ Section Existance.
             apply in_or_app; left; eauto.
           }
           destruct H as [rtyp bleh]; discriminate.
-        * solve_emulate_response.
+        * solve_oracle_response.
       + clear IHHX.
         remember (HX ++ [x]) as blah; destruct blah;
           [symmetry in Heqblah; apply app_eq_nil in Heqblah; destruct_conjs; discriminate|
@@ -299,13 +299,13 @@ Section Existance.
           } destruct H as [rtyp bleh]; discriminate.
           destruct H as [rtyp bleh]; rewrite bleh; eauto.
           rewrite rev_unit; eauto.
-        * solve_emulate_response.
+        * solve_oracle_response.
     - unfold emulator_act.
       remember (next_mode s t i) as snextmd.
       rewrite Heqsnextmd.
       unfold emulator_act, next_mode in *; remember (md s) as mds; destruct mds.
       + remember (Y_copy s t) as sycpy. destruct sycpy using rev_ind; subst; simpl in *.
-        * solve_emulate_response.
+        * solve_oracle_response.
         * rewrite rev_unit. 
           remember (action_invocation_eq x t i) as Hacteq.
           destruct Hacteq.
@@ -331,10 +331,10 @@ Section Existance.
             apply in_or_app; left; eauto.
           }
           destruct H as [rtyp bleh]; discriminate.
-          solve_emulate_response.
-      + solve_emulate_response.
+          solve_oracle_response.
+      + solve_oracle_response.
       + remember (X_copy s) as sxcpy. destruct sxcpy using rev_ind; simpl in *; auto.
-        * solve_emulate_response.
+        * solve_oracle_response.
         * rewrite rev_unit in *.         
           remember (action_invocation_eq x t i) as Hacteq. destruct Hacteq.
 
@@ -375,7 +375,7 @@ Section Existance.
           } destruct ha as [rtyp bleh]; discriminate.
           destruct H6 as [rtyp bleh]; rewrite bleh; eauto.
 
-          solve_emulate_response.
+          solve_oracle_response.
   Qed.
   
   Lemma generated_response_exists :
@@ -442,42 +442,42 @@ End Existance.
   
 Section Correctness.
 
-    Lemma emulate_mode_preservation :
+    Lemma oracle_mode_preservation :
       forall s t i s' a',
-        s.(md) = Emulate ->
+        s.(md) = Oracle ->
         emulator_act s t i = (s', a') ->
-        s'.(md) = Emulate.
+        s'.(md) = Oracle.
     Proof.
       intros. unfold emulator_act in *. unfold next_mode in *.
       rewrite H in *.
-      unfold get_emulate_response in *.
-      functional induction (get_emulate_response_helper (state_with_md s Emulate) t i 0); eauto.
+      unfold get_oracle_response in *.
+      functional induction (get_oracle_response_helper (state_with_md s Oracle) t i 0); eauto.
       inversion H0; auto.
       inversion H0; auto.
     Qed.
     
-    Lemma get_emulate_response_correct :
+    Lemma get_oracle_response_correct :
       forall s h t i s' rtyp,
         generated s h ->
         spec ((t,i,NoResp)::h) ->
-        next_mode s t i = Emulate ->
-        get_emulate_response (state_with_md s Emulate) t i = (s',(t,i,Resp rtyp)) ->
+        next_mode s t i = Oracle ->
+        get_oracle_response (state_with_md s Oracle) t i = (s',(t,i,Resp rtyp)) ->
         spec ((t,i,Resp rtyp)::h).
     Proof.
       intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
-      assert (get_emulate_response (state_with_md s Emulate) t i = (s', (t,i,Resp rtyp))) as Hact'.
+      assert (get_oracle_response (state_with_md s Oracle) t i = (s', (t,i,Resp rtyp))) as Hact'.
       auto.
-      unfold get_emulate_response in Hact.
-      functional induction (get_emulate_response_helper
-                              (state_with_md s Emulate) t i 0).
-      - assert (spec (get_state_history (state_with_md s Emulate))) as Hprefix.
+      unfold get_oracle_response in Hact.
+      functional induction (get_oracle_response_helper
+                              (state_with_md s Oracle) t i 0).
+      - assert (spec (get_state_history (state_with_md s Oracle))) as Hprefix.
         {
           rewrite <- (spec_oracle_correct
-                        ((t,i,Resp rtyp0) :: get_state_history (state_with_md s Emulate))) in e.
+                        ((t,i,Resp rtyp0) :: get_state_history (state_with_md s Oracle))) in e.
           pose (spec_prefix_closed).
           apply (spec_prefix_closed
-                   ((t, i, Resp rtyp0) :: get_state_history (state_with_md s Emulate))
-                   (get_state_history (state_with_md s Emulate))
+                   ((t, i, Resp rtyp0) :: get_state_history (state_with_md s Oracle))
+                   (get_state_history (state_with_md s Oracle))
                    [(t,i,Resp rtyp0)]); auto.
         }
         assert (spec h).
@@ -497,14 +497,14 @@ Section Correctness.
         replace ((t, i, Resp rtyp) :: h) with ([(t,i,Resp rtyp)] ++ h).
         eapply correct_state_correct_generated_history; eauto.
         simpl; auto.
-        assert ((t,i,Resp rtyp) :: get_state_history (state_with_md s Emulate) =
+        assert ((t,i,Resp rtyp) :: get_state_history (state_with_md s Oracle) =
                 get_state_history {|
               X_copy := X_copy s;
               Y_copy := Y_copy s;
               preH := preH s;
               commH := commH s;
               postH := (t, i, Resp rtyp) :: postH s;
-              md := Emulate |}).
+              md := Oracle |}).
         unfold get_state_history in *; simpl in *. auto.
         rewrite H0 in e. apply spec_oracle_correct in e; auto.
         simpl; auto.
@@ -604,7 +604,7 @@ Section SCR.
       rewrite Hnextmd in Hact.
     - destruct r. eapply get_commute_response_correct; eauto.
       discriminate_noresp.
-    - destruct r. eapply get_emulate_response_correct; eauto.
+    - destruct r. eapply get_oracle_response_correct; eauto.
       discriminate_noresp.
     - destruct (rev (X_copy s1)).
       destruct r; [eapply get_replay_response_correct; eauto | discriminate_noresp].

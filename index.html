@@ -33,7 +33,7 @@
 <td>L</td>
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#global_O">O</a></td>
 <td><a href="index.html#global_P">P</a></td>
 <td>Q</td>
 <td><a href="index.html#global_R">R</a></td>
@@ -87,7 +87,7 @@
 <td>B</td>
 <td><a href="index.html#lemma_C">C</a></td>
 <td><a href="index.html#lemma_D">D</a></td>
-<td><a href="index.html#lemma_E">E</a></td>
+<td>E</td>
 <td>F</td>
 <td><a href="index.html#lemma_G">G</a></td>
 <td><a href="index.html#lemma_H">H</a></td>
@@ -97,7 +97,7 @@
 <td>L</td>
 <td><a href="index.html#lemma_M">M</a></td>
 <td><a href="index.html#lemma_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#lemma_O">O</a></td>
 <td><a href="index.html#lemma_P">P</a></td>
 <td>Q</td>
 <td><a href="index.html#lemma_R">R</a></td>
@@ -119,7 +119,7 @@
 <td>B</td>
 <td><a href="index.html#constructor_C">C</a></td>
 <td>D</td>
-<td><a href="index.html#constructor_E">E</a></td>
+<td>E</td>
 <td>F</td>
 <td><a href="index.html#constructor_G">G</a></td>
 <td>H</td>
@@ -129,7 +129,7 @@
 <td>L</td>
 <td><a href="index.html#constructor_M">M</a></td>
 <td><a href="index.html#constructor_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#constructor_O">O</a></td>
 <td>P</td>
 <td>Q</td>
 <td><a href="index.html#constructor_R">R</a></td>
@@ -360,8 +360,6 @@
 <a href="helpers.html#during_commute_state">during_commute_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#during_replay_state">during_replay_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="global_E"></a><h2>E </h2>
-<a href="model.html#Emulate">Emulate</a> [constructor, in <a href="model.html">model</a>]<br/>
-<a href="helpers.html#emulate_response_state">emulate_response_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#Emulator">Emulator</a> [section, in <a href="model.html">model</a>]<br/>
 <a href="model.html#emulator_act">emulator_act</a> [definition, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_G"></a><h2>G </h2>
@@ -371,7 +369,7 @@
 <a href="model.html#GenNil">GenNil</a> [constructor, in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_replay_response">get_replay_response</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_commute_response">get_commute_response</a> [definition, in <a href="model.html">model</a>]<br/>
-<a href="model.html#get_emulate_response">get_emulate_response</a> [definition, in <a href="model.html">model</a>]<br/>
+<a href="model.html#get_oracle_response">get_oracle_response</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_state_history">get_state_history</a> [definition, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_H"></a><h2>H </h2>
 <a href="helpers.html">helpers</a> [library]<br/>
@@ -412,8 +410,11 @@
 <a href="helpers.html#next_mode_dec">next_mode_dec</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#next_mode">next_mode</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#NoResp">NoResp</a> [constructor, in <a href="model.html">model</a>]<br/>
-<a href="helpers.html#not_emulate_postH_nil">not_emulate_postH_nil</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
+<a href="helpers.html#not_oracle_postH_nil">not_oracle_postH_nil</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#num_threads">num_threads</a> [axiom, in <a href="model.html">model</a>]<br/>
+<br/><br/><a name="global_O"></a><h2>O </h2>
+<a href="model.html#Oracle">Oracle</a> [constructor, in <a href="model.html">model</a>]<br/>
+<a href="helpers.html#oracle_response_state">oracle_response_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="global_P"></a><h2>P </h2>
 <a href="model.html#postH">postH</a> [projection, in <a href="model.html">model</a>]<br/>
 <a href="model.html#preH">preH</a> [projection, in <a href="model.html">model</a>]<br/>
@@ -495,8 +496,6 @@
 <br/><br/><a name="lemma_D"></a><h2>D </h2>
 <a href="helpers.html#during_commute_state">during_commute_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#during_replay_state">during_replay_state</a> [in <a href="helpers.html">helpers</a>]<br/>
-<br/><br/><a name="lemma_E"></a><h2>E </h2>
-<a href="helpers.html#emulate_response_state">emulate_response_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_G"></a><h2>G </h2>
 <a href="helpers.html#generated_history_corresponds_state_history">generated_history_corresponds_state_history</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_H"></a><h2>H </h2>
@@ -521,7 +520,9 @@
 <br/><br/><a name="lemma_N"></a><h2>N </h2>
 <a href="helpers.html#next_mode_replay_implies_current_mode_replay">next_mode_replay_implies_current_mode_replay</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#next_mode_dec">next_mode_dec</a> [in <a href="helpers.html">helpers</a>]<br/>
-<a href="helpers.html#not_emulate_postH_nil">not_emulate_postH_nil</a> [in <a href="helpers.html">helpers</a>]<br/>
+<a href="helpers.html#not_oracle_postH_nil">not_oracle_postH_nil</a> [in <a href="helpers.html">helpers</a>]<br/>
+<br/><br/><a name="lemma_O"></a><h2>O </h2>
+<a href="helpers.html#oracle_response_state">oracle_response_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_P"></a><h2>P </h2>
 <a href="helpers.html#preHs">preHs</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_R"></a><h2>R </h2>
@@ -546,8 +547,6 @@
 <h1>Constructor Index</h1>
 <a name="constructor_C"></a><h2>C </h2>
 <a href="model.html#Commute">Commute</a> [in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="constructor_E"></a><h2>E </h2>
-<a href="model.html#Emulate">Emulate</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="constructor_G"></a><h2>G </h2>
 <a href="model.html#GenCons">GenCons</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#GenNil">GenNil</a> [in <a href="model.html">model</a>]<br/>
@@ -557,6 +556,8 @@
 <a href="model.html#mkState">mkState</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="constructor_N"></a><h2>N </h2>
 <a href="model.html#NoResp">NoResp</a> [in <a href="model.html">model</a>]<br/>
+<br/><br/><a name="constructor_O"></a><h2>O </h2>
+<a href="model.html#Oracle">Oracle</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="constructor_R"></a><h2>R </h2>
 <a href="model.html#Replay">Replay</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#Resp">Resp</a> [in <a href="model.html">model</a>]<br/>
@@ -634,7 +635,7 @@
 <br/><br/><a name="definition_G"></a><h2>G </h2>
 <a href="model.html#get_replay_response">get_replay_response</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_commute_response">get_commute_response</a> [in <a href="model.html">model</a>]<br/>
-<a href="model.html#get_emulate_response">get_emulate_response</a> [in <a href="model.html">model</a>]<br/>
+<a href="model.html#get_oracle_response">get_oracle_response</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_state_history">get_state_history</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="definition_H"></a><h2>H </h2>
 <a href="model.html#history">history</a> [in <a href="model.html">model</a>]<br/>
@@ -683,7 +684,7 @@
 <td>L</td>
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#global_O">O</a></td>
 <td><a href="index.html#global_P">P</a></td>
 <td>Q</td>
 <td><a href="index.html#global_R">R</a></td>
@@ -737,7 +738,7 @@
 <td>B</td>
 <td><a href="index.html#lemma_C">C</a></td>
 <td><a href="index.html#lemma_D">D</a></td>
-<td><a href="index.html#lemma_E">E</a></td>
+<td>E</td>
 <td>F</td>
 <td><a href="index.html#lemma_G">G</a></td>
 <td><a href="index.html#lemma_H">H</a></td>
@@ -747,7 +748,7 @@
 <td>L</td>
 <td><a href="index.html#lemma_M">M</a></td>
 <td><a href="index.html#lemma_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#lemma_O">O</a></td>
 <td><a href="index.html#lemma_P">P</a></td>
 <td>Q</td>
 <td><a href="index.html#lemma_R">R</a></td>
@@ -769,7 +770,7 @@
 <td>B</td>
 <td><a href="index.html#constructor_C">C</a></td>
 <td>D</td>
-<td><a href="index.html#constructor_E">E</a></td>
+<td>E</td>
 <td>F</td>
 <td><a href="index.html#constructor_G">G</a></td>
 <td>H</td>
@@ -779,7 +780,7 @@
 <td>L</td>
 <td><a href="index.html#constructor_M">M</a></td>
 <td><a href="index.html#constructor_N">N</a></td>
-<td>O</td>
+<td><a href="index.html#constructor_O">O</a></td>
 <td>P</td>
 <td>Q</td>
 <td><a href="index.html#constructor_R">R</a></td>
