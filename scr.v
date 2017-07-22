@@ -87,7 +87,7 @@ Section Existance.
       n < rspec ->
       generated s h ->
       spec ((t,i,NoResp)::h) ->
-      spec ((t,i,Resp rspec) :: h) ->x
+      spec ((t,i,Resp rspec) :: h) ->
       rspec < max_response_number ->
       (forall rtyp' : nat, rtyp' < rspec -> ~ spec ((t, i, Resp rtyp') :: h)) ->
       get_oracle_response_helper (state_with_md s Oracle) t i (rspec - n) =
