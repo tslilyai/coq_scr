@@ -251,10 +251,7 @@ Section Histories.
         |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
       eapply IHgenerated.
       rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
-    - unfold get_oracle_response in *.
-      functional induction (get_oracle_response_helper
-                              (state_with_md s1 Oracle) t i 0);
-        inversion H; subst; auto.
+    - unfold get_oracle_response in *. inversion H; subst; simpl in *; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
           [|destruct l];
@@ -281,8 +278,6 @@ Section Histories.
         |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
       apply in_inv in H2. destruct H2; [inversion H2; subst|]; auto.
     - unfold get_oracle_response in *.
-      functional induction (get_oracle_response_helper
-                              (state_with_md s1 Oracle) t i 0);
         inversion H; subst; auto.
     - destruct (rev (X_copy s1));
         unfold get_replay_response, state_with_md in *; simpl in *;
@@ -525,15 +520,7 @@ Section Misc.
           eapply i0; eauto.
           eapply i1; eauto.
           rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
-      + unfold get_oracle_response in *.
-        functional induction (get_oracle_response_helper
-         {|
-         X_copy := X_copy s1;
-         Y_copy := Y_copy s1;
-         preH := preH s1;
-         commH := commH s1;
-         postH := postH s1;
-         md := Oracle |} t i 0); inversion H2; subst; simpl in *; auto.
+      + unfold get_oracle_response in *. inversion H2; subst; simpl in *; auto.
       + remember (rev (X_copy s1)) as rxcpys1.
         destruct (rxcpys1); unfold get_replay_response in *; simpl in *; inversion H2; subst; auto.
         rewrite <- Heqrxcpys1 in *.
@@ -612,7 +599,6 @@ Section State_Lemmas.
           destruct (rev (Y_copy s1 t));
             [discriminate | destruct (action_invocation_eq a t i); simpl in *; discriminate].
         + unfold get_oracle_response in H.
-          functional induction (get_oracle_response_helper (state_with_md s1 Oracle) t0 i0 0);
           inversion H; subst; simpl in *; auto.
         + unfold get_replay_response in H. remember (X_copy s1) as s1xcpy.
           destruct (s1xcpy).
@@ -644,11 +630,7 @@ Section State_Lemmas.
         inversion Hact; subst;
         unfold state_with_md in *; simpl in *; auto; discriminate.
       - unfold get_oracle_response in *.
-        functional induction (get_oracle_response_helper
-                                (state_with_md s Oracle) t i 0);
-          unfold state_with_md in *; simpl in *;
           inversion Hact; subst; simpl in *; try discriminate.
-        now apply IHp.
       - unfold get_replay_response in *; unfold next_mode in *; simpl in *; auto.
         remember (md s) as mds.
         destruct (mds); auto.
@@ -678,10 +660,7 @@ Section State_Lemmas.
            - unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
              destruct (rev (Y_copy s1 t)) in *; inversion H1; subst; discriminate.
            - unfold get_oracle_response in *.
-             functional induction (get_oracle_response_helper
-                                     (state_with_md s1 Oracle) t i 0);
                inversion H1; subst; try discriminate.
-             now eapply IHp.
          }
          assert (s1.(md) = Replay) as Hs1md.
          {
@@ -767,10 +746,7 @@ Section State_Lemmas.
           destruct (action_invocation_eq a t i); try discriminate.
           now right. now left. now right.
           unfold get_oracle_response in *.
-          functional induction (get_oracle_response_helper
-                                  (state_with_md s1 Oracle) t i 0);
             inversion H1; subst; simpl in *; try discriminate.
-          eapply IHp; eauto.
           now left. now right. now left.
         } destruct Hmds1 as [Hmds1 | Hmds1].
         + pose (during_replay_state _ _ H4 Hmds1); destruct_conjs; subst; simpl in *.
@@ -794,16 +770,7 @@ Section State_Lemmas.
               remember (action_invocation_eq x t i) as Hacteq.
               destruct Hacteq; auto. 
               unfold get_oracle_response, state_with_md in *; simpl in *.
-              functional induction (get_oracle_response_helper
-                                      {|
-                                        X_copy := HX ++ [x];
-                                        Y_copy := history_of_thread Y;
-                                        preH := [];
-                                        commH := fun _ : tid => [];
-                                        postH := [];
-                                        md := Oracle |} t i 0);
                 inversion H1; subst; try discriminate.
-              now eapply IHp.
             }
             rewrite Hacteq in *.
             destruct HX using rev_ind; [simpl in *|rewrite rev_unit in *];
@@ -828,17 +795,7 @@ Section State_Lemmas.
               destruct (rev (X_copy s1)); try discriminate. destruct (action_invocation_eq a t i);
                                                               discriminate.
               unfold get_oracle_response, state_with_md in *; simpl in *. clear H8.
-              functional induction (get_oracle_response_helper
-                                      {|
-                                        X_copy := X_copy s1;
-                                        Y_copy := Y_copy s1;
-                                        preH := preH s1;
-                                        commH := commH s1;
-                                        postH := postH s1;
-                                        md := Oracle |} t i 0);
                 inversion H1; subst; try discriminate.
-              now eapply IHp.
-
               remember (X_copy s1) as s1xcpy. destruct s1xcpy using rev_ind; simpl in *;
                                                 try discriminate.
               rewrite rev_unit in *. destruct s1xcpy using rev_ind; simpl in *.
@@ -855,15 +812,8 @@ Section State_Lemmas.
               destruct (Nat.eq_dec is1 i), (Nat.eq_dec t ts1); subst;
                 repeat try rewrite Nat.eqb_refl in *; try rewrite <- Nat.eqb_neq in *;
                   try rewrite n in *; try rewrite n0 in *; simpl in *; auto.
-              all: unfold get_oracle_response in *.
-              1,3: functional induction (get_oracle_response_helper
-                                        (state_with_md s1 Oracle) t (Inv i) 0);
-                inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
-                  try now eapply IHp.
-              functional induction (get_oracle_response_helper
-                                        (state_with_md s1 Oracle) ts1 (Inv i) 0);
-                inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
-                  try now eapply IHp.
+              all: unfold get_oracle_response in *;
+                inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate.
             }
             rewrite H in *.
             unfold get_replay_response, state_with_md in *; simpl in *.
@@ -885,11 +835,7 @@ Section State_Lemmas.
             [| destruct (action_invocation_eq x t i)].
           
           1,3: unfold get_oracle_response in *;
-            functional induction (get_oracle_response_helper
-                                    (state_with_md s1 Oracle) t i 0);
             inversion H1; subst; unfold state_with_md in *; simpl in *; try discriminate;
-              try now eapply IHp.
-
           clear IHs1ycpy.
           unfold get_commute_response, state_with_md in *; simpl in *.
           rewrite <- Heqs1ycpy, rev_unit in *.
@@ -928,8 +874,6 @@ Section State_Lemmas.
         unfold next_mode in *.
         remember (md s1) as mds1. destruct mds1; subst; try discriminate.
         unfold get_oracle_response in *.
-        functional induction (get_oracle_response_helper
-                                (state_with_md s1 Oracle) t i 0);
           inversion H3; subst; auto.
       }
       pose (IHh s1 H6 H1).
@@ -939,8 +883,6 @@ Section State_Lemmas.
         unfold machine_act in *.
         remember (next_mode s1 t i) as mds1. destruct mds1; subst; try discriminate.
         unfold get_oracle_response in *.
-        functional induction (get_oracle_response_helper
-                                (state_with_md s1 Oracle) t i 0);
           inversion H3; subst; auto.
       }
       remember (next_mode s1 t i) as s1nextmd.
@@ -962,8 +904,6 @@ Section State_Lemmas.
   Proof.
     intros.
     unfold get_oracle_response in *; simpl in *.
-    functional induction (get_oracle_response_helper (state_with_md s Oracle)
-                                                      t i 0);
       unfold state_with_md in *; simpl in *;
         inversion H1; subst; auto.
   Qed.
@@ -990,8 +930,6 @@ Section State_Lemmas.
         destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a t i)]; discriminate.
         destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)]; discriminate.
       - unfold get_oracle_response in *.
-        functional induction (get_oracle_response_helper (state_with_md s1 Oracle)
-                                                          t0 i0 0);
           unfold next_mode in H1; inversion H4; subst; simpl in *; auto.
     }
     

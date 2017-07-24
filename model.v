@@ -74,7 +74,7 @@ Section MachineState.
                                           /\ spec ((t,i,Resp rtyp) :: h)
                                           /\ forall rtyp', rtyp' < rtyp -> ~spec ((t,i,Resp rtyp')::h).
   Parameter oracle_response : history -> tid -> invocation -> response.
-  Parameter oracle_responese correct :
+  Parameter oracle_response_correct :
     forall h t i,
       exists rtyp, oracle_response h t i = Resp rtyp /\ (spec ((t,i,Resp rtyp) :: h)).
     
