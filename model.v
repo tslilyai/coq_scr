@@ -73,19 +73,13 @@ Section MachineState.
                                   exists rtyp, rtyp < max_response_number
                                           /\ spec ((t,i,Resp rtyp) :: h)
                                           /\ forall rtyp', rtyp' < rtyp -> ~spec ((t,i,Resp rtyp')::h).
-  Parameter spec_oracle : history -> bool.
-  Parameter spec_oracle_correct :
-    forall history, spec history <-> spec_oracle history = true.
-
+  Parameter oracle_response : history -> tid -> invocation -> response.
+  Parameter oracle_responese correct :
+    forall h t i,
+      exists rtyp, oracle_response h t i = Resp rtyp /\ (spec ((t,i,Resp rtyp) :: h)).
+    
   Parameter X : history.
   Parameter Y : history.
-  Function get_invocations (h : history) (acc : list (tid * invocation)) :=
-    match h with
-      | [] => acc
-      | (t,i,_) :: tl => get_invocations tl ((t,i) :: acc)
-    end.
-  Definition X_invocations := get_invocations X [].
-  Definition Y_invocations := get_invocations Y [].
   Parameter X_and_Y_in_spec : spec (Y ++ X).
   Parameter X_and_Y_wf : forall t i r, List.In (t,i,r) (Y++X) ->
                                        exists rtyp, r = Resp rtyp.
@@ -139,32 +133,11 @@ Section Machine.
   Definition state_with_md (s : state) (md : mode) :=
     mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) s.(postH) md.
 
-  Definition termination (n : nat) := max_response_number - n.
-  Function get_oracle_response_helper (s : state) (t: tid) (i : invocation) (rtyp : nat)
-           {measure termination rtyp} :
-    state * action :=
-    let response_action := (t, i, Resp rtyp) in
-    let state_history := get_state_history s in
-    let new_history := response_action :: state_history in
-    if spec_oracle (response_action :: state_history) then
-      (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) (response_action :: s.(postH)) Oracle,
-       (t, i, Resp rtyp))
-    else if Nat.ltb rtyp max_response_number
-         then get_oracle_response_helper s t i (S rtyp)
-         else (mkState s.(X_copy) s.(Y_copy) s.(preH) s.(commH) ((t,i,NoResp) :: s.(postH)) Oracle,
-               (t, i, NoResp)) (* should never reach this *).
-  Proof.
-    intros.
-    unfold termination.
-    rewrite Nat.sub_succ_r. unfold Nat.pred.
-    remember (max_response_number - rtyp0) as diff; destruct diff; try omega.
-    rewrite Nat.ltb_lt in *.
-    pose (Nat.sub_gt _ _ teq0).
-    rewrite Heqdiff in *; omega.
-  Defined.
+  Definition get_oracle_response (s : state) (t: tid) (i: invocation) : state * action :=
+    let resp := oracle_response (get_state_history s) t i in
+    (mkState (s.(X_copy)) (s.(Y_copy)) (s.(preH)) (s.(commH)) ((t,i,resp)::s.(postH)) Oracle,
+     (t,i,resp)).
 
-  Definition get_oracle_response (s : state) (t: tid) (i : invocation) : state * action :=
-    get_oracle_response_helper s t i 0.
   Definition get_commute_response (s : state) (t: tid) (i: invocation) : state * action :=
     match rev (s.(Y_copy) t) with
       | hd::tl => (mkState s.(X_copy)
@@ -175,6 +148,7 @@ Section Machine.
                                         s.(postH) Commute, hd)
       | _ => (s, (t,i,NoResp)) (* should never hit this *)
     end.
+    
   Definition get_replay_response (s : state) (t: tid) (i : invocation) : state * action :=
     match rev s.(X_copy) with
     | hd::tl => (mkState (rev tl) s.(Y_copy) (hd::s.(preH)) s.(commH) s.(postH) s.(md), hd)
