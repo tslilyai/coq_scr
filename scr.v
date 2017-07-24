@@ -17,49 +17,49 @@ Require Import helpers.
 Hint Resolve y_copy_state commH_state.
 
 Ltac unfold_action_inv_eq :=
-    match goal with
-      | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
-        assert (t = t' /\ i = i') as Heq; [
-            unfold action_invocation_eq in HeqHacteq; symmetry in HeqHacteq;
-            apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt];
-            now rewrite Nat.eqb_eq in Heqi, Heqt |
-            destruct Heq as [Heqi Heqt]; rewrite Heqt, Heqi in *; auto];
-        clear HeqHacteq 
-      | [ HeqHacteq : false = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
-        assert (t <> t' \/ i' <> i) as Hneq; [
-            unfold action_invocation_eq in HeqHacteq;
-            symmetry in HeqHacteq;
-            rewrite andb_false_iff in HeqHacteq; destruct HeqHacteq as [H|H];
-            rewrite Nat.eqb_neq in H; [now right | now left]
-          | destruct Hneq as [Hneqt | Hneqi]]
-      | _ => idtac
-    end.
+  match goal with
+  | [ HeqHacteq : true = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+    assert (t = t' /\ i = i') as Heq; [
+      unfold action_invocation_eq in HeqHacteq; symmetry in HeqHacteq;
+      apply andb_prop in HeqHacteq; destruct HeqHacteq as [Heqi Heqt];
+      now rewrite Nat.eqb_eq in Heqi, Heqt |
+      destruct Heq as [Heqi Heqt]; rewrite Heqt, Heqi in *; auto];
+    clear HeqHacteq 
+  | [ HeqHacteq : false = action_invocation_eq (?t', Inv ?i', ?r') ?t (Inv ?i) |- _ ] =>
+    assert (t <> t' \/ i' <> i) as Hneq; [
+      unfold action_invocation_eq in HeqHacteq;
+      symmetry in HeqHacteq;
+      rewrite andb_false_iff in HeqHacteq; destruct HeqHacteq as [H|H];
+      rewrite Nat.eqb_neq in H; [now right | now left]
+    | destruct Hneq as [Hneqt | Hneqi]]
+  | _ => idtac
+  end.
 
-  Ltac simpl_actions :=
-    (* get rid of weird associativity and rev stuff *)
-    repeat (match goal with
-      | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
-        rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
-      | [ H : context[rev (_ ++ [_]) ] |- _ ] => rewrite rev_unit in H
-      | [ H : context[rev []] |- _ ] => simpl in *
-      | _ => idtac
-    end);
-    (* pose "spec X" *)
-    match goal with
-      | [ _: spec X |- _ ] => idtac
-      | _ => let HspecX := fresh "HspecX" in
-             assert (spec X) as HspecX by
-                   now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec)
-    end;
-    (* factor out pair equalities *)
-    match goal with
-      | [ Hact' : (?s, ?a) = (?s', ?a') |- _ ] =>
-        inversion Hact'; clear Hact'; simpl; auto
-      | _ => idtac
-    end.
+Ltac simpl_actions :=
+  (* get rid of weird associativity and rev stuff *)
+  repeat (match goal with
+          | [ Hresp : (?h1 ++ ?x) ++ _ = X |- _ ] =>
+            rewrite <- app_assoc in Hresp; try rewrite app_nil_r in Hresp; auto
+          | [ H : context[rev (_ ++ [_]) ] |- _ ] => rewrite rev_unit in H
+          | [ H : context[rev []] |- _ ] => simpl in *
+          | _ => idtac
+          end);
+  (* pose "spec X" *)
+  match goal with
+  | [ _: spec X |- _ ] => idtac
+  | _ => let HspecX := fresh "HspecX" in
+        assert (spec X) as HspecX by
+              now eapply (spec_prefix_closed (Y++X) X Y X_and_Y_in_spec)
+  end;
+  (* factor out pair equalities *)
+  match goal with
+  | [ Hact' : (?s, ?a) = (?s', ?a') |- _ ] =>
+    inversion Hact'; clear Hact'; simpl; auto
+  | _ => idtac
+  end.
 
 Section Existance.
-      
+  
   Lemma machine_deterministic :
     forall s1 s2 s2' t i a a',
       machine_act s1 t i = (s2, a) ->
