@@ -62,7 +62,7 @@ Section Existance.
   
   Lemma get_oracle_response_exists :
     forall s h t i,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       exists rtyp s', get_oracle_response (state_with_md s Oracle) t i = (s', (t,i,Resp rtyp)).
   Proof.
@@ -73,7 +73,7 @@ Section Existance.
   
   Lemma machine_act_response_exists :
     forall s h t i,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
         machine_act s t i = (s', (t,i,Resp rtyp)).
@@ -84,14 +84,14 @@ Section Existance.
 
     Ltac solve_oracle_response :=
       match goal with
-      | [ Hgen : generated ?s ?h, Heqmds : ?md = md ?s |-
+      | [ Hgen : current_state_history ?s ?h, Heqmds : ?md = md ?s |-
           exists rtyp s', get_oracle_response ?s0 ?t ?i = _ ] =>
         eapply (get_oracle_response_exists s); eauto;
-        assert (generated (state_with_md s0 md) h) as HAH; [
+        assert (current_state_history (state_with_md s0 md) h) as HAH; [
           unfold state_with_md in *; simpl in *;
           destruct s; simpl in *; rewrite <- Heqmds in *; auto
         | apply HAH]
-      | [ Hgen : generated ?s ?h |- exists rtyp s', get_oracle_response _ _ _ = _] =>
+      | [ Hgen : current_state_history ?s ?h |- exists rtyp s', get_oracle_response _ _ _ = _] =>
         eapply (get_oracle_response_exists s); eauto;
         unfold state_with_md in *
       end.
@@ -241,12 +241,12 @@ Section Existance.
           solve_oracle_response.
   Qed.
   
-  Lemma generated_response_exists :
+  Lemma current_state_history_response_exists :
     forall s h t i,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       exists rtyp s',
-        generated s' ((t,i,Resp rtyp)::h).
+        current_state_history s' ((t,i,Resp rtyp)::h).
   Proof.
     intros s h t i Hgen Hspec.
     destruct (machine_act_response_exists _ _ _ _ Hgen Hspec) as [rtyp [s' Hact]].
@@ -255,7 +255,7 @@ Section Existance.
 
   Lemma response_always_exists :
     forall s h t i r,
-      generated s h ->
+      current_state_history s h ->
       List.In (t,i,r) h ->
       exists rtyp, r = Resp rtyp.
   Proof.
@@ -263,8 +263,8 @@ Section Existance.
     pose Hgen as Hgen'.
     induction Hgen'.
     inversion Hin.
-    assert (exists rtyp s', generated s' ((t0,i0,Resp rtyp)::h)) as Hgenexists. {
-      eapply generated_response_exists; eauto.
+    assert (exists rtyp s', current_state_history s' ((t0,i0,Resp rtyp)::h)) as Hgenexists. {
+      eapply current_state_history_response_exists; eauto.
     } destruct Hgenexists as [rtyp [s' Hgenexists]].
     inversion Hgenexists; subst.
 
@@ -275,7 +275,7 @@ Section Existance.
     subst.
     pose (IHHgen' Hgen').
 
-    all : subst; rewrite (generated_deterministic s0 s1 h) in H5; auto.
+    all : subst; rewrite (current_state_history_deterministic s0 s1 h) in H5; auto.
     all : pose (machine_deterministic s1 s' s2 t (Inv n) (t, Inv n, Resp rtyp) (t, Inv n, NoResp))
       as Heq; destruct Heq as [Hseq Haeq]; auto.
     all : inversion Haeq.
@@ -299,29 +299,17 @@ End Existance.
             rewrite <- Hresp; apply List.in_app_iff; right;
             apply List.in_app_iff; right; apply List.in_eq | ];
           apply M in Hin; destruct Hin as [rtyp Hin]; discriminate
-      | [ Hgen : generated ?s2 ((?t,?i,NoResp)::?h) |- _] =>
+      | [ Hgen : current_state_history ?s2 ((?t,?i,NoResp)::?h) |- _] =>
           pose (response_always_exists s2 ((t,i,NoResp)::h) t i NoResp Hgen) as Hexists;
             assert (List.In (t, i, NoResp) ((t, i, NoResp) :: h)) as Hin; [ apply in_eq |];
             destruct (Hexists Hin) as [rtyp Ha]; inversion Ha; auto
     end.
   
 Section Correctness.
-
-  Lemma oracle_mode_preservation :
-    forall s t i s' a',
-      s.(md) = Oracle ->
-      machine_act s t i = (s', a') ->
-      s'.(md) = Oracle.
-  Proof.
-    intros. unfold machine_act in *. unfold next_mode in *.
-    rewrite H in *.
-    unfold get_oracle_response in *.
-    inversion H0; auto.
-  Qed.
   
   Lemma get_oracle_response_correct :
     forall s h t i s' rtyp,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       next_mode s t i = Oracle ->
       get_oracle_response (state_with_md s Oracle) t i = (s',(t,i,Resp rtyp)) ->
@@ -336,7 +324,7 @@ Section Correctness.
       eapply spec_prefix_closed in Hspec; eauto.
       simpl; auto.
     }
-    assert (generated s' ((t, i, Resp e) :: h)) as Hnewgen.
+    assert (current_state_history s' ((t, i, Resp e) :: h)) as Hnewgen.
     {
       assert (machine_act s t i = (s', (t,i,Resp e))).
       unfold machine_act in *. rewrite Hnextmd.
@@ -347,13 +335,13 @@ Section Correctness.
     unfold get_oracle_response in *; inversion Hact; subst; auto.
     rewrite H in *.
     replace ((t, i, Resp e) :: h) with ([(t,i,Resp e)] ++ h).
-    eapply correct_state_correct_generated_history; simpl in *; eauto.
+    eapply correct_state_correct_current_state_history_history; simpl in *; eauto.
     simpl; auto.
   Qed.
   
   Lemma get_commute_response_correct :
     forall s h t i s' rtyp,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       next_mode s t i = Commute ->
       get_commute_response (state_with_md s Commute) t i = (s',(t,i,Resp rtyp)) ->
@@ -374,7 +362,7 @@ Section Correctness.
     {
       unfold machine_act. rewrite Hnextmd; auto.
     }
-    assert (generated s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
+    assert (current_state_history s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
     assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
     destruct Hsmd as [Hsmd | Hsmd];
       pose (during_commute_state s' ((t,i,Resp rtyp)::h) Hgens' Hmds') as Hstates';
@@ -388,7 +376,7 @@ Section Correctness.
 
   Lemma get_replay_response_correct :
     forall s h t i s' rtyp mde,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
       next_mode s t i = Replay ->
       get_replay_response (state_with_md s mde) t i = (s',(t,i,Resp rtyp)) ->
@@ -426,7 +414,7 @@ Section Correctness.
 
   Theorem machine_correct :
     forall s h,
-      generated s h ->
+      current_state_history s h ->
       spec h.
   Proof.
     intros s h Hgen. pose Hgen as Hgen'.
@@ -434,7 +422,7 @@ Section Correctness.
     apply spec_nonempty.
     pose H as Hact.
     unfold machine_act in Hact.
-    assert (generated s2 ((t,i,r)::h)). eapply GenCons; eauto.
+    assert (current_state_history s2 ((t,i,r)::h)). eapply GenCons; eauto.
     destruct (next_mode_dec s1 t i) as [[Hnextmd | Hnextmd] | Hnextmd];
       rewrite Hnextmd in Hact.
     - destruct r. eapply get_commute_response_correct; eauto.
@@ -453,7 +441,7 @@ Section Conflict_Freedom.
 
   Lemma machine_reads_conflict_free :
     forall s h t i r,
-      generated s (h ++ X) ->
+      current_state_history s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       forall s1 s2 s1' s2' a1 a2,
@@ -470,7 +458,7 @@ Section Conflict_Freedom.
     intros.
     assert (md s = Commute) as Hmds. 
     { destruct H1 as [h' HY].
-      eapply mode_generated_commute; eauto.
+      eapply mode_current_state_history_commute; eauto.
     } rewrite Hmds in *.
     pose (during_commute_state s (h++X) H Hmds).
     destruct_conjs.
@@ -481,7 +469,7 @@ Section Conflict_Freedom.
     } rewrite tmp in *; clear tmp.
     assert (Y_copy s t = history_of_thread (H1 ++ [(t, i, r)]) t).
     {
-      eapply (mode_generated_commute); eauto.
+      eapply (mode_current_state_history_commute); eauto.
     }
     rewrite H18 in *.
     destruct (history_of_thread_end H1 t i r) as [dummy tmp]; rewrite tmp in *; clear tmp.
@@ -495,11 +483,11 @@ Section Conflict_Freedom.
            
   Lemma machine_writes_conflict_free :
     forall s s' h t i r,
-      generated s (h ++ X) ->
+      current_state_history s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       machine_act s t i = (s', (t,i,r)) ->
-      conflict_free_step t s s'.
+      conflict_free_writes t s s'.
   Proof.
     Ltac discriminate_commH :=
       match goal with
@@ -533,11 +521,11 @@ Section Conflict_Freedom.
       end.
 
     intros s s' h t i r Hgen Hspec [h' Hreordered] Hact.
-    unfold conflict_free_step.
+    unfold conflict_free_writes.
 
     assert (md s = Commute) as Hmds. 
     { 
-      eapply mode_generated_commute; eauto.
+      eapply mode_current_state_history_commute; eauto.
     } rewrite Hmds in *.
     pose (during_commute_state s (h++X) Hgen Hmds).
     destruct_conjs.
@@ -548,7 +536,7 @@ Section Conflict_Freedom.
     } rewrite tmp in *; clear tmp.
     assert (Y_copy s t = history_of_thread (h' ++ [(t, i, r)]) t).
     {
-      eapply (mode_generated_commute); eauto.
+      eapply (mode_current_state_history_commute); eauto.
     }
     destruct (history_of_thread_end h' t i r) as [dummy tmp]; rewrite tmp in *; clear tmp.
     rewrite Hmds, H6, rev_unit in *.
@@ -566,15 +554,15 @@ End Conflict_Freedom.
 
 Theorem scalable_commutativity_rule :
   (forall s h t i r,
-      generated s h ->
+      current_state_history s h ->
       spec h /\
       (List.In (t,i,r) h -> exists rtyp, r = Resp rtyp)) /\
   (forall s s' h t i r,
-      generated s (h ++ X) ->
+      current_state_history s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       machine_act s t i = (s', (t,i,r)) ->
-      conflict_free_step t s s').
+      conflict_free_writes t s s').
 Proof.
   intros; split. split; [eapply machine_correct | eapply response_always_exists]; eauto.
   eapply machine_writes_conflict_free; eauto.

@@ -230,7 +230,7 @@ Section Histories.
   
   Lemma y_copy_state :
     forall s h,
-      generated s h ->
+      current_state_history s h ->
       IsHistories s.(Y_copy).
   Proof.
     intros. induction H; subst; unfold IsHistories; intros.
@@ -249,7 +249,7 @@ Section Histories.
       destruct (Nat.eq_dec t0 t); subst;
         [rewrite Nat.eqb_refl in *; rewrite rev_involutive in *
         |rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
-      eapply IHgenerated.
+      eapply IHcurrent_state_history.
       rewrite <- Heqs1ycpy. apply in_or_app; left; auto.
     - unfold get_oracle_response in *. inversion H; subst; simpl in *; auto.
     - destruct (rev (X_copy s1));
@@ -260,7 +260,7 @@ Section Histories.
   
   Lemma commH_state :
     forall s h,
-      generated s h ->
+      current_state_history s h ->
       IsHistories s.(commH).
   Proof.
     intros. induction H; subst; unfold IsHistories; intros.
@@ -292,7 +292,7 @@ Section Histories.
       reordered (combined_histories (Y_copy s) ++ combined_histories (commH s)) Y ->
       reordered (h1 ++ [(t,i,r)] ++ h2 ++ gencomm) Y ->
       reordered gencomm (combined_histories (commH s)) ->
-      generated s h ->
+      current_state_history s h ->
       Y_copy s t = (history_of_thread h1 t) ++ [(t,i,r)] ++ history_of_thread h2 t.
   Proof.
     unfold reordered.
@@ -336,6 +336,58 @@ Section Histories.
 
     rewrite app_nil_l in *. eapply IHh; eauto.
   Qed.
+
+  Lemma combine_tid_histories_nil :
+    combine_tid_histories (fun _ : tid => []) num_threads = nil.
+  Proof.
+    functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
+  Qed.
+
+  Lemma in_history_iff_in_thread_history :
+    forall h a, List.In a h <-> exists t, List.In a (history_of_thread h t).
+  Proof.
+    intros; split.
+    - destruct a as [[tt ti] tr].
+      exists tt.
+      destruct (in_split _ h H) as [l1 [l2 Hin]].
+      rewrite Hin.
+      rewrite history_of_thread_app_distributes; apply in_or_app.
+      right. simpl. rewrite Nat.eqb_refl. apply in_eq.
+    - intros. destruct H as [t Hin].
+      induction h. simpl in *; inversion Hin; subst; eauto.
+      simpl in *.
+      destruct a as [[t1 [i1]] r1]. destruct a0 as [[t2 [i2]] r2].
+      destruct (Nat.eq_dec t1 t2), (Nat.eq_dec i1 i2), r1, r2;
+        try destruct (Nat.eq_dec r r0); subst;
+        try (left; auto; fail); right; simpl in *;
+          try rewrite Nat.eq_refl in *;
+          destruct (t2 =? t);
+          try (apply in_inv in Hin; destruct Hin;
+               [inversion H; symmetry in H1; contradiction | auto]);
+          try apply (IHh Hin).
+  Qed.
+        
+  Lemma history_of_thread_all_nil :
+    forall h, (forall t, history_of_thread h t = []) -> h = [].
+  Proof.
+    intros.
+    destruct h. auto.
+    assert (List.In a (a::h)) as Hin by now apply in_eq.
+    apply (in_history_iff_in_thread_history (a :: h) a) in Hin. destruct Hin as [t Htin].
+    rewrite (H t) in *. inversion Htin.
+  Qed.
+
+  Lemma history_of_thread_reapp :
+    forall h t,
+      history_of_thread (history_of_thread h t) t = history_of_thread h t.
+  Proof.
+    induction h; intros.
+    simpl in *; auto.
+    remember (thread_of_action a =? t) as ta.
+    destruct (ta); simpl; rewrite <- Heqta; auto.
+    simpl; rewrite <- Heqta.
+    rewrite (IHh t); auto.
+  Qed.    
 
 End Histories.
 
@@ -427,62 +479,10 @@ Section Misc.
     exists x0; exists a; exists (l0 ++ [y] ++ [x]); simpl in *; auto.
     rewrite <- app_assoc, app_comm_cons in *; simpl in *; auto. 
   Qed.
-
-  Lemma combine_tid_histories_nil :
-    combine_tid_histories (fun _ : tid => []) num_threads = nil.
-  Proof.
-    functional induction (combine_tid_histories (fun _ : tid => []) num_threads); auto.
-  Qed.
-
-  Lemma in_history_iff_in_thread_history :
-    forall h a, List.In a h <-> exists t, List.In a (history_of_thread h t).
-  Proof.
-    intros; split.
-    - destruct a as [[tt ti] tr].
-      exists tt.
-      destruct (in_split _ h H) as [l1 [l2 Hin]].
-      rewrite Hin.
-      rewrite history_of_thread_app_distributes; apply in_or_app.
-      right. simpl. rewrite Nat.eqb_refl. apply in_eq.
-    - intros. destruct H as [t Hin].
-      induction h. simpl in *; inversion Hin; subst; eauto.
-      simpl in *.
-      destruct a as [[t1 [i1]] r1]. destruct a0 as [[t2 [i2]] r2].
-      destruct (Nat.eq_dec t1 t2), (Nat.eq_dec i1 i2), r1, r2;
-        try destruct (Nat.eq_dec r r0); subst;
-        try (left; auto; fail); right; simpl in *;
-          try rewrite Nat.eq_refl in *;
-          destruct (t2 =? t);
-          try (apply in_inv in Hin; destruct Hin;
-               [inversion H; symmetry in H1; contradiction | auto]);
-          try apply (IHh Hin).
-  Qed.
-        
-  Lemma history_of_thread_all_nil :
-    forall h, (forall t, history_of_thread h t = []) -> h = [].
-  Proof.
-    intros.
-    destruct h. auto.
-    assert (List.In a (a::h)) as Hin by now apply in_eq.
-    apply (in_history_iff_in_thread_history (a :: h) a) in Hin. destruct Hin as [t Htin].
-    rewrite (H t) in *. inversion Htin.
-  Qed.
-
-  Lemma history_of_thread_reapp :
-    forall h t,
-      history_of_thread (history_of_thread h t) t = history_of_thread h t.
-  Proof.
-    induction h; intros.
-    simpl in *; auto.
-    remember (thread_of_action a =? t) as ta.
-    destruct (ta); simpl; rewrite <- Heqta; auto.
-    simpl; rewrite <- Heqta.
-    rewrite (IHh t); auto.
-  Qed.    
     
   Lemma state_combined_histories_is_reordered_Y :
     forall h s,
-      generated s h ->
+      current_state_history s h ->
       reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y.
   Proof.
     induction h; intros; inversion H; subst.
@@ -575,7 +575,7 @@ Section State_Lemmas.
 
     Lemma next_mode_replay_implies_current_mode_replay :
       forall s t i h,
-        generated s h ->
+        current_state_history s h ->
         next_mode s t i = Replay ->
         s.(md) = Replay.
     Proof.
@@ -616,7 +616,7 @@ Section State_Lemmas.
       
     Lemma current_mode_replay_implies_last_mode_replay :
       forall s s' t i h a,
-        generated s h ->
+        current_state_history s h ->
         machine_act s t i = (s', a) ->
         s'.(md) = Replay ->
         s.(md) = Replay.
@@ -640,7 +640,7 @@ Section State_Lemmas.
       
     Lemma during_replay_state :
       forall s h,
-        generated s h ->
+        current_state_history s h ->
         s.(md) = Replay ->
         s.(preH) = h /\
         s.(postH) = [] /\
@@ -717,7 +717,7 @@ Section State_Lemmas.
     
     Lemma during_commute_state :
       forall s h,
-        generated s h ->
+        current_state_history s h ->
         s.(md) = Commute ->
         reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y /\
         (exists gencomm, h = gencomm ++ X /\ reordered gencomm (combined_histories s.(commH))) /\
@@ -862,7 +862,7 @@ Section State_Lemmas.
 
   Lemma not_oracle_postH_nil :
     forall h s,
-      generated s h ->
+      current_state_history s h ->
       s.(md) <> Oracle ->
       s.(postH) = [].
     Proof.
@@ -897,7 +897,7 @@ Section State_Lemmas.
     
   Lemma oracle_response_state :
     forall h s t i s' a,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp) :: h) ->
       get_oracle_response (state_with_md s Oracle) t i = (s', a) ->
       s.(commH) = s'.(commH) /\ s'.(postH) = a :: s.(postH) /\ s'.(preH) = s.(preH).
@@ -910,7 +910,7 @@ Section State_Lemmas.
 
   Lemma replay_response_state :
     forall h s t i,
-      generated s h ->
+      current_state_history s h ->
       spec ((t,i,NoResp) :: h) ->
       next_mode s t i = Replay ->
       s.(postH) = start_state.(postH)
@@ -946,9 +946,9 @@ Section State_Lemmas.
     rewrite <- Heqxcpyrev in *; inversion H4; subst; auto.
   Qed.
 
-  Lemma generated_history_corresponds_state_history :
+  Lemma current_state_history_corresponds_state_history :
     forall h s,
-      generated s h ->
+      current_state_history s h ->
       exists gencommH,
         reordered gencommH (combined_histories s.(commH)) /\
         s.(postH) ++ gencommH ++ s.(preH) = h.
@@ -1031,9 +1031,9 @@ Section State_Lemmas.
   Qed.           
 
   
-  Lemma mode_generated_replay :
+  Lemma mode_current_state_history_replay :
     forall h s h' t i r,
-      generated s h ->
+      current_state_history s h ->
       h' ++ (t,i,r) :: h = X ->
       s.(X_copy) = h' ++ [(t,i,r)] /\
       s.(md) = Replay.
@@ -1056,9 +1056,9 @@ Section State_Lemmas.
       split; [rewrite rev_involutive|]; auto.
   Qed.
 
-  Lemma mode_generated_commute :
+  Lemma mode_current_state_history_commute :
     forall Yend h s Yfront t i r,
-      generated s h ->
+      current_state_history s h ->
       h = Yend ++ X ->
       reordered (Yfront ++ (t,i,r) :: Yend) Y ->
       (forall t', s.(Y_copy) t' = history_of_thread (Yfront ++ [(t,i,r)]) t') /\
@@ -1068,7 +1068,7 @@ Section State_Lemmas.
     simpl in *; subst. remember X as HX. destruct HX; inversion H; subst.
     - unfold start_state, start_mode in *. rewrite <- HeqHX; auto.
       simpl in *; split; auto.
-    - pose (mode_generated_replay _ s1 [] t0 i0 r0 H6). rewrite app_nil_l in *.
+    - pose (mode_current_state_history_replay _ s1 [] t0 i0 r0 H6). rewrite app_nil_l in *.
       apply a in HeqHX. destruct_conjs.
       unfold machine_act in *.
       unfold next_mode in *.
@@ -1115,7 +1115,7 @@ Section State_Lemmas.
   Qed.
 
   Lemma preHs :
-    forall h s, generated s h ->
+    forall h s, current_state_history s h ->
            preH s = X \/
            (h = postH s ++ preH s /\ exists a x1 x2, preH s = x2 /\ X = a :: x1 ++ x2).
     Proof.
@@ -1208,9 +1208,9 @@ Section State_Lemmas.
                left. rewrite H16 in H15. auto.
     Qed.
 
-    Lemma correct_state_correct_generated_history :
+    Lemma correct_state_correct_current_state_history :
     forall s h x,
-      generated s h ->
+      current_state_history s h ->
       spec (x ++ get_state_history s) <-> spec (x ++ h).
   Proof.
     intros s h x Hgen. split; intros Hspec;
@@ -1221,7 +1221,7 @@ Section State_Lemmas.
             (combined_histories s.(Y_copy))
             Hh') as Hcomm;
     destruct (preHs h s Hgen);
-    destruct (generated_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
+    destruct (current_state_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
 
     - rewrite <- Hh.
       rewrite H. rewrite app_assoc in *.
@@ -1252,5 +1252,17 @@ Section State_Lemmas.
       simpl in *. auto.
   Qed.
   
+  Lemma oracle_mode_preservation :
+    forall s t i s' a',
+      s.(md) = Oracle ->
+      machine_act s t i = (s', a') ->
+      s'.(md) = Oracle.
+  Proof.
+    intros. unfold machine_act in *. unfold next_mode in *.
+    rewrite H in *.
+    unfold get_oracle_response in *.
+    inversion H0; auto.
+  Qed.
+
 End State_Lemmas.
 
