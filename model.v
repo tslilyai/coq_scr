@@ -188,14 +188,15 @@ Section Conflict.
    s1.(X_copy) = s2.(X_copy) /\
    s1.(preH) = s2.(preH) /\
    s1.(postH) = s2.(postH).
- Definition conflict_free_reads (s s1 s2 s1' s2': state) (a1 a2: action) t i :=
-   s1.(Y_copy) t = s.(Y_copy) t ->
-   s2.(Y_copy) t = s.(Y_copy) t ->
-   s1.(commH) t = s.(commH) t ->
-   s2.(commH) t = s.(commH) t ->
-   s1.(md) = s.(md) ->
-   s2.(md) = s.(md) ->
-   machine_act s1 t i = (s1', a1) ->
-   machine_act s2 t i = (s2', a2) ->
-   a1 = a2 /\ s1'.(md) = s.(md) /\ s2'.(md) = s.(md).
+ Definition conflict_free_reads t i s :=
+   forall (s1 s2 s1' s2': state) (a1 a2: action),
+     s1.(Y_copy) t = s.(Y_copy) t ->
+     s2.(Y_copy) t = s.(Y_copy) t ->
+     s1.(commH) t = s.(commH) t ->
+     s2.(commH) t = s.(commH) t ->
+     s1.(md) = s.(md) ->
+     s2.(md) = s.(md) ->
+     machine_act s1 t i = (s1', a1) ->
+     machine_act s2 t i = (s2', a2) ->
+     a1 = a2 /\ s1'.(md) = s.(md) /\ s2'.(md) = s.(md).
 End Conflict.

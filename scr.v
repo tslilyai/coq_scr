@@ -335,7 +335,7 @@ Section Correctness.
     unfold get_oracle_response in *; inversion Hact; subst; auto.
     rewrite H in *.
     replace ((t, i, Resp e) :: h) with ([(t,i,Resp e)] ++ h).
-    eapply correct_state_correct_current_state_history_history; simpl in *; eauto.
+    eapply correct_state_correct_current_state_history; simpl in *; eauto.
     simpl; auto.
   Qed.
   
@@ -444,18 +444,9 @@ Section Conflict_Freedom.
       current_state_history s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
-      forall s1 s2 s1' s2' a1 a2,
-        s1.(Y_copy) t = s.(Y_copy) t ->
-        s2.(Y_copy) t = s.(Y_copy) t ->
-        s1.(commH) t = s.(commH) t ->
-        s2.(commH) t = s.(commH) t ->
-        s1.(md) = s.(md) ->
-        s2.(md) = s.(md) ->
-        machine_act s1 t i = (s1', a1) ->
-        machine_act s2 t i = (s2', a2) ->
-        a1 = a2 /\ s1'.(md) = s.(md) /\ s2'.(md) = s.(md).
+      conflict_free_reads t i s.
   Proof.
-    intros.
+    intros. unfold conflict_free_reads; intros.
     assert (md s = Commute) as Hmds. 
     { destruct H1 as [h' HY].
       eapply mode_current_state_history_commute; eauto.
@@ -562,10 +553,11 @@ Theorem scalable_commutativity_rule :
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       machine_act s t i = (s', (t,i,r)) ->
-      conflict_free_writes t s s').
+      conflict_free_writes t s s'
+      /\ conflict_free_reads t i s).
 Proof.
   intros; split. split; [eapply machine_correct | eapply response_always_exists]; eauto.
-  eapply machine_writes_conflict_free; eauto.
+  intros; split; [eapply machine_writes_conflict_free | eapply machine_reads_conflict_free]; eauto.
 Qed.
 
 

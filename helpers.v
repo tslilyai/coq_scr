@@ -393,6 +393,28 @@ End Histories.
 
 Section Misc.
   Hint Resolve commH_state y_copy_state.
+
+  Lemma machine_deterministic :
+    forall s1 s2 s2' t i a a',
+      machine_act s1 t i = (s2, a) ->
+      machine_act s1 t i = (s2', a') ->
+      s2 = s2' /\ a = a'.
+  Proof.
+    intros. rewrite H in H0; inversion H0; auto.
+  Qed.
+
+  Lemma current_state_history_deterministic :
+    forall s s' h,
+      current_state_history s h ->
+      current_state_history s' h ->
+      s = s'.
+  Proof.
+    intros. revert s s' H H0.
+    induction h; intros; inversion H; inversion H0; auto; subst.
+    assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
+    inversion H7; subst.
+    eapply machine_deterministic; eauto.
+  Qed.
   
   Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
                                       + {next_mode s t i = Oracle}
