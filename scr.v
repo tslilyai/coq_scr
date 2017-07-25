@@ -60,28 +60,6 @@ Ltac simpl_actions :=
 
 Section Existance.
   
-  Lemma machine_deterministic :
-    forall s1 s2 s2' t i a a',
-      machine_act s1 t i = (s2, a) ->
-      machine_act s1 t i = (s2', a') ->
-      s2 = s2' /\ a = a'.
-  Proof.
-    intros. rewrite H in H0; inversion H0; auto.
-  Qed.
-
-  Lemma generated_deterministic :
-    forall s s' h,
-      generated s h ->
-      generated s' h ->
-      s = s'.
-  Proof.
-    intros. revert s s' H H0.
-    induction h; intros; inversion H; inversion H0; auto; subst.
-    assert (s0 = s1) by now eapply (IHh s0 s1); eauto. rewrite H1 in *.
-    inversion H7; subst.
-    eapply machine_deterministic; eauto.
-  Qed.
-
   Lemma get_oracle_response_exists :
     forall s h t i,
       generated s h ->
@@ -100,8 +78,8 @@ Section Existance.
       exists rtyp s',
         machine_act s t i = (s', (t,i,Resp rtyp)).
   Proof.
-    intros s h t i Hgen Hspec. revert dependent s. revert dependent t.
-    revert dependent i.
+    intros s h t i Hgen Hspec.
+    revert dependent s. revert dependent t. revert dependent i.
     induction h; intros; inversion Hgen; subst.
 
     Ltac solve_oracle_response :=
@@ -329,49 +307,49 @@ End Existance.
   
 Section Correctness.
 
-    Lemma oracle_mode_preservation :
-      forall s t i s' a',
-        s.(md) = Oracle ->
-        machine_act s t i = (s', a') ->
-        s'.(md) = Oracle.
-    Proof.
-      intros. unfold machine_act in *. unfold next_mode in *.
-      rewrite H in *.
-      unfold get_oracle_response in *.
-      inversion H0; auto.
-    Qed.
-    
-    Lemma get_oracle_response_correct :
-      forall s h t i s' rtyp,
-        generated s h ->
-        spec ((t,i,NoResp)::h) ->
-        next_mode s t i = Oracle ->
-        get_oracle_response (state_with_md s Oracle) t i = (s',(t,i,Resp rtyp)) ->
-        spec ((t,i,Resp rtyp)::h).
-    Proof.
-      intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
-      pose (oracle_response_correct (get_state_history (state_with_md s Oracle)) t i);
-        destruct_conjs.
-      assert (spec h).
-      {
-        replace ((t,i,NoResp) :: h) with ([(t,i,NoResp)] ++ h) in Hspec.
-        eapply spec_prefix_closed in Hspec; eauto.
-        simpl; auto.
-      }
-      assert (generated s' ((t, i, Resp e) :: h)) as Hnewgen.
-      {
-        assert (machine_act s t i = (s', (t,i,Resp e))).
-        unfold machine_act in *. rewrite Hnextmd.
-        unfold get_oracle_response in *. rewrite H in *.
-        inversion Hact; subst; auto.
-        eapply GenCons; eauto.
-      }
-      unfold get_oracle_response in *; inversion Hact; subst; auto.
-      rewrite H in *.
-      replace ((t, i, Resp e) :: h) with ([(t,i,Resp e)] ++ h).
-      eapply correct_state_correct_generated_history; simpl in *; eauto.
+  Lemma oracle_mode_preservation :
+    forall s t i s' a',
+      s.(md) = Oracle ->
+      machine_act s t i = (s', a') ->
+      s'.(md) = Oracle.
+  Proof.
+    intros. unfold machine_act in *. unfold next_mode in *.
+    rewrite H in *.
+    unfold get_oracle_response in *.
+    inversion H0; auto.
+  Qed.
+  
+  Lemma get_oracle_response_correct :
+    forall s h t i s' rtyp,
+      generated s h ->
+      spec ((t,i,NoResp)::h) ->
+      next_mode s t i = Oracle ->
+      get_oracle_response (state_with_md s Oracle) t i = (s',(t,i,Resp rtyp)) ->
+      spec ((t,i,Resp rtyp)::h).
+  Proof.
+    intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
+    pose (oracle_response_correct (get_state_history (state_with_md s Oracle)) t i);
+      destruct_conjs.
+    assert (spec h).
+    {
+      replace ((t,i,NoResp) :: h) with ([(t,i,NoResp)] ++ h) in Hspec.
+      eapply spec_prefix_closed in Hspec; eauto.
       simpl; auto.
-    Qed.
+    }
+    assert (generated s' ((t, i, Resp e) :: h)) as Hnewgen.
+    {
+      assert (machine_act s t i = (s', (t,i,Resp e))).
+      unfold machine_act in *. rewrite Hnextmd.
+      unfold get_oracle_response in *. rewrite H in *.
+      inversion Hact; subst; auto.
+      eapply GenCons; eauto.
+    }
+    unfold get_oracle_response in *; inversion Hact; subst; auto.
+    rewrite H in *.
+    replace ((t, i, Resp e) :: h) with ([(t,i,Resp e)] ++ h).
+    eapply correct_state_correct_generated_history; simpl in *; eauto.
+    simpl; auto.
+  Qed.
   
   Lemma get_commute_response_correct :
     forall s h t i s' rtyp,
@@ -446,11 +424,7 @@ Section Correctness.
     rewrite H1 in HX'. apply HX'.
   Qed.
 
-End Correctness.
-
-Section SCR.
-
-  Lemma machine_correct :
+  Theorem machine_correct :
     forall s h,
       generated s h ->
       spec h.
@@ -472,6 +446,10 @@ Section SCR.
       destruct l; destruct r; try discriminate_noresp.
       all: eapply get_replay_response_correct; eauto.
   Qed.    
+
+End Correctness.
+
+Section Conflict_Freedom.
 
   Lemma machine_reads_conflict_free :
     forall s h t i r,
@@ -515,9 +493,7 @@ Section SCR.
     inversion H8; inversion H9; subst; simpl in *. auto.
   Qed.
            
-  (* if we have a SIM-comm region of history, then the machine produces a
-   * conflict-free trace for the SIM-comm part of the history *)
-  Lemma machine_conflict_free :
+  Lemma machine_writes_conflict_free :
     forall s s' h t i r,
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
@@ -586,22 +562,23 @@ Section SCR.
     solve_tid_ensembles.
   Qed.
 
-  Theorem scalable_commutativity_rule :
-    (forall s h t i r,
-       generated s h ->
-       spec h /\
-       (List.In (t,i,r) h -> exists rtyp, r = Resp rtyp)) /\
-    (forall s s' h t i r,
+End Conflict_Freedom.
+
+Theorem scalable_commutativity_rule :
+  (forall s h t i r,
+      generated s h ->
+      spec h /\
+      (List.In (t,i,r) h -> exists rtyp, r = Resp rtyp)) /\
+  (forall s s' h t i r,
       generated s (h ++ X) ->
       spec ((t,i,NoResp) :: h ++ X) ->
       (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
       machine_act s t i = (s', (t,i,r)) ->
       conflict_free_step t s s').
-  Proof.
-    intros; split. split; [eapply machine_correct | eapply response_always_exists]; eauto.
-    eapply machine_conflict_free; eauto.
-  Qed.
-  
-End SCR.
+Proof.
+  intros; split. split; [eapply machine_correct | eapply response_always_exists]; eauto.
+  eapply machine_writes_conflict_free; eauto.
+Qed.
+
 
 
