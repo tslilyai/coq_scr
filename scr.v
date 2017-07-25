@@ -472,7 +472,49 @@ Section SCR.
       destruct l; destruct r; try discriminate_noresp.
       all: eapply get_replay_response_correct; eauto.
   Qed.    
-    
+
+  Lemma machine_reads_conflict_free :
+    forall s h t i r,
+      generated s (h ++ X) ->
+      spec ((t,i,NoResp) :: h ++ X) ->
+      (exists h', reordered (h' ++ (t,i,r) :: h) Y) ->
+      forall s1 s2 s1' s2' a1 a2,
+        s1.(Y_copy) t = s.(Y_copy) t ->
+        s2.(Y_copy) t = s.(Y_copy) t ->
+        s1.(commH) t = s.(commH) t ->
+        s2.(commH) t = s.(commH) t ->
+        s1.(md) = s.(md) ->
+        s2.(md) = s.(md) ->
+        machine_act s1 t i = (s1', a1) ->
+        machine_act s2 t i = (s2', a2) ->
+        a1 = a2 /\ s1'.(md) = s.(md) /\ s2'.(md) = s.(md).
+  Proof.
+    intros.
+    assert (md s = Commute) as Hmds. 
+    { destruct H1 as [h' HY].
+      eapply mode_generated_commute; eauto.
+    } rewrite Hmds in *.
+    pose (during_commute_state s (h++X) H Hmds).
+    destruct_conjs.
+    unfold machine_act in *. unfold next_mode in *.
+    assert (h = H11) as tmp.
+    {
+      apply app_inv_tail in H15; auto.
+    } rewrite tmp in *; clear tmp.
+    assert (Y_copy s t = history_of_thread (H1 ++ [(t, i, r)]) t).
+    {
+      eapply (mode_generated_commute); eauto.
+    }
+    rewrite H18 in *.
+    destruct (history_of_thread_end H1 t i r) as [dummy tmp]; rewrite tmp in *; clear tmp.
+    rewrite H6, H7, H2, H3, rev_unit in *.
+    unfold action_invocation_eq in *; destruct i; repeat rewrite Nat.eqb_refl in *; simpl in *.
+    unfold get_commute_response in *.
+    unfold state_with_md in *; simpl in *.
+    rewrite H2, H3, rev_unit in *.
+    inversion H8; inversion H9; subst; simpl in *. auto.
+  Qed.
+           
   (* if we have a SIM-comm region of history, then the machine produces a
    * conflict-free trace for the SIM-comm part of the history *)
   Lemma machine_conflict_free :
@@ -513,213 +555,35 @@ Section SCR.
         | inversion Hinc as [Hinc']; rewrite Hinc' in *; intuition
         | now apply Extensionality_Ensembles in HSS]
       end.
-    
+
     intros s s' h t i r Hgen Hspec [h' Hreordered] Hact.
     unfold conflict_free_step.
-    inversion Hgen; subst; unfold step_writes, write_tid_set in *; simpl in *.
 
-    (* we've generated [] so far *)
-    - unfold start_state, start_mode in *; destruct X; simpl in *;
-         unfold machine_act in Hact;
-         unfold next_mode in *; subst; simpl in *.
-      (* X = [] *)
-      + rewrite app_nil_r in *; subst.
-        assert (List.In (t,i,r) Y) as HinY.
-        {
-          apply (reordered_in _ _ (t,i,r) Hreordered).
-          apply in_or_app.
-          right; apply in_eq.
-        }
-        assert (history_of_thread Y t <> []) as Hist.
-        {
-          eapply history_of_thread_not_nil; eauto.
-        }
-        remember (history_of_thread Y t) as Yhist.
-        destruct Yhist using rev_ind.
-        intuition; discriminate.
-        rewrite rev_unit in *.
-        clear IHYhist.
-        assert (action_invocation_eq x t i = true) as Heq.
-        {
-          assert (rev (Yhist ++ [x]) = rev ((history_of_thread h' t) ++ [(t,i,r)])).
-          {
-            rewrite HeqYhist; simpl in *; auto.
-            repeat rewrite rev_unit in *. destruct x as [[t' [i']] r'].
-            unfold reordered in Hreordered.
-            pose (Hreordered t).
-            rewrite history_of_thread_app_distributes in e; simpl in *.
-            rewrite Nat.eqb_refl in *. rewrite <- e.
-            rewrite rev_unit; auto.
-          }
-          repeat rewrite rev_unit in H; inversion H; subst; auto.
-          unfold action_invocation_eq; destruct i; simpl in *; repeat rewrite <- beq_nat_refl; auto.
-        }
-        rewrite Heq in *.
-        unfold get_commute_response in *; unfold state_with_md in *; simpl in *.
-        rewrite <- HeqYhist in *; try rewrite rev_unit in *.
-        inversion Hact; subst; simpl in *; repeat (split; auto).
-        solve_tid_ensembles; discriminate.
-
-      (* X = a :: h *)
-      + pose (app_cons_not_nil h h0 a). contradiction.
-
-    (* we've generated some history a::h so far *)
-    - remember X as HX. destruct h; destruct HX; try rewrite <- HeqHX in *; simpl in *;
-                          unfold step_writes.
-      (* h, X = [] *)
-      + symmetry in H. pose (nil_cons H); discriminate.
-      (* h = [], X = a :: hx *)
-      + inversion H; subst.
-
-        (* figure out the state of s *)
-        assert (md s1 = Replay) as Hs1md by
-              now eapply (mode_generated_replay _ s1 [] t0 i0 r0); eauto.
-        destruct (during_replay_state s1 _ H3 Hs1md) as
-            [Hpres1 [Hposets1 [Hcomms1 [Hycpys1 [Xend [Hh' Hxcpys1]]]]]].
-        assert (Xend = [(t0, i0, r0)]) as HeqXend.
-        {
-          rewrite <- Hh' in HeqHX.
-          assert ((t0,i0,r0) :: HX = [(t0,i0,r0)] ++ HX) as tmp by now simpl in *.
-          repeat rewrite tmp in *. rewrite <- H in *.
-          apply app_inv_tail in HeqHX; auto.
-        }
-        subst. unfold machine_act in H0.
-        unfold next_mode in H0; rewrite Hs1md in *. rewrite HeqXend in *.
-        simpl in *. destruct i0; simpl in *.
-        repeat rewrite Nat.eqb_refl in *; simpl in *.
-        unfold get_replay_response in *.
-        assert (X_copy (state_with_md s1 Commute) = X_copy s1) as Htmp
-            by now eapply state_with_md_comp_eq.
-        rewrite Htmp, HeqXend in *; simpl in *.
-        inversion H0; subst; simpl in *.
-        
-        (* now figure out the state of s' *)        
-        unfold machine_act in *; unfold next_mode in *; simpl in *.
-        rewrite Hycpys1 in *.
-        unfold reordered in *.
-        pose (Hreordered t) as HYhist; rewrite history_of_thread_app_distributes in *;
-          simpl in *; rewrite Nat.eqb_refl in *; simpl in *.
-        rewrite <- HYhist in *. rewrite rev_unit in *.
-        destruct i; simpl in *. repeat rewrite Nat.eqb_refl in *; simpl in *.
-        unfold get_commute_response in *; simpl in *.
-        rewrite <- HYhist in *; rewrite rev_unit in *; simpl in *.
-        inversion Hact; subst; simpl in *.
-        repeat (split; auto); solve_tid_ensembles.
-
-      (* X = [], h = a :: h *)
-      + rewrite app_nil_r in *; rewrite <- H in *.
-        (* figure out the state of s *)
-        assert (md s1 = Commute) as Hs1md.
-        {
-          eapply (mode_generated_commute _ _ s1 _ t0 i0 r0); eauto.
-          rewrite <- HeqHX; rewrite app_nil_r; auto.
-          assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h0 = (h'++ (t,i,r)::(t0,i0,r0)::h0)) as bleh.
-          rewrite <- app_assoc. simpl in *; auto.
-          rewrite bleh in *. auto.
-        }
-        destruct (during_commute_state s1 _ H3 Hs1md) as 
-            [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
-        destruct hist as [gencomm [Hgencomm Hgcorder]].
-        rewrite <- HeqHX in *; rewrite app_nil_r in *; rewrite Hgencomm in *.
-        unfold machine_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
-
-        pose (state_ycpy_nonempty s1 gencomm (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
-          as tmp; rewrite <- app_assoc in *; simpl in *.
-        pose (tmp Hreordered Hgcorder H3) as Hs1ycpyt0. 
-
-        pose (state_ycpy_nonempty s1 gencomm h' [(t0, i0, r0)] t i r gencomm Hys1)
-          as tmp'; simpl in *.
-        pose (tmp' Hreordered Hgcorder H3) as Hs1ycpyt. 
-
-        rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
-          simpl in *; destruct i0; simpl in *.
-        repeat rewrite Nat.eqb_refl in *; simpl in *.
-        unfold get_commute_response in *; simpl in *.
-        rewrite Hs1ycpyt0 in *; rewrite rev_unit in *; inversion H0; subst; simpl in *.
-        unfold machine_act in *; unfold next_mode in *; simpl in *.
-        destruct (Nat.eq_dec t t0); subst; rewrite rev_involutive in *.
-
-        (* t = t0 *)
-        * rewrite history_of_thread_app_distributes in Hact; simpl in *;
-            rewrite Nat.eqb_refl in *; rewrite rev_unit in *; simpl in *; destruct i; simpl in *;
-              repeat rewrite Nat.eqb_refl in *; simpl in *.
-          unfold get_commute_response, state_with_md in *; simpl in *.
-          rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
-          repeat (split; auto).
-          solve_tid_ensembles.
-
-        (* t <> t0 *)
-        * rewrite <- Nat.eqb_neq in *; rewrite n0 in *.
-          rewrite Hs1ycpyt in *.
-          rewrite Nat.eqb_sym in n0; rewrite n0 in *.
-          rewrite rev_unit in *.
-          unfold state_with_md in *; simpl in *.
-
-          destruct i; simpl in *.
-          repeat rewrite Nat.eqb_refl in *; simpl in *.
-          inversion Hact; subst.
-          unfold get_commute_response, state_with_md in *; simpl in *.
-          rewrite Hs1ycpyt in *; rewrite Nat.eqb_sym in n0; rewrite n0, rev_unit in *.
-          inversion H4; subst; simpl in *.
-          repeat (split; auto).
-          solve_tid_ensembles.
-    
-      (* X = a :: HX and h = b :: h' *)
-      + inversion H; subst; clear H.
-        (* figure out the state of s *)
-        assert (md s1 = Commute) as Hs1md.
-        {
-          eapply (mode_generated_commute _ _ s1 _ t0 i0 r0); eauto.
-          rewrite <- HeqHX; auto.
-          assert ((h' ++ [(t,i,r)]) ++ (t0,i0,r0) :: h  = (h'++ (t,i,r)::(t0,i0,r0)::h)) as bleh.
-          rewrite <- app_assoc. simpl in *; auto.
-          rewrite bleh in *. auto.
-        }
-        destruct (during_commute_state s1 _ H3 Hs1md) as [Hys1 [hist [Hpres1 [Hposts1 Hxcpys1]]]].
-        destruct hist as [gencomm [Hgencomm Hgcorder]].
-        rewrite <- HeqHX in *; rewrite Hgencomm in *.
-        unfold machine_act in H0. unfold next_mode in H0. rewrite Hs1md in *.
-        apply app_inv_tail in Hgencomm; subst.
-        pose (state_ycpy_nonempty s1 (gencomm++a0::HX) (h' ++ [(t,i,r)]) [] t0 i0 r0 gencomm Hys1)
-          as tmp; rewrite <- app_assoc in *; simpl in *.
-        pose (tmp Hreordered Hgcorder H3) as Hs1ycpyt0. 
-
-        pose (state_ycpy_nonempty s1 (gencomm++a0::HX) h' [(t0, i0, r0)] t i r gencomm Hys1)
-          as tmp'; simpl in *.
-        pose (tmp' Hreordered Hgcorder H3) as Hs1ycpyt. 
-
-        rewrite Hs1ycpyt0 in H0; rewrite rev_unit in *; 
-          simpl in *; destruct i0; simpl in *.
-        repeat rewrite Nat.eqb_refl in *; simpl in *.
-        unfold get_commute_response in *; simpl in *.
-        rewrite Hs1ycpyt0 in *; rewrite rev_unit in *; inversion H0; subst; simpl in *.
-        unfold machine_act in *; unfold next_mode in *; simpl in *.
-        destruct (Nat.eq_dec t t0); subst; rewrite rev_involutive in *.
-
-        (* t = t0 *)
-        * rewrite history_of_thread_app_distributes in Hact; simpl in *;
-            rewrite Nat.eqb_refl in *; rewrite rev_unit in *; simpl in *; destruct i; simpl in *;
-              repeat rewrite Nat.eqb_refl in *; simpl in *.
-          unfold get_commute_response, state_with_md in *; simpl in *.
-          rewrite Nat.eqb_refl in *; rewrite rev_unit in *. inversion Hact; subst; simpl in *.
-          repeat (split; auto).
-          solve_tid_ensembles.
-
-        (* t <> t0 *)
-        * rewrite <- Nat.eqb_neq in *; rewrite n0 in *.
-          rewrite Hs1ycpyt in *.
-          rewrite Nat.eqb_sym in n0; rewrite n0 in *.
-          rewrite rev_unit in *.
-          unfold state_with_md in *; simpl in *.
-
-          destruct i; simpl in *.
-          repeat rewrite Nat.eqb_refl in *; simpl in *.
-          inversion Hact; subst.
-          unfold get_commute_response, state_with_md in *; simpl in *.
-          rewrite Hs1ycpyt in *; rewrite Nat.eqb_sym in n0; rewrite n0, rev_unit in *.
-          inversion H2; subst; simpl in *.
-          repeat (split; auto).
-          solve_tid_ensembles.
+    assert (md s = Commute) as Hmds. 
+    { 
+      eapply mode_generated_commute; eauto.
+    } rewrite Hmds in *.
+    pose (during_commute_state s (h++X) Hgen Hmds).
+    destruct_conjs.
+    unfold machine_act in *. unfold next_mode in *.
+    assert (h = H0) as tmp.
+    {
+      apply app_inv_tail in H4; auto.
+    } rewrite tmp in *; clear tmp.
+    assert (Y_copy s t = history_of_thread (h' ++ [(t, i, r)]) t).
+    {
+      eapply (mode_generated_commute); eauto.
+    }
+    destruct (history_of_thread_end h' t i r) as [dummy tmp]; rewrite tmp in *; clear tmp.
+    rewrite Hmds, H6, rev_unit in *.
+    unfold action_invocation_eq in *; destruct i; repeat rewrite Nat.eqb_refl in *; simpl in *.
+    unfold get_commute_response in *.
+    unfold state_with_md in *; simpl in *.
+    rewrite H6, rev_unit in *.
+    inversion Hact; simpl in *.
+    unfold step_writes, write_tid_set in *; simpl in *.
+    repeat (split; auto).
+    solve_tid_ensembles.
   Qed.
 
   Theorem scalable_commutativity_rule :
