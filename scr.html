@@ -30,20 +30,6 @@
 <span class="id" title="keyword">Section</span> <span class="id" title="var">Existance</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">machine_deterministic</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s1</span> <span class="id" title="var">s2</span> <span class="id" title="var">s2'</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">a</span> <span class="id" title="var">a'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">machine_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2</span>, <span class="id" title="var">a</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">machine_act</span> <span class="id" title="var">s1</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s2'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s2</span> = <span class="id" title="var">s2'</span> /\ <span class="id" title="var">a</span> = <span class="id" title="var">a'</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">generated_deterministic</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span> = <span class="id" title="var">s'</span>.<br/>
-
-<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_oracle_response_exists</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
@@ -82,20 +68,20 @@
 <span class="id" title="keyword">Section</span> <span class="id" title="var">Correctness</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">oracle_mode_preservation</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">a'</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Oracle</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">machine_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Oracle</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">oracle_mode_preservation</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">a'</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Oracle</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">machine_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, <span class="id" title="var">a'</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">s'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">Oracle</span>.<br/>
 
 <br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_oracle_response_correct</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">rtyp</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Oracle</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">get_oracle_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Oracle</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>,(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_oracle_response_correct</span> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">s'</span> <span class="id" title="var">rtyp</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>)::<span class="id" title="var">h</span>) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">next_mode</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = <span class="id" title="var">Oracle</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">get_oracle_response</span> (<span class="id" title="var">state_with_md</span> <span class="id" title="var">s</span> <span class="id" title="var">Oracle</span>) <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>,(<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">get_commute_response_correct</span> :<br/>
@@ -116,16 +102,16 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)::<span class="id" title="var">h</span>).<br/>
 
 <br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">Correctness</span>.<br/>
-
-<br/>
-<span class="id" title="keyword">Section</span> <span class="id" title="var">SCR</span>.<br/>
-
-<br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">machine_correct</span> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <span class="id" title="var">machine_correct</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Correctness</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <span class="id" title="var">Conflict_Freedom</span>.<br/>
 
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">machine_reads_conflict_free</span> :<br/>
@@ -145,7 +131,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">a1</span> = <span class="id" title="var">a2</span> /\ <span class="id" title="var">s1'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">md</span>) /\ <span class="id" title="var">s2'</span>.(<span class="id" title="var">md</span>) = <span class="id" title="var">s</span>.(<span class="id" title="var">md</span>).<br/>
   
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">machine_conflict_free</span> :<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <span class="id" title="var">machine_writes_conflict_free</span> :<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
@@ -154,20 +140,20 @@
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>.<br/>
   
 <br/>
-&nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <span class="id" title="var">scalable_commutativity_rule</span> :<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span> /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt; <span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">r</span> = <span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+<span class="id" title="keyword">End</span> <span class="id" title="var">Conflict_Freedom</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <span class="id" title="var">scalable_commutativity_rule</span> :<br/>
+&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> <span class="id" title="var">h</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> <span class="id" title="var">h</span> /\<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="var">List.In</span> (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) <span class="id" title="var">h</span> -&gt; <span class="id" title="tactic">exists</span> <span class="id" title="var">rtyp</span>, <span class="id" title="var">r</span> = <span class="id" title="var">Resp</span> <span class="id" title="var">rtyp</span>)) /\<br/>
+&nbsp;&nbsp;(<span class="id" title="keyword">forall</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span> <span class="id" title="var">h</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> <span class="id" title="var">r</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">generated</span> <span class="id" title="var">s</span> (<span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">spec</span> ((<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">NoResp</span>) :: <span class="id" title="var">h</span> ++ <span class="id" title="var">X</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">exists</span> <span class="id" title="var">h'</span>, <span class="id" title="var">reordered</span> (<span class="id" title="var">h'</span> ++ (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>) :: <span class="id" title="var">h</span>) <span class="id" title="var">Y</span>) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">machine_act</span> <span class="id" title="var">s</span> <span class="id" title="var">t</span> <span class="id" title="var">i</span> = (<span class="id" title="var">s'</span>, (<span class="id" title="var">t</span>,<span class="id" title="var">i</span>,<span class="id" title="var">r</span>)) -&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">conflict_free_step</span> <span class="id" title="var">t</span> <span class="id" title="var">s</span> <span class="id" title="var">s'</span>).<br/>
-
-<br/>
-<span class="id" title="keyword">End</span> <span class="id" title="var">SCR</span>.<br/>
 
 <br/>
 </div>
