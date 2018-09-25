@@ -34,14 +34,14 @@
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
 <td><a href="index.html#global_O">O</a></td>
-<td><a href="index.html#global_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td><a href="index.html#global_R">R</a></td>
 <td><a href="index.html#global_S">S</a></td>
 <td><a href="index.html#global_T">T</a></td>
 <td>U</td>
 <td>V</td>
-<td><a href="index.html#global_W">W</a></td>
+<td>W</td>
 <td><a href="index.html#global_X">X</a></td>
 <td><a href="index.html#global_Y">Y</a></td>
 <td>Z</td>
@@ -98,7 +98,7 @@
 <td><a href="index.html#lemma_M">M</a></td>
 <td><a href="index.html#lemma_N">N</a></td>
 <td><a href="index.html#lemma_O">O</a></td>
-<td><a href="index.html#lemma_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td><a href="index.html#lemma_R">R</a></td>
 <td><a href="index.html#lemma_S">S</a></td>
@@ -106,7 +106,7 @@
 <td>U</td>
 <td>V</td>
 <td>W</td>
-<td>X</td>
+<td><a href="index.html#lemma_X">X</a></td>
 <td><a href="index.html#lemma_Y">Y</a></td>
 <td>Z</td>
 <td>_</td>
@@ -213,7 +213,7 @@
 <td>Projection Index</td>
 <td>A</td>
 <td>B</td>
-<td><a href="index.html#projection_C">C</a></td>
+<td>C</td>
 <td>D</td>
 <td>E</td>
 <td>F</td>
@@ -225,8 +225,8 @@
 <td>L</td>
 <td><a href="index.html#projection_M">M</a></td>
 <td>N</td>
-<td>O</td>
-<td><a href="index.html#projection_P">P</a></td>
+<td><a href="index.html#projection_O">O</a></td>
+<td>P</td>
 <td>Q</td>
 <td>R</td>
 <td>S</td>
@@ -278,7 +278,7 @@
 <td><a href="index.html#definition_A">A</a></td>
 <td>B</td>
 <td><a href="index.html#definition_C">C</a></td>
-<td>D</td>
+<td><a href="index.html#definition_D">D</a></td>
 <td>E</td>
 <td>F</td>
 <td><a href="index.html#definition_G">G</a></td>
@@ -297,7 +297,7 @@
 <td><a href="index.html#definition_T">T</a></td>
 <td>U</td>
 <td>V</td>
-<td><a href="index.html#definition_W">W</a></td>
+<td>W</td>
 <td>X</td>
 <td>Y</td>
 <td>Z</td>
@@ -348,11 +348,9 @@
 <a href="helpers.html#combine_tid_histories_nil">combine_tid_histories_nil</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#combine_tid_histories_parts">combine_tid_histories_parts</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#combine_lt">combine_lt</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
-<a href="model.html#commH">commH</a> [projection, in <a href="model.html">model</a>]<br/>
-<a href="helpers.html#commH_state">commH_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
-<a href="model.html#Commute">Commute</a> [constructor, in <a href="model.html">model</a>]<br/>
 <a href="helpers.html#commute_mode_state">commute_mode_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#Conflict">Conflict</a> [section, in <a href="model.html">model</a>]<br/>
+<a href="model.html#ConflictFree">ConflictFree</a> [constructor, in <a href="model.html">model</a>]<br/>
 <a href="model.html#conflict_free_reads">conflict_free_reads</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#conflict_free_writes">conflict_free_writes</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="helpers.html#correct_state_correct_current_state_history">correct_state_correct_current_state_history</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
@@ -361,6 +359,8 @@
 <a href="helpers.html#current_state_history_deterministic">current_state_history_deterministic</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#current_state_history">current_state_history</a> [inductive, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_D"></a><h2>D </h2>
+<a href="model.html#diff_states_tid_set">diff_states_tid_set</a> [definition, in <a href="model.html">model</a>]<br/>
+<a href="model.html#diff_histories_tid_set">diff_histories_tid_set</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="helpers.html#during_commute_state">during_commute_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#during_replay_state">during_replay_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="global_G"></a><h2>G </h2>
@@ -412,18 +412,15 @@
 <a href="helpers.html#next_mode_dec">next_mode_dec</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#next_mode">next_mode</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#NoResp">NoResp</a> [constructor, in <a href="model.html">model</a>]<br/>
-<a href="helpers.html#not_oracle_postH_nil">not_oracle_postH_nil</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
+<a href="helpers.html#not_oracle_oracle_performed_nil">not_oracle_oracle_performed_nil</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#num_threads">num_threads</a> [axiom, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_O"></a><h2>O </h2>
 <a href="model.html#Oracle">Oracle</a> [constructor, in <a href="model.html">model</a>]<br/>
 <a href="helpers.html#oracle_mode_preservation">oracle_mode_preservation</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#oracle_response_state">oracle_response_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
+<a href="model.html#oracle_performed">oracle_performed</a> [projection, in <a href="model.html">model</a>]<br/>
 <a href="model.html#oracle_response_correct">oracle_response_correct</a> [axiom, in <a href="model.html">model</a>]<br/>
 <a href="model.html#oracle_response">oracle_response</a> [axiom, in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="global_P"></a><h2>P </h2>
-<a href="model.html#postH">postH</a> [projection, in <a href="model.html">model</a>]<br/>
-<a href="model.html#preH">preH</a> [projection, in <a href="model.html">model</a>]<br/>
-<a href="helpers.html#preHs">preHs</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="global_R"></a><h2>R </h2>
 <a href="model.html#reordered">reordered</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="helpers.html#reordered_Y_prefix_correct">reordered_Y_prefix_correct</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
@@ -459,21 +456,22 @@
 <a href="helpers.html#state_with_md_has_md">state_with_md_has_md</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#state_ycpy_nonempty">state_ycpy_nonempty</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="model.html#state_with_md">state_with_md</a> [definition, in <a href="model.html">model</a>]<br/>
-<a href="model.html#step_writes">step_writes</a> [definition, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_T"></a><h2>T </h2>
 <a href="model.html#thread_of_action">thread_of_action</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#tid">tid</a> [definition, in <a href="model.html">model</a>]<br/>
 <a href="model.html#tid_le_num_threads">tid_le_num_threads</a> [axiom, in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="global_W"></a><h2>W </h2>
-<a href="model.html#write_tid_set">write_tid_set</a> [definition, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_X"></a><h2>X </h2>
 <a href="model.html#X">X</a> [axiom, in <a href="model.html">model</a>]<br/>
+<a href="helpers.html#X_performeds">X_performeds</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
+<a href="model.html#X_performed">X_performed</a> [projection, in <a href="model.html">model</a>]<br/>
 <a href="model.html#X_copy">X_copy</a> [projection, in <a href="model.html">model</a>]<br/>
 <a href="model.html#X_and_Y_wf">X_and_Y_wf</a> [axiom, in <a href="model.html">model</a>]<br/>
 <a href="model.html#X_and_Y_in_spec">X_and_Y_in_spec</a> [axiom, in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="global_Y"></a><h2>Y </h2>
 <a href="model.html#Y">Y</a> [axiom, in <a href="model.html">model</a>]<br/>
+<a href="helpers.html#Y_performed_state">Y_performed_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#y_copy_state">y_copy_state</a> [lemma, in <a href="helpers.html">helpers</a>]<br/>
+<a href="model.html#Y_performed">Y_performed</a> [projection, in <a href="model.html">model</a>]<br/>
 <a href="model.html#Y_copy">Y_copy</a> [projection, in <a href="model.html">model</a>]<br/>
 <br/><br/><hr/>
 <h1>Library Index</h1>
@@ -489,7 +487,6 @@
 <a href="helpers.html#combine_tid_histories_nil">combine_tid_histories_nil</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#combine_tid_histories_parts">combine_tid_histories_parts</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#combine_lt">combine_lt</a> [in <a href="helpers.html">helpers</a>]<br/>
-<a href="helpers.html#commH_state">commH_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#commute_mode_state">commute_mode_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#correct_state_correct_current_state_history">correct_state_correct_current_state_history</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#current_state_history_corresponds_state_history">current_state_history_corresponds_state_history</a> [in <a href="helpers.html">helpers</a>]<br/>
@@ -521,12 +518,10 @@
 <br/><br/><a name="lemma_N"></a><h2>N </h2>
 <a href="helpers.html#next_mode_replay_implies_current_mode_replay">next_mode_replay_implies_current_mode_replay</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#next_mode_dec">next_mode_dec</a> [in <a href="helpers.html">helpers</a>]<br/>
-<a href="helpers.html#not_oracle_postH_nil">not_oracle_postH_nil</a> [in <a href="helpers.html">helpers</a>]<br/>
+<a href="helpers.html#not_oracle_oracle_performed_nil">not_oracle_oracle_performed_nil</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_O"></a><h2>O </h2>
 <a href="helpers.html#oracle_mode_preservation">oracle_mode_preservation</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#oracle_response_state">oracle_response_state</a> [in <a href="helpers.html">helpers</a>]<br/>
-<br/><br/><a name="lemma_P"></a><h2>P </h2>
-<a href="helpers.html#preHs">preHs</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_R"></a><h2>R </h2>
 <a href="helpers.html#reordered_Y_prefix_correct">reordered_Y_prefix_correct</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#reordered_in">reordered_in</a> [in <a href="helpers.html">helpers</a>]<br/>
@@ -543,12 +538,15 @@
 <a href="helpers.html#state_with_md_comp_eq">state_with_md_comp_eq</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#state_with_md_has_md">state_with_md_has_md</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#state_ycpy_nonempty">state_ycpy_nonempty</a> [in <a href="helpers.html">helpers</a>]<br/>
+<br/><br/><a name="lemma_X"></a><h2>X </h2>
+<a href="helpers.html#X_performeds">X_performeds</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><a name="lemma_Y"></a><h2>Y </h2>
+<a href="helpers.html#Y_performed_state">Y_performed_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <a href="helpers.html#y_copy_state">y_copy_state</a> [in <a href="helpers.html">helpers</a>]<br/>
 <br/><br/><hr/>
 <h1>Constructor Index</h1>
 <a name="constructor_C"></a><h2>C </h2>
-<a href="model.html#Commute">Commute</a> [in <a href="model.html">model</a>]<br/>
+<a href="model.html#ConflictFree">ConflictFree</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="constructor_G"></a><h2>G </h2>
 <a href="model.html#GenCons">GenCons</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#GenNil">GenNil</a> [in <a href="model.html">model</a>]<br/>
@@ -600,16 +598,15 @@
 <a href="model.html#response">response</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><hr/>
 <h1>Projection Index</h1>
-<a name="projection_C"></a><h2>C </h2>
-<a href="model.html#commH">commH</a> [in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="projection_M"></a><h2>M </h2>
+<a name="projection_M"></a><h2>M </h2>
 <a href="model.html#md">md</a> [in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="projection_P"></a><h2>P </h2>
-<a href="model.html#postH">postH</a> [in <a href="model.html">model</a>]<br/>
-<a href="model.html#preH">preH</a> [in <a href="model.html">model</a>]<br/>
+<br/><br/><a name="projection_O"></a><h2>O </h2>
+<a href="model.html#oracle_performed">oracle_performed</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="projection_X"></a><h2>X </h2>
+<a href="model.html#X_performed">X_performed</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#X_copy">X_copy</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="projection_Y"></a><h2>Y </h2>
+<a href="model.html#Y_performed">Y_performed</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#Y_copy">Y_copy</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><hr/>
 <h1>Section Index</h1>
@@ -633,6 +630,9 @@
 <a href="model.html#combined_histories">combined_histories</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#conflict_free_reads">conflict_free_reads</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#conflict_free_writes">conflict_free_writes</a> [in <a href="model.html">model</a>]<br/>
+<br/><br/><a name="definition_D"></a><h2>D </h2>
+<a href="model.html#diff_states_tid_set">diff_states_tid_set</a> [in <a href="model.html">model</a>]<br/>
+<a href="model.html#diff_histories_tid_set">diff_histories_tid_set</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="definition_G"></a><h2>G </h2>
 <a href="model.html#get_replay_response">get_replay_response</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#get_commute_response">get_commute_response</a> [in <a href="model.html">model</a>]<br/>
@@ -655,12 +655,9 @@
 <a href="model.html#start_state">start_state</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#start_mode">start_mode</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#state_with_md">state_with_md</a> [in <a href="model.html">model</a>]<br/>
-<a href="model.html#step_writes">step_writes</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><a name="definition_T"></a><h2>T </h2>
 <a href="model.html#thread_of_action">thread_of_action</a> [in <a href="model.html">model</a>]<br/>
 <a href="model.html#tid">tid</a> [in <a href="model.html">model</a>]<br/>
-<br/><br/><a name="definition_W"></a><h2>W </h2>
-<a href="model.html#write_tid_set">write_tid_set</a> [in <a href="model.html">model</a>]<br/>
 <br/><br/><hr/>
 <h1>Record Index</h1>
 <a name="record_S"></a><h2>S </h2>
@@ -683,14 +680,14 @@
 <td><a href="index.html#global_M">M</a></td>
 <td><a href="index.html#global_N">N</a></td>
 <td><a href="index.html#global_O">O</a></td>
-<td><a href="index.html#global_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td><a href="index.html#global_R">R</a></td>
 <td><a href="index.html#global_S">S</a></td>
 <td><a href="index.html#global_T">T</a></td>
 <td>U</td>
 <td>V</td>
-<td><a href="index.html#global_W">W</a></td>
+<td>W</td>
 <td><a href="index.html#global_X">X</a></td>
 <td><a href="index.html#global_Y">Y</a></td>
 <td>Z</td>
@@ -747,7 +744,7 @@
 <td><a href="index.html#lemma_M">M</a></td>
 <td><a href="index.html#lemma_N">N</a></td>
 <td><a href="index.html#lemma_O">O</a></td>
-<td><a href="index.html#lemma_P">P</a></td>
+<td>P</td>
 <td>Q</td>
 <td><a href="index.html#lemma_R">R</a></td>
 <td><a href="index.html#lemma_S">S</a></td>
@@ -755,7 +752,7 @@
 <td>U</td>
 <td>V</td>
 <td>W</td>
-<td>X</td>
+<td><a href="index.html#lemma_X">X</a></td>
 <td><a href="index.html#lemma_Y">Y</a></td>
 <td>Z</td>
 <td>_</td>
@@ -862,7 +859,7 @@
 <td>Projection Index</td>
 <td>A</td>
 <td>B</td>
-<td><a href="index.html#projection_C">C</a></td>
+<td>C</td>
 <td>D</td>
 <td>E</td>
 <td>F</td>
@@ -874,8 +871,8 @@
 <td>L</td>
 <td><a href="index.html#projection_M">M</a></td>
 <td>N</td>
-<td>O</td>
-<td><a href="index.html#projection_P">P</a></td>
+<td><a href="index.html#projection_O">O</a></td>
+<td>P</td>
 <td>Q</td>
 <td>R</td>
 <td>S</td>
@@ -927,7 +924,7 @@
 <td><a href="index.html#definition_A">A</a></td>
 <td>B</td>
 <td><a href="index.html#definition_C">C</a></td>
-<td>D</td>
+<td><a href="index.html#definition_D">D</a></td>
 <td>E</td>
 <td>F</td>
 <td><a href="index.html#definition_G">G</a></td>
@@ -946,7 +943,7 @@
 <td><a href="index.html#definition_T">T</a></td>
 <td>U</td>
 <td>V</td>
-<td><a href="index.html#definition_W">W</a></td>
+<td>W</td>
 <td>X</td>
 <td>Y</td>
 <td>Z</td>

@@ -258,10 +258,10 @@ Section Histories.
           destruct (rev (X_copy s1)); inversion H; subst; auto.
   Qed.
   
-  Lemma commH_state :
+  Lemma Y_performed_state :
     forall s h,
       current_state_history s h ->
-      IsHistories s.(commH).
+      IsHistories s.(Y_performed).
   Proof.
     intros. induction H; subst; unfold IsHistories; intros.
     unfold start_state in *; simpl in *. omega.
@@ -285,13 +285,13 @@ Section Histories.
           destruct (rev (X_copy s1)); inversion H; subst; auto.
   Qed.
 
-  Hint Resolve y_copy_state commH_state.
+  Hint Resolve y_copy_state Y_performed_state.
   
   Lemma state_ycpy_nonempty :
     forall s h h1 h2 t i r gencomm,
-      reordered (combined_histories (Y_copy s) ++ combined_histories (commH s)) Y ->
+      reordered (combined_histories (Y_copy s) ++ combined_histories (Y_performed s)) Y ->
       reordered (h1 ++ [(t,i,r)] ++ h2 ++ gencomm) Y ->
-      reordered gencomm (combined_histories (commH s)) ->
+      reordered gencomm (combined_histories (Y_performed s)) ->
       current_state_history s h ->
       Y_copy s t = (history_of_thread h1 t) ++ [(t,i,r)] ++ history_of_thread h2 t.
   Proof.
@@ -303,8 +303,8 @@ Section Histories.
     rewrite e1 in *.
     rewrite <- e in *.
     replace (history_of_thread h1 t ++
-                               history_of_thread [(t, i, r)] t ++ history_of_thread h2 t ++ commH s t)
-    with ((history_of_thread h1 t ++ [(t, i, r)] ++ history_of_thread h2 t) ++ commH s t) in e0.
+                               history_of_thread [(t, i, r)] t ++ history_of_thread h2 t ++ Y_performed s t)
+    with ((history_of_thread h1 t ++ [(t, i, r)] ++ history_of_thread h2 t) ++ Y_performed s t) in e0.
     eapply app_inv_tail; eauto.
     simpl in *. rewrite Nat.eqb_refl. simpl in *. rewrite <- app_assoc. auto.
   Qed.    
@@ -392,7 +392,7 @@ Section Histories.
 End Histories.
 
 Section Misc.
-  Hint Resolve commH_state y_copy_state.
+  Hint Resolve Y_performed_state y_copy_state.
 
   Lemma machine_deterministic :
     forall s1 s2 s2' t i a a',
@@ -416,7 +416,7 @@ Section Misc.
     eapply machine_deterministic; eauto.
   Qed.
   
-  Lemma next_mode_dec : forall s t i, {next_mode s t i = Commute}
+  Lemma next_mode_dec : forall s t i, {next_mode s t i = ConflictFree}
                                       + {next_mode s t i = Oracle}
                                       + {next_mode s t i = Replay}.
   Proof.
@@ -454,9 +454,9 @@ Section Misc.
       s' = state_with_md s mode ->
       s'.(X_copy) = s.(X_copy) /\
       s'.(Y_copy) = s.(Y_copy) /\
-      s'.(preH) = s.(preH) /\
-      s'.(postH) = s.(postH) /\
-      s'.(commH) = s.(commH).
+      s'.(X_performed) = s.(X_performed) /\
+      s'.(oracle_performed) = s.(oracle_performed) /\
+      s'.(Y_performed) = s.(Y_performed).
   Proof.
     intros. unfold state_with_md in *; rewrite H; simpl; auto.
   Qed.
@@ -505,7 +505,7 @@ Section Misc.
   Lemma state_combined_histories_is_reordered_Y :
     forall h s,
       current_state_history s h ->
-      reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y.
+      reordered (combined_histories s.(Y_copy) ++ combined_histories s.(Y_performed)) Y.
   Proof.
     induction h; intros; inversion H; subst.
     - unfold start_state in *; simpl in *.
@@ -533,7 +533,7 @@ Section Misc.
           [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *]; auto.
         rewrite <- Heqs1ycpy in e. rewrite <- e. rewrite <- app_assoc. now simpl; auto.
         all: eauto; unfold IsHistories; intros;
-          pose (commH_state s1 _ H5);
+          pose (Y_performed_state s1 _ H5);
           pose (y_copy_state s1 _ H5);
           unfold IsHistories in *.          
         all: destruct (Nat.eq_dec t1 t); subst;
@@ -573,7 +573,7 @@ End Misc.
 
 Section State_Lemmas.
   
-  Hint Resolve y_copy_state commH_state.
+  Hint Resolve y_copy_state Y_performed_state.
   
     Lemma replay_mode_state :
       forall s t i,
@@ -610,7 +610,7 @@ Section State_Lemmas.
           [|destruct (action_invocation_eq a t i)]; discriminate.
       - unfold machine_act in H. destruct (next_mode s1 t0 i0).
         + unfold get_commute_response in H.
-          destruct (rev (Y_copy (state_with_md s1 Commute) t0));
+          destruct (rev (Y_copy (state_with_md s1 ConflictFree) t0));
             inversion H; subst;
               unfold next_mode in Hnext; simpl in *.
           unfold state_with_md in *; simpl in *; auto.
@@ -627,7 +627,7 @@ Section State_Lemmas.
           destruct (rev (X_copy (state_with_md s1 Replay)));
             inversion H; auto.
           destruct h0.
-          * destruct (rev (X_copy (state_with_md s1 Commute)));
+          * destruct (rev (X_copy (state_with_md s1 ConflictFree)));
               unfold next_mode in Hnext; inversion H; unfold state_with_md in *;
                 subst; simpl in *.
             1-2: destruct (rev (Y_copy s1 t)); [|destruct (action_invocation_eq a0 t i)];
@@ -648,7 +648,7 @@ Section State_Lemmas.
       remember (next_mode s t i) as nextmd in Hact.
       destruct nextmd.
       - unfold get_commute_response in Hact.
-        destruct (rev (Y_copy (state_with_md s Commute) t));
+        destruct (rev (Y_copy (state_with_md s ConflictFree) t));
         inversion Hact; subst;
         unfold state_with_md in *; simpl in *; auto; discriminate.
       - unfold get_oracle_response in *.
@@ -664,9 +664,9 @@ Section State_Lemmas.
       forall s h,
         current_state_history s h ->
         s.(md) = Replay ->
-        s.(preH) = h /\
-        s.(postH) = [] /\
-        s.(commH) = (fun tid => []) /\
+        s.(X_performed) = h /\
+        s.(oracle_performed) = [] /\
+        s.(Y_performed) = (fun tid => []) /\
         s.(Y_copy) = (fun tid => history_of_thread Y tid) /\
         exists h', h' ++ h = X /\
                    s.(X_copy) = h'.
@@ -694,7 +694,7 @@ Section State_Lemmas.
          
          destruct (replay_mode_state s1 t i) as [hd [tl [Hnil Heq]]]; auto.
 
-         assert (X_copy (state_with_md s1 Commute) = X_copy s1) as Ht1 by
+         assert (X_copy (state_with_md s1 ConflictFree) = X_copy s1) as Ht1 by
                now eapply state_with_md_comp_eq.
          assert (X_copy (state_with_md s1 Replay) = X_copy s1) as Ht2 by
              now eapply state_with_md_comp_eq.
@@ -719,8 +719,8 @@ Section State_Lemmas.
 
     Lemma commute_mode_state :
       forall s t i,
-        next_mode s t i = Commute ->
-        exists hd tl, rev (Y_copy (state_with_md s Commute) t) = hd :: tl
+        next_mode s t i = ConflictFree ->
+        exists hd tl, rev (Y_copy (state_with_md s ConflictFree) t) = hd :: tl
                       /\ action_invocation_eq hd t i = true.
     Proof.
       intros. 
@@ -740,11 +740,11 @@ Section State_Lemmas.
     Lemma during_commute_state :
       forall s h,
         current_state_history s h ->
-        s.(md) = Commute ->
-        reordered (combined_histories s.(Y_copy) ++ combined_histories s.(commH)) Y /\
-        (exists gencomm, h = gencomm ++ X /\ reordered gencomm (combined_histories s.(commH))) /\
-        s.(preH) = X /\
-        s.(postH) = [] /\
+        s.(md) = ConflictFree ->
+        reordered (combined_histories s.(Y_copy) ++ combined_histories s.(Y_performed)) Y /\
+        (exists gencomm, h = gencomm ++ X /\ reordered gencomm (combined_histories s.(Y_performed))) /\
+        s.(X_performed) = X /\
+        s.(oracle_performed) = [] /\
         s.(X_copy) = [].
     Proof.
       intros s h Hgen Hmd. revert dependent s.
@@ -759,7 +759,7 @@ Section State_Lemmas.
         unfold reordered; simpl in *. auto.
         eapply IHl0; eauto.
 
-      - assert (md s1 = Replay \/ md s1 = Commute) as Hmds1.
+      - assert (md s1 = Replay \/ md s1 = ConflictFree) as Hmds1.
         {
           unfold machine_act in H1.
           remember (next_mode s1 t i) as s1nmd. destruct s1nmd;
@@ -772,7 +772,7 @@ Section State_Lemmas.
           now left. now right. now left.
         } destruct Hmds1 as [Hmds1 | Hmds1].
         + pose (during_replay_state _ _ H4 Hmds1); destruct_conjs; subst; simpl in *.
-          remember (preH s1) as pres1.
+          remember (X_performed s1) as pres1.
           destruct (pres1); simpl in *; inversion H4; subst.
 
           * unfold start_state in *; unfold start_mode in *;
@@ -874,7 +874,7 @@ Section State_Lemmas.
           rewrite e; eauto.
           rewrite Nat.eqb_sym in n.
           rewrite n in *; auto.
-          pose (commH_state s1 _ H4).
+          pose (Y_performed_state s1 _ H4).
           unfold IsHistories in *; intros; simpl in *; auto.
           destruct (Nat.eq_dec t1 t); subst;
             [rewrite Nat.eqb_refl in * | rewrite <- Nat.eqb_neq in *; rewrite n in *].
@@ -882,11 +882,11 @@ Section State_Lemmas.
           eapply i0; eauto.
     Qed.
 
-  Lemma not_oracle_postH_nil :
+  Lemma not_oracle_oracle_performed_nil :
     forall h s,
       current_state_history s h ->
       s.(md) <> Oracle ->
-      s.(postH) = [].
+      s.(oracle_performed) = [].
     Proof.
       induction h; intros; inversion H; subst.
       unfold start_state in *; simpl in *; auto.
@@ -922,7 +922,7 @@ Section State_Lemmas.
       current_state_history s h ->
       spec ((t,i,NoResp) :: h) ->
       get_oracle_response (state_with_md s Oracle) t i = (s', a) ->
-      s.(commH) = s'.(commH) /\ s'.(postH) = a :: s.(postH) /\ s'.(preH) = s.(preH).
+      s.(Y_performed) = s'.(Y_performed) /\ s'.(oracle_performed) = a :: s.(oracle_performed) /\ s'.(X_performed) = s.(X_performed).
   Proof.
     intros.
     unfold get_oracle_response in *; simpl in *.
@@ -935,8 +935,8 @@ Section State_Lemmas.
       current_state_history s h ->
       spec ((t,i,NoResp) :: h) ->
       next_mode s t i = Replay ->
-      s.(postH) = start_state.(postH)
-      /\ s.(commH) = start_state.(commH).
+      s.(oracle_performed) = start_state.(oracle_performed)
+      /\ s.(Y_performed) = start_state.(Y_performed).
   Proof.
     induction h; intros; inversion H; subst; simpl in *; auto.
     remember (next_mode s1 t0 i0) as s1nmd.
@@ -955,7 +955,7 @@ Section State_Lemmas.
           unfold next_mode in H1; inversion H4; subst; simpl in *; auto.
     }
     
-    assert (postH s1 = [] /\ commH s1 = (fun _ : tid => [])).
+    assert (oracle_performed s1 = [] /\ Y_performed s1 = (fun _ : tid => [])).
     {
       eapply IHh; eauto. 
     }
@@ -971,9 +971,9 @@ Section State_Lemmas.
   Lemma current_state_history_corresponds_state_history :
     forall h s,
       current_state_history s h ->
-      exists gencommH,
-        reordered gencommH (combined_histories s.(commH)) /\
-        s.(postH) ++ gencommH ++ s.(preH) = h.
+      exists genY_performed,
+        reordered genY_performed (combined_histories s.(Y_performed)) /\
+        s.(oracle_performed) ++ genY_performed ++ s.(X_performed) = h.
   Proof.
     induction h; intros; inversion H; subst.
     - unfold start_state in *; simpl in *.
@@ -1001,26 +1001,26 @@ Section State_Lemmas.
              now rewrite e.
              rewrite Nat.eqb_sym in n. rewrite n. auto.
 
-             pose (commH_state _ _ H5).
+             pose (Y_performed_state _ _ H5).
              unfold IsHistories in *; intros.
              destruct (Nat.eq_dec t1 t); subst; simpl in *;
                [rewrite Nat.eqb_refl in *| rewrite <- Nat.eqb_neq in *; rewrite n in *].
              inversion H1; subst; auto. eapply i0; eauto.
-          -- assert (postH s1 = []).
-             eapply not_oracle_postH_nil; eauto.
+          -- assert (oracle_performed s1 = []).
+             eapply not_oracle_oracle_performed_nil; eauto.
              unfold next_mode in Heqs1nmd.
              remember (md s1) as s1md. destruct s1md; try discriminate.
              rewrite H1 in *; simpl in *; auto.
       + exists gencomm.
         split; auto.
-        -- assert (commH s1 = commH s). eapply oracle_response_state; eauto.
+        -- assert (Y_performed s1 = Y_performed s). eapply oracle_response_state; eauto.
            rewrite <- H3. auto.
-        -- assert (postH s = (t,i,r) :: postH s1 /\ preH s = preH s1).
+        -- assert (oracle_performed s = (t,i,r) :: oracle_performed s1 /\ X_performed s = X_performed s1).
            eapply oracle_response_state; eauto.
            destruct_conjs; subst.
            rewrite H3, H6; simpl in *; auto.
       + exists gencomm.
-        assert (commH s1 = commH s /\ postH s1 = postH s).
+        assert (Y_performed s1 = Y_performed s /\ oracle_performed s1 = oracle_performed s).
         {
            remember (rev (X_copy s1)) as rxcpy.
            destruct rxcpy; unfold get_replay_response in *; simpl in *.
@@ -1031,7 +1031,7 @@ Section State_Lemmas.
         } destruct_conjs.
         split.
         -- now rewrite <- H3. 
-        -- assert (postH s1 = [] /\ (commH s1 = (fun _ : tid => []))).
+        -- assert (oracle_performed s1 = [] /\ (Y_performed s1 = (fun _ : tid => []))).
            {
              pose replay_response_state.
              unfold start_state in *; simpl in *.
@@ -1084,7 +1084,7 @@ Section State_Lemmas.
       h = Yend ++ X ->
       reordered (Yfront ++ (t,i,r) :: Yend) Y ->
       (forall t', s.(Y_copy) t' = history_of_thread (Yfront ++ [(t,i,r)]) t') /\
-      s.(md) = Commute.
+      s.(md) = ConflictFree.
   Proof.
     induction Yend; intros.
     simpl in *; subst. remember X as HX. destruct HX; inversion H; subst.
@@ -1109,7 +1109,7 @@ Section State_Lemmas.
       destruct a as [[ta ia] ra]; inversion H2; subst.
       assert ((forall t', s1.(Y_copy) t' = history_of_thread
                                            ((Yfront ++ [(t,i,r)]) ++ [(ta, ia, ra)]) t')
-             /\ md s1 = Commute) as Hmds1.
+             /\ md s1 = ConflictFree) as Hmds1.
       {
         assert (reordered ((Yfront ++ [(t,i,r)]) ++ (ta, ia, ra) :: Yend) Y).
         rewrite <- app_assoc; simpl; auto. 
@@ -1121,7 +1121,7 @@ Section State_Lemmas.
       rewrite e, rev_unit in *.
       destruct ia; simpl in *; repeat rewrite Nat.eqb_refl in *; simpl in *.
       unfold get_commute_response in *.
-      assert (Y_copy s1 = Y_copy (state_with_md s1 Commute)).
+      assert (Y_copy s1 = Y_copy (state_with_md s1 ConflictFree)).
       unfold state_with_md in *; simpl in *; eauto.
       rewrite H5 in *; unfold state_with_md in *; simpl in *.
       rewrite e in *; rewrite rev_unit in *.
@@ -1136,10 +1136,10 @@ Section State_Lemmas.
       rewrite Nat.eqb_sym in n0. rewrite n0 in *. now rewrite app_nil_r in *.
   Qed.
 
-  Lemma preHs :
+  Lemma X_performeds :
     forall h s, current_state_history s h ->
-           preH s = X \/
-           (h = postH s ++ preH s /\ exists a x1 x2, preH s = x2 /\ X = a :: x1 ++ x2).
+           X_performed s = X \/
+           (h = oracle_performed s ++ X_performed s /\ exists a x1 x2, X_performed s = x2 /\ X = a :: x1 ++ x2).
     Proof.
       induction h; intros; inversion H; subst; simpl in *.
       - unfold start_state in *.
@@ -1150,7 +1150,7 @@ Section State_Lemmas.
           unfold machine_act in *; remember (next_mode s1 t i) as s1nextmd.
         + destruct s1nextmd; symmetry in Heqs1nextmd; auto. 
           * left; pose (commute_mode_state s1 _ _ Heqs1nextmd).
-            assert (md s = Commute).
+            assert (md s = ConflictFree).
             {
               destruct_conjs.
               unfold get_commute_response in *. rewrite H3 in *. inversion H2; subst; auto.
@@ -1174,7 +1174,7 @@ Section State_Lemmas.
             unfold state_with_md in *; simpl in *; auto.
         + destruct s1nextmd; symmetry in Heqs1nextmd.
           * pose (commute_mode_state s1 _ _ Heqs1nextmd).
-            assert (md s = Commute).
+            assert (md s = ConflictFree).
             {
               destruct_conjs; subst.
               unfold get_commute_response in *. rewrite H6 in *. inversion H2; subst; auto.
@@ -1191,7 +1191,7 @@ Section State_Lemmas.
             rewrite H6 in *; simpl in *.
             rewrite H16 in *.
             assert (X_copy s1 = H10 :: H13) by now eapply app_inv_tail; eauto. 
-            assert (md s = Replay \/ md s = Commute).
+            assert (md s = Replay \/ md s = ConflictFree).
             {
 
               remember (rev (X_copy s1)) as s1xcpy; destruct s1xcpy; unfold get_replay_response in *;
@@ -1213,11 +1213,11 @@ Section State_Lemmas.
                remember (rev bleh ++ [a]) as tmp; destruct tmp.
                symmetry in Heqtmp. apply app_eq_nil in Heqtmp. destruct_conjs; discriminate.
                rewrite <- H11 in *.
-               exists a, bleh, ((t,i,r) :: preH s1). split; simpl in *; auto.
+               exists a, bleh, ((t,i,r) :: X_performed s1). split; simpl in *; auto.
                assert (x = (t,i,r)).
                {
-                 assert ((X_copy s ++ [(t, i, r)]) ++ preH s1
-                         = (a :: bleh ++ [x]) ++ preH s1).
+                 assert ((X_copy s ++ [(t, i, r)]) ++ X_performed s1
+                         = (a :: bleh ++ [x]) ++ X_performed s1).
                  rewrite <- app_assoc; simpl in *. auto.
                  apply app_inv_tail in H18.
                  assert (rev (X_copy s ++ [(t,i,r)]) = rev ((a :: bleh) ++ [x])).
@@ -1239,11 +1239,11 @@ Section State_Lemmas.
     unfold get_state_history in *; simpl in *;
     pose (state_combined_histories_is_reordered_Y h s Hgen) as Hh';
     pose (reordered_Y_prefix_correct 
-            (combined_histories s.(commH))
+            (combined_histories s.(Y_performed))
             (combined_histories s.(Y_copy))
             Hh') as Hcomm;
-    destruct (preHs h s Hgen);
-    destruct (current_state_history_corresponds_state_history h s Hgen) as [gencommH [Horder Hh]].
+    destruct (X_performeds h s Hgen);
+    destruct (current_state_history_corresponds_state_history h s Hgen) as [genY_performed [Horder Hh]].
 
     - rewrite <- Hh.
       rewrite H. rewrite app_assoc in *.
@@ -1258,7 +1258,7 @@ Section State_Lemmas.
       symmetry in Horder.
       rewrite (history_of_thread_all_nil _ Horder) in *. simpl in *; auto.
     - rewrite H, <- Hh in *. apply reordered_sym in Horder.
-      assert (reordered (combined_histories (Y_copy s) ++ gencommH) Y).
+      assert (reordered (combined_histories (Y_copy s) ++ genY_performed) Y).
       {
         eapply reordered_prefix; eauto.
       }

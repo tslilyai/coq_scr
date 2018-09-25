@@ -14,7 +14,7 @@ Require Import Ensembles.
 Require Import model.
 Require Import helpers.
 
-Hint Resolve y_copy_state commH_state.
+Hint Resolve y_copy_state Y_performed_state.
 
 Ltac unfold_action_inv_eq :=
   match goal with
@@ -343,8 +343,8 @@ Section Correctness.
     forall s h t i s' rtyp,
       current_state_history s h ->
       spec ((t,i,NoResp)::h) ->
-      next_mode s t i = Commute ->
-      get_commute_response (state_with_md s Commute) t i = (s',(t,i,Resp rtyp)) ->
+      next_mode s t i = ConflictFree ->
+      get_commute_response (state_with_md s ConflictFree) t i = (s',(t,i,Resp rtyp)) ->
       spec ((t,i,Resp rtyp)::h).
   Proof.
     intros s h t i s' rtyp Hgen Hspec Hnextmd Hact.
@@ -353,7 +353,7 @@ Section Correctness.
     pose (commute_mode_state s t i) as Hstate; destruct Hstate as [hd [tl [Hnil Heq]]]; auto.
     rewrite Hnil in Hact'.
     unfold state_with_md in Hact'; subst; simpl in *.
-    assert (s.(md) = Replay \/ s.(md) = Commute) as Hsmd.
+    assert (s.(md) = Replay \/ s.(md) = ConflictFree) as Hsmd.
     {
       unfold next_mode in *.
       destruct (md s); [right | discriminate | left]; auto.
@@ -363,7 +363,7 @@ Section Correctness.
       unfold machine_act. rewrite Hnextmd; auto.
     }
     assert (current_state_history s' ((t,i,Resp rtyp) :: h)) as Hgens' by now eapply GenCons; eauto.
-    assert (md s' = Commute) as Hmds' by now inversion Hact'; now subst.
+    assert (md s' = ConflictFree) as Hmds' by now inversion Hact'; now subst.
     destruct Hsmd as [Hsmd | Hsmd];
       pose (during_commute_state s' ((t,i,Resp rtyp)::h) Hgens' Hmds') as Hstates';
       pose (reordered_Y_prefix_correct) as HY;
@@ -447,7 +447,7 @@ Section Conflict_Freedom.
       conflict_free_reads t i s.
   Proof.
     intros. unfold conflict_free_reads; intros.
-    assert (md s = Commute) as Hmds. 
+    assert (md s = ConflictFree) as Hmds. 
     { destruct H1 as [h' HY].
       eapply mode_current_state_history_commute; eauto.
     } rewrite Hmds in *.
@@ -480,16 +480,16 @@ Section Conflict_Freedom.
       machine_act s t i = (s', (t,i,r)) ->
       conflict_free_writes t s s'.
   Proof.
-    Ltac discriminate_commH :=
+    Ltac discriminate_Y_performed :=
       match goal with
-      | [ n : (?t =? ?t0) = false |- (if _ then _ else commH ?s ?t) <> ?h2 :: commH ?s ?t] =>
-        rewrite n; intuition; assert ([] ++ commH s t = [h2] ++ commH s t) as mytmp;
+      | [ n : (?t =? ?t0) = false |- (if _ then _ else Y_performed ?s ?t) <> ?h2 :: Y_performed ?s ?t] =>
+        rewrite n; intuition; assert ([] ++ Y_performed s t = [h2] ++ Y_performed s t) as mytmp;
         [now simpl | apply app_inv_tail in mytmp; discriminate]
-      | [ |- commH ?s ?t <> ?h2 :: commH ?s ?t] =>
-        intuition; assert ([] ++ commH s t = [h2] ++ commH s t) as mytmp;
+      | [ |- Y_performed ?s ?t <> ?h2 :: Y_performed ?s ?t] =>
+        intuition; assert ([] ++ Y_performed s t = [h2] ++ Y_performed s t) as mytmp;
         [now simpl | apply app_inv_tail in mytmp; discriminate]
-      | [|- ?h1 :: commH ?s ?t <> ?h :: ?h1 :: commH ?s ?t] =>
-        intuition; assert ([] ++ h1 :: commH s t = [h] ++ h1 :: commH s t) as mytmp;
+      | [|- ?h1 :: Y_performed ?s ?t <> ?h :: ?h1 :: Y_performed ?s ?t] =>
+        intuition; assert ([] ++ h1 :: Y_performed s t = [h] ++ h1 :: Y_performed s t) as mytmp;
         [ now simpl | apply app_inv_tail in mytmp; discriminate]
       end.
     Ltac solve_tid_neq_ensembles :=
@@ -506,7 +506,7 @@ Section Conflict_Freedom.
           destruct (Nat.eq_dec x t) as [eq | neq]; subst | idtac];
         [ constructor
         | solve_tid_neq_ensembles
-        | apply Union_introl; unfold In in *; try rewrite Nat.eqb_refl; try discriminate_commH
+        | apply Union_introl; unfold In in *; try rewrite Nat.eqb_refl; try discriminate_Y_performed
         | inversion Hinc as [Hinc']; rewrite Hinc' in *; intuition
         | now apply Extensionality_Ensembles in HSS]
       end.
@@ -514,7 +514,7 @@ Section Conflict_Freedom.
     intros s s' h t i r Hgen Hspec [h' Hreordered] Hact.
     unfold conflict_free_writes.
 
-    assert (md s = Commute) as Hmds. 
+    assert (md s = ConflictFree) as Hmds. 
     { 
       eapply mode_current_state_history_commute; eauto.
     } rewrite Hmds in *.
